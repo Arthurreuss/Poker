@@ -53,7 +53,8 @@ export async function withRetry<T>(
 }
 
 /**
- * Repository mit Retry für das Rundenergebnis (`finishRound`, idempotentes UPDATE). `startRound` bleibt ohne
+ * Repository mit Retry für das Rundenergebnis (`finishRound`) und den Abbruch verwaister Runden (`abortRound`,
+ * WP-015) – beides idempotente UPDATEs. `startRound` bleibt ohne
  * Retry: schlägt es fehl, bekommt der Ersteller sofort einen Fehler und der Tisch bleibt offen (WP-011).
  */
 export function withFinishRoundRetry(repository: TableRepository, options: RetryOptions): TableRepository {
@@ -63,5 +64,7 @@ export function withFinishRoundRetry(repository: TableRepository, options: Retry
     closeTable: (tableId) => repository.closeTable(tableId),
     finishRound: (tableId, roundId, results) =>
       withRetry('finishRound', { tableId, roundId }, () => repository.finishRound(tableId, roundId, results), options),
+    abortRound: (tableId, roundId) =>
+      withRetry('abortRound', { tableId, roundId }, () => repository.abortRound(tableId, roundId), options),
   };
 }

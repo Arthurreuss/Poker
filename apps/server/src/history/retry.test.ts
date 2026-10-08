@@ -117,6 +117,24 @@ describe('withFinishRoundRetry', () => {
     expect(inner.rounds.get(roundId)?.status).toBe('finished');
     expect(r.sleeps).toEqual([10]);
   });
+
+  it('wiederholt auch abortRound (verwaiste Runde, WP-015)', async () => {
+    const r = recorder();
+    const inner = new InMemoryTableRepository();
+    let failAbort = 1;
+    const original = inner.abortRound.bind(inner);
+    inner.abortRound = (...args) => (failAbort-- > 0 ? Promise.reject(new Error('weg')) : original(...args));
+    const repo = withFinishRoundRetry(inner, r.options);
+    const tableId = await repo.createTable({ createdBy: 1, inviteCode: 'y', settings: {} as never });
+    const roundId = await repo.startRound(tableId, [
+      { userId: 1, seat: 0 },
+      { userId: 2, seat: 1 },
+    ]);
+    await repo.abortRound(tableId, roundId);
+    expect(inner.rounds.get(roundId)?.status).toBe('aborted');
+    expect(inner.tables.get(tableId)?.status).toBe('closed');
+    expect(r.sleeps).toEqual([10]);
+  });
 });
 
 describe('combineHooks', () => {

@@ -8,6 +8,7 @@ import { DATENSCHUTZ_PATH, IMPRESSUM_PATH } from './legal/LegalFooter';
 import { DatenschutzPage, ImpressumPage } from './legal/LegalPage';
 import { AdminPage } from './pages/AdminPage';
 import { HandPage } from './pages/HandPage';
+import { JoinPage } from './pages/JoinPage';
 import { LeaderboardPage } from './pages/LeaderboardPage';
 import { LobbyPage } from './pages/LobbyPage';
 import { LoginPage } from './pages/LoginPage';
@@ -73,6 +74,7 @@ export function AppRoutes() {
         }
       >
         <Route index element={<LobbyPage />} />
+        <Route path="join/:code" element={<JoinPage />} />
         <Route path="leaderboard" element={<LeaderboardPage />} />
         <Route path="players/:name" element={<PlayerPage />} />
         <Route path="rounds/:id" element={<RoundPage />} />
