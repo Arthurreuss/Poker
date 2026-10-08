@@ -1,0 +1,335 @@
+/* Admin-Dashboard (WP-029). Handy zuerst: eine Spalte, Knöpfe mind. 44 px hoch, nichts breiter als der Viewport. */
+
+.nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.navLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--color-surface-2);
+  border-radius: var(--radius-pill);
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.navLink[aria-current='page'] {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.sectionHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.title {
+  font-size: var(--font-size-md);
+}
+
+.muted {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.alert {
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-2);
+  border-left: 4px solid var(--color-danger);
+}
+
+.notice {
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-2);
+  border-left: 4px solid var(--color-success);
+}
+
+/* Kennzahlen: 2 Spalten auf dem Handy, mehr bei Platz. */
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.tile dt {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.tile dd {
+  margin: 0;
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.tileDetail {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  font-weight: 400;
+}
+
+.ok {
+  color: var(--color-success);
+}
+
+.bad {
+  color: var(--color-danger);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  border-left: 4px solid var(--color-surface-2);
+}
+
+.card[data-state='banned'] {
+  border-left-color: var(--color-danger);
+}
+
+.card[data-state='running'] {
+  border-left-color: var(--color-accent);
+}
+
+.cardHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.cardTitle {
+  font-size: var(--font-size-md);
+  overflow-wrap: anywhere;
+}
+
+.badge {
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-2);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+}
+
+.badge[data-kind='admin'],
+.badge[data-kind='running'] {
+  color: var(--color-accent);
+}
+
+.badge[data-kind='banned'] {
+  color: var(--color-danger);
+}
+
+.badge[data-kind='online'] {
+  color: var(--color-success);
+}
+
+.players {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--font-size-sm);
+}
+
+.dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: var(--space-1);
+  border-radius: 50%;
+  background: var(--color-text-muted);
+}
+
+.dot[data-on='true'] {
+  background: var(--color-success);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.button,
+.danger,
+.primary {
+  min-height: 44px;
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-pill);
+  font-weight: 700;
+}
+
+.button {
+  border: 1px solid var(--color-surface-2);
+  background: transparent;
+}
+
+.danger {
+  border: 1px solid var(--color-danger);
+  background: transparent;
+  color: var(--color-danger);
+}
+
+.primary {
+  border: none;
+  background: var(--color-accent);
+  color: var(--color-bg);
+}
+
+.dialog .danger {
+  background: var(--color-danger);
+  color: var(--color-text);
+}
+
+.button:disabled,
+.danger:disabled,
+.primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.search {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.search input,
+.field textarea {
+  width: 100%;
+  min-height: 44px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-surface-2);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  font-size: var(--font-size-md);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.field textarea {
+  min-height: 5rem;
+  resize: vertical;
+}
+
+/* Dialog: Handy = Blatt von unten, breit = zentriert (wie der Feedback-Dialog). */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgb(0 0 0 / 0.6);
+}
+
+.dialog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  width: 100%;
+  max-width: 480px;
+  max-height: 100dvh;
+  overflow-y: auto;
+  padding: var(--space-5) var(--space-4) calc(var(--space-5) + env(safe-area-inset-bottom));
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-md);
+}
+
+.dialogTitle {
+  font-size: var(--font-size-lg);
+}
+
+.dialogActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.password {
+  display: block;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: var(--font-size-lg);
+  letter-spacing: 0.05em;
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
+@media (min-width: 560px) {
+  .backdrop {
+    align-items: center;
+    padding: var(--space-4);
+  }
+
+  .dialog {
+    padding-bottom: var(--space-5);
+    border-radius: var(--radius-lg);
+  }
+}
+
+.audit {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.auditText {
+  overflow-wrap: anywhere;
+}

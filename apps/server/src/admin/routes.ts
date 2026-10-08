@@ -1,5 +1,5 @@
 // Admin-API (WP-028, D-029): Spieler sperren/entsperren, Sessions beenden, Passwort zurücksetzen, Tisch schließen,
-// Admin-Protokoll lesen. Zugriff prüft der allgemeine Guard (admin/guard.ts) für alle `/api/admin/*`-Routen;
+// Admin-Protokoll lesen; Übersicht und Tischliste fürs Dashboard (WP-029, admin/overview.ts). Zugriff prüft der allgemeine Guard (admin/guard.ts) für alle `/api/admin/*`-Routen;
 // jede Aktion steht im Admin-Protokoll (admin/audit.ts). Formate: docs/ARCHITECTURE.md, „Admin (WP-028)“.
 import type { FastifyError, FastifyPluginAsync, FastifyReply } from 'fastify';
 import { generatePassword } from '../auth/admin';
@@ -9,6 +9,7 @@ import type { GameServer } from '../game/game-server';
 import { CLOSE_ACCOUNT_BANNED, CLOSE_SESSIONS_REVOKED } from '../ws';
 import { AUDIT_LIST_MAX_LIMIT, listAudit, writeAudit, type AuditEntry } from './audit';
 import { adminOf } from './guard';
+import { listAdminTables, loadOverview } from './overview';
 import {
   USER_LIST_MAX_LIMIT,
   banUser,
@@ -25,6 +26,8 @@ export interface AdminPluginOptions {
   game: GameServer;
   /** Offene WebSocket-Verbindungen eines Users schließen (`registerWebSocket(...).closeUserConnections`). */
   closeUserConnections: (userId: number, code: number, reason: string) => void;
+  /** User mit offener WebSocket-Verbindung (`registerWebSocket(...).onlineUserIds`), für die Übersicht (WP-029). */
+  onlineUserIds: () => ReadonlySet<number>;
 }
 
 export interface AdminApiError {
@@ -46,7 +49,10 @@ function fail(reply: FastifyReply, status: number, error: AdminApiError['error']
   return reply.code(status).send({ error, message } satisfies AdminApiError);
 }
 
-export const adminRoutes: FastifyPluginAsync<AdminPluginOptions> = (app, { db, game, closeUserConnections }) => {
+export const adminRoutes: FastifyPluginAsync<AdminPluginOptions> = (
+  app,
+  { db, game, closeUserConnections, onlineUserIds },
+) => {
   app.setErrorHandler((err: FastifyError, request, reply) => {
     const status = err.statusCode ?? 500;
     if (status >= 400 && status < 500) return fail(reply, status, 'invalid_request', err.message);
@@ -63,6 +69,16 @@ export const adminRoutes: FastifyPluginAsync<AdminPluginOptions> = (app, { db, g
     if (user === null) await userNotFound(reply);
     return user;
   }
+
+  // ---------------------------------------------------------------------------
+  // Übersicht (WP-029, nur lesend)
+  // ---------------------------------------------------------------------------
+
+  app.get('/api/admin/overview', async (request) => {
+    return { overview: await loadOverview({ db, log: request.log, game, onlineUserIds }) };
+  });
+
+  app.get('/api/admin/tables', () => ({ tables: listAdminTables(game) }));
 
   // ---------------------------------------------------------------------------
   // Spieler

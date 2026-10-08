@@ -148,6 +148,7 @@ export function buildApp({
     closeUserConnections: (userId, code, reason) => {
       webSocket.closeUserConnections(userId, code, reason);
     },
+    onlineUserIds: () => webSocket.onlineUserIds(),
   });
   void app.register(statsRoutes, { db });
 

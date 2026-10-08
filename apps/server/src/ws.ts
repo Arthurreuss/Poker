@@ -48,6 +48,8 @@ export { CLOSE_ACCOUNT_BANNED } from '@poker/engine/protocol';
 export interface WebSocketControl {
   /** Schließt alle offenen Verbindungen eines Users (z. B. nach dem Löschen des Kontos oder einer Sperre). */
   closeUserConnections(userId: number, code: number, reason: string): void;
+  /** User-IDs mit mindestens einer offenen WebSocket-Verbindung („online“, Admin-Übersicht WP-029). */
+  onlineUserIds(): Set<number>;
 }
 
 /** Hängt den WebSocket-Server an den HTTP-Server der Fastify-App (Upgrade auf `/ws`). */
@@ -157,6 +159,14 @@ export function registerWebSocket(app: FastifyInstance, options: WebSocketOption
       for (const ws of wss.clients) {
         if (userOf.get(ws) === userId) ws.close(code, reason);
       }
+    },
+    onlineUserIds() {
+      const ids = new Set<number>();
+      for (const ws of wss.clients) {
+        const id = userOf.get(ws);
+        if (id !== undefined && ws.readyState === ws.OPEN) ids.add(id);
+      }
+      return ids;
     },
   };
 }
