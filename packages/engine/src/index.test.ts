@@ -21,4 +21,24 @@ describe('öffentliche API', () => {
     expect(pots).toEqual([{ amount: 200, eligibleIds: ['A', 'B'] }]);
     expect(uncalled).toEqual({ playerId: 'B', amount: 200 });
   });
+
+  it('exportiert das Rundenmodell (WP-008)', () => {
+    const started = engine.startRound(
+      {
+        startingStack: 1_500,
+        blindStructure: engine.DEFAULT_BLIND_STRUCTURE,
+        turnTimeSeconds: 20,
+        timeBankSeconds: 60,
+      },
+      [
+        { id: 'A', seat: 0 },
+        { id: 'B', seat: 1 },
+      ],
+      engine.createSeededRng(1),
+    );
+    expect(started.ok).toBe(true);
+    expect(engine.placementPoints(1, 9)).toBe(9);
+    expect(engine.DEFAULT_TURN_TIME_SECONDS).toBe(20);
+    expect(engine.DEFAULT_TIME_BANK_SECONDS).toBe(60);
+  });
 });
