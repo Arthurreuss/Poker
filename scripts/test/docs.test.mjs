@@ -39,7 +39,10 @@ test('done mit offenen Checkboxen ist ein Fehler', () => {
 
 test('Abhängigkeiten müssen existieren und für in-progress done sein', () => {
   assert.match(validateWorkPackages([wp({ depends: '[WP-009]' })])[0], /existiert nicht/);
-  const errors = validateWorkPackages([wp({ id: 'WP-001' }), wp({ id: 'WP-002', status: 'in-progress', depends: '[WP-001]' })]);
+  const errors = validateWorkPackages([
+    wp({ id: 'WP-001' }),
+    wp({ id: 'WP-002', status: 'in-progress', depends: '[WP-001]' }),
+  ]);
   assert.match(errors[0], /nicht done/);
 });
 
@@ -74,7 +77,8 @@ test('Entscheidungs-IDs fortlaufend', () => {
 test('Links: relative Ziele müssen existieren, Code und URLs ignoriert', () => {
   const exists = (p) => p === 'docs/da.md';
   const files = {
-    'docs/a.md': '[ok](da.md#x) [web](https://x.de) [anker](#y) `[code](weg.md)`\n```\n[block](weg.md)\n```\n[kaputt](fehlt.md)',
+    'docs/a.md':
+      '[ok](da.md#x) [web](https://x.de) [anker](#y) `[code](weg.md)`\n```\n[block](weg.md)\n```\n[kaputt](fehlt.md)',
   };
   assert.deepEqual(checkLinks(files, exists), ['docs/a.md: kaputter Link → fehlt.md']);
 });

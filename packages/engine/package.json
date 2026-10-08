@@ -1,0 +1,14 @@
+{
+  "name": "@poker/engine",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Reine Poker-Logik ohne I/O",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  }
+}

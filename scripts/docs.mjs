@@ -23,7 +23,11 @@ export function parseFrontmatter(text) {
     if (!kv) continue;
     let value = kv[2].trim();
     if (value.startsWith('[') && value.endsWith(']')) {
-      value = value.slice(1, -1).split(',').map((s) => s.trim()).filter(Boolean);
+      value = value
+        .slice(1, -1)
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
     }
     data[kv[1]] = value;
   }
@@ -99,7 +103,10 @@ export function checkDecisions(text) {
   const ids = [...text.matchAll(/^## D-(\d{3}):/gm)].map((m) => Number(m[1]));
   const errors = [];
   ids.forEach((n, i) => {
-    if (n !== i + 1) errors.push(`${DECISIONS_FILE}: D-${String(n).padStart(3, '0')} an Position ${i + 1} (erwartet fortlaufend ab D-001)`);
+    if (n !== i + 1)
+      errors.push(
+        `${DECISIONS_FILE}: D-${String(n).padStart(3, '0')} an Position ${i + 1} (erwartet fortlaufend ab D-001)`,
+      );
   });
   return errors;
 }
