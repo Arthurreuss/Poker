@@ -1,5 +1,6 @@
 import { useAnimationsPreference } from '../settings/animations';
 import { DeleteAccount } from '../settings/DeleteAccount';
+import { SoundSettings } from '../settings/SoundSettings';
 import { ORIENTATION_LABELS, ORIENTATION_PREFERENCES, useOrientationPreference } from '../settings/orientation';
 import styles from './Page.module.css';
 import { PlaceholderPage } from './PlaceholderPage';
@@ -44,6 +45,7 @@ export function SettingsPage() {
           aus.
         </p>
       </fieldset>
+      <SoundSettings />
       <DeleteAccount />
     </PlaceholderPage>
   );

@@ -1,17 +1,29 @@
 /** Kleine Bausteine der Tischansicht: Einsatz-Chips, Dealer-Button/Blind-Marker, Board, Pots. */
 import type { CSSProperties } from 'react';
 import { ChipSvg, MarkerDiscSvg } from './assets/icons';
-import { Card } from './Card';
+import { Card, winHighlight } from './Card';
 import { formatChips } from './format';
 import type { Card as CardValue, PotView } from './types';
 
 /** Einsatz der laufenden Straße vor dem Sitz. */
-export function BetChips({ amount, style, align }: { amount: number; style?: CSSProperties; align: string }) {
+export function BetChips({
+  amount,
+  style,
+  align,
+  seat,
+}: {
+  amount: number;
+  style?: CSSProperties;
+  align: string;
+  /** Sitz des Einsatzes (WP-031: Ziel/Start der Chip-Animationen). */
+  seat?: number;
+}) {
   return (
     <div
       className={`pt-bet pt-bet--${align}`}
       style={style}
       data-testid="bet"
+      data-seat={seat}
       aria-label={`Einsatz ${formatChips(amount)}`}
     >
       <ChipSvg />
@@ -39,7 +51,16 @@ export function DealerButton({ kind, className }: { kind: 'dealer' | 'sb' | 'bb'
 }
 
 /** Gemeinschaftskarten; freie Plätze bleiben reserviert, damit das Layout nicht springt. */
-export function Board({ cards, fourColor }: { cards: readonly CardValue[]; fourColor: boolean }) {
+export function Board({
+  cards,
+  fourColor,
+  winning,
+}: {
+  cards: readonly CardValue[];
+  fourColor: boolean;
+  /** Karten der Gewinnerhand (WP-031); übrige Board-Karten treten zurück. */
+  winning?: readonly CardValue[] | undefined;
+}) {
   return (
     <div className="pt-board" data-testid="board" aria-label="Board">
       {[0, 1, 2, 3, 4].map((i) => {
@@ -47,7 +68,7 @@ export function Board({ cards, fourColor }: { cards: readonly CardValue[]; fourC
         return card === undefined ? (
           <div key={i} className="pt-card pt-card--board pt-card--slot" aria-hidden="true" />
         ) : (
-          <Card key={i} card={card} size="board" fourColor={fourColor} />
+          <Card key={i} card={card} size="board" fourColor={fourColor} highlight={winHighlight(card, winning)} />
         );
       })}
     </div>

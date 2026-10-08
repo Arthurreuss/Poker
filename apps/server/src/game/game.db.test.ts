@@ -58,7 +58,7 @@ describe.skipIf(testDatabaseUrl === undefined)('Game-Server mit Postgres', () =>
       db: createPgDatabase({ ...s.config, max: 3 }),
       publicOrigin: ORIGIN,
       auth: DEV_AUTH,
-      game: { handPauseMs: 0, rng: createSeededRng(11), hooks },
+      game: { handPauseMs: 0, runoutPauseMs: 0, rng: createSeededRng(11), hooks },
     });
     await app.listen({ host: '127.0.0.1', port: 0 });
     const { port } = app.server.address() as AddressInfo;

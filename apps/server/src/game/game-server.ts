@@ -25,6 +25,12 @@ import { Table, type Logger, type TableResult } from './table';
 export const DEFAULT_HAND_PAUSE_MS = 4000;
 
 /**
+ * Zusätzliche Pause je Straße eines All-in-Runouts (WP-031): Der Client deckt Flop, Turn und River dann
+ * nacheinander auf (ca. 0,9 s Abstand), damit bleibt die Showdown-Anzeige trotzdem ein paar Sekunden stehen.
+ */
+export const DEFAULT_RUNOUT_PAUSE_MS = 1000;
+
+/**
  * Gnadenfrist für getrennte Spieler am Zug (WP-012): Ein Reload oder kurzer Netzwechsel kostet so keine Hand,
  * der Tisch wartet aber höchstens so lange (nie länger als Zugzeit + Zeitbank).
  */
@@ -58,6 +64,8 @@ export interface GameServerOptions {
   rng?: Rng;
   /** Standard: {@link DEFAULT_HAND_PAUSE_MS}. */
   handPauseMs?: number;
+  /** Standard: {@link DEFAULT_RUNOUT_PAUSE_MS}. */
+  runoutPauseMs?: number;
   /** Standard: {@link DEFAULT_DISCONNECT_GRACE_MS}. */
   disconnectGraceMs?: number;
   /** Standard: {@link DEFAULT_ORPHAN_TIMEOUT_MS}. */
@@ -105,6 +113,7 @@ export class GameServer {
   private readonly clock: Clock;
   private readonly rng: Rng;
   private readonly handPauseMs: number;
+  private readonly runoutPauseMs: number;
   private readonly disconnectGraceMs: number;
   private readonly orphanTimeoutMs: number;
   private readonly idleTableTimeoutMs: number;
@@ -115,6 +124,7 @@ export class GameServer {
     this.clock = options.clock ?? systemClock;
     this.rng = options.rng ?? cryptoRng;
     this.handPauseMs = options.handPauseMs ?? DEFAULT_HAND_PAUSE_MS;
+    this.runoutPauseMs = options.runoutPauseMs ?? DEFAULT_RUNOUT_PAUSE_MS;
     this.disconnectGraceMs = options.disconnectGraceMs ?? DEFAULT_DISCONNECT_GRACE_MS;
     this.orphanTimeoutMs = options.orphanTimeoutMs ?? DEFAULT_ORPHAN_TIMEOUT_MS;
     this.idleTableTimeoutMs = options.idleTableTimeoutMs ?? DEFAULT_IDLE_TABLE_TIMEOUT_MS;
@@ -290,6 +300,7 @@ export class GameServer {
       repository: this.options.repository,
       hooks: this.hooks,
       handPauseMs: this.handPauseMs,
+      runoutPauseMs: this.runoutPauseMs,
       disconnectGraceMs: this.disconnectGraceMs,
       orphanTimeoutMs: this.orphanTimeoutMs,
       log: this.options.log,

@@ -1,14 +1,16 @@
 // @vitest-environment jsdom
 import type { RoundStanding } from '@poker/engine';
 import type { TableView as ServerTableView } from '@poker/engine/protocol';
-import { act, cleanup, render, screen, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GameTable } from './GameTable';
 import { useTableGame } from './hooks';
 import { fakeConnection } from './test/fakeSocket';
-import { serverView, startGame, toAct, USERS } from './test/fixtures';
+import { RESULT_DELAY_MS, RUNOUT_STEP_MS } from './presentation';
+import { ROUND_END_HOLD_MS } from './roundEndHold';
+import { act as play, serverView, startGame, toAct, USERS } from './test/fixtures';
 
 beforeEach(() => {
   vi.stubGlobal(
@@ -24,6 +26,7 @@ beforeEach(() => {
 
 let stopAll: (() => void)[] = [];
 afterEach(() => {
+  vi.useRealTimers();
   for (const stop of stopAll) stop();
   stopAll = [];
 });
@@ -188,5 +191,70 @@ describe('GameTable', () => {
     expect(screen.getByRole('group', { name: 'Einladen' })).toHaveTextContent('Einladungslink');
     await user.click(screen.getByRole('button', { name: 'Feedback senden' }));
     expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  describe('Showdown vor dem Rundenende (WP-031)', () => {
+    /** Heads-up, beide All-in preflop: Runout, einer scheidet aus → Runde beendet. */
+    function finalHand() {
+      // Erster Seed ohne Split (bei Split ginge die Runde weiter).
+      for (let seed = 1; seed < 50; seed++) {
+        const game = startGame(2, seed);
+        const before = serverView(game, 1);
+        play(game, { type: 'allIn' });
+        play(game, { type: 'call' });
+        const after = serverView(game, 1);
+        if (after.status === 'finished') return { before, after, standings: after.round?.standings ?? [] };
+      }
+      throw new Error('kein passender Seed');
+    }
+    const boardCards = () => screen.getByTestId('board').querySelectorAll('.pt-card--face').length;
+    const tick = (ms: number) => {
+      act(() => {
+        vi.advanceTimersByTime(ms);
+      });
+    };
+
+    it('deckt Flop, Turn, River nacheinander auf; der Dialog erscheint erst nach der Showdown-Pause', () => {
+      vi.useFakeTimers();
+      const { before, after, standings } = finalHand();
+      const g = renderGame(1);
+      g.state(before);
+      g.state(after);
+      act(() => {
+        g.last().receive({
+          type: 'table.roundFinished',
+          tableId: 42,
+          standings: standings.map((s) => ({ ...s, user: { id: Number(s.playerId), username: 'x' } })),
+        });
+      });
+      expect(boardCards()).toBe(3);
+      expect(screen.queryByTestId('hand-result')).toBeNull();
+      expect(screen.queryByRole('dialog')).toBeNull();
+      tick(RUNOUT_STEP_MS);
+      expect(boardCards()).toBe(4);
+      tick(RUNOUT_STEP_MS);
+      expect(boardCards()).toBe(5);
+      expect(screen.queryByTestId('hand-result')).toBeNull();
+      tick(RESULT_DELAY_MS);
+      // Ergebnis am Tisch: Gewinner hervorgehoben, Text im Aktionsbereich – noch kein Dialog.
+      expect(screen.getByTestId('hand-result')).toBeInTheDocument();
+      expect(document.querySelector('[data-winner="true"]')).not.toBeNull();
+      expect(screen.queryByRole('dialog')).toBeNull();
+      tick(ROUND_END_HOLD_MS - 1);
+      expect(screen.queryByRole('dialog')).toBeNull();
+      tick(1);
+      expect(screen.getByRole('dialog', { name: 'Runde beendet' })).toBeInTheDocument();
+    });
+
+    it('per Tipp überspringbar', () => {
+      vi.useFakeTimers();
+      const { before, after } = finalHand();
+      const g = renderGame(1);
+      g.state(before);
+      g.state(after);
+      expect(screen.queryByRole('dialog')).toBeNull();
+      fireEvent.pointerDown(screen.getByTestId('poker-table'));
+      expect(screen.getByRole('dialog', { name: 'Runde beendet' })).toBeInTheDocument();
+    });
   });
 });

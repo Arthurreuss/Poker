@@ -45,7 +45,14 @@ async function start(hooks: GameHooks = {}, seed = 1): Promise<Started> {
   app = buildApp({
     db: fakeDb,
     publicOrigin: ORIGIN,
-    game: { repository, authenticate: fakeAuthenticate, handPauseMs: 0, hooks, rng: createSeededRng(seed) },
+    game: {
+      repository,
+      authenticate: fakeAuthenticate,
+      handPauseMs: 0,
+      runoutPauseMs: 0,
+      hooks,
+      rng: createSeededRng(seed),
+    },
   });
   await app.listen({ host: '127.0.0.1', port: 0 });
   const { port } = app.server.address() as AddressInfo;

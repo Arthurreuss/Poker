@@ -82,6 +82,49 @@ describe('GameServer ohne Netzwerk', () => {
     expect(s.last(2).round?.hand?.phase).toBe('betting');
   });
 
+  it('All-in-Runout verlängert die Pause je ausgeteilter Straße (WP-031)', async () => {
+    const s = setup({ runoutPauseMs: 1000 });
+    const a = await s.client(1);
+    const b = await s.client(2);
+    const c = await s.client(3);
+    await s.send(a, { type: 'table.create', settings: { name: 'T', startingStack: 1000 } });
+    const id = s.last(1).id;
+    const clients = new Map([
+      ['1', a],
+      ['2', b],
+      ['3', c],
+    ]);
+    for (const [i, cl] of [a, b, c].entries()) {
+      if (i > 0) await s.send(cl, { type: 'table.join', tableId: id });
+      await s.send(cl, { type: 'table.sit', tableId: id, seat: i });
+    }
+    await s.send(a, { type: 'table.start', tableId: id });
+    // Erster am Zug geht preflop All-in, der nächste callt, der dritte foldet.
+    const plan: ('allIn' | 'call' | 'fold')[] = ['allIn', 'call', 'fold'];
+    for (const type of plan) {
+      const hand = s.last(1).round?.hand;
+      if (hand?.phase !== 'betting' || hand.toActId === null) break;
+      const actor = clients.get(hand.toActId);
+      if (actor === undefined) throw new Error('unbekannter Spieler');
+      await s.send(actor, {
+        type: 'table.action',
+        tableId: id,
+        handNumber: hand.handNumber,
+        seq: hand.actionSeq,
+        action: { type },
+      });
+    }
+    const done = s.last(1);
+    expect(done.round?.hand?.phase).toBe('complete');
+    expect(done.round?.hand?.board).toHaveLength(5);
+    expect(done.status).toBe('running');
+    // 3000 (Grundpause) + 3 Straßen × 1000
+    s.clock.advance(5999);
+    expect(s.last(1).round?.handNumber).toBe(1);
+    s.clock.advance(1);
+    expect(s.last(1).round?.handNumber).toBe(2);
+  });
+
   it('Blind-Level und „nächstes Level“ folgen der injizierten Uhr', async () => {
     const s = setup({ handPauseMs: 0 });
     const { a, id } = await twoSeated(s);

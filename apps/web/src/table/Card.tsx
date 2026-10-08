@@ -10,11 +10,31 @@ export interface CardProps {
   readonly size: CardSize;
   readonly fourColor?: boolean;
   readonly className?: string;
+  /** Gewinnerhand (WP-031): `win` hebt hervor, `dim` tritt zurück. */
+  readonly highlight?: 'win' | 'dim' | undefined;
+}
+
+/**
+ * Hervorhebung einer offenen Karte nach dem Showdown (WP-031): Teil der Gewinnerhand → `win`, sonst `dim`;
+ * ohne Gewinnerhand bzw. bei verdeckten Karten keine.
+ */
+export function winHighlight(
+  card: CardValue | undefined,
+  winning: readonly CardValue[] | undefined,
+): 'win' | 'dim' | undefined {
+  if (winning === undefined || card === undefined) return undefined;
+  return winning.includes(card) ? 'win' : 'dim';
 }
 
 /** Eine Spielkarte (Vorder- oder Rückseite); Größe skaliert mit dem Tisch-Container. */
-export function Card({ card, size, fourColor = false, className }: CardProps) {
-  const classes = ['pt-card', `pt-card--${size}`, card === undefined ? 'pt-card--back' : 'pt-card--face', className]
+export function Card({ card, size, fourColor = false, className, highlight }: CardProps) {
+  const classes = [
+    'pt-card',
+    `pt-card--${size}`,
+    card === undefined ? 'pt-card--back' : 'pt-card--face',
+    highlight !== undefined && `pt-card--${highlight}`,
+    className,
+  ]
     .filter(Boolean)
     .join(' ');
   return (

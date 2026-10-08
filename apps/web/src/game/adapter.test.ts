@@ -165,3 +165,50 @@ describe('heroHandContext', () => {
     expect(heroHandContext(serverView(game, 1))).toBeNull();
   });
 });
+
+describe('toTableView – Gewinner und Teil-Aufdecken (WP-031)', () => {
+  /** Heads-up: beide All-in preflop → Runout bis zum River, Hand fertig. */
+  function allInHeadsUp(): Game {
+    const game = startGame(2);
+    act(game, { type: 'allIn' });
+    act(game, { type: 'call' });
+    return game;
+  }
+
+  it('fertige Hand: Gewinner-Sitze, Gewinnerhand und Handnummer', () => {
+    const game = allInHeadsUp();
+    const server = serverView(game, 1);
+    const h = hand(server);
+    expect(h.phase).toBe('complete');
+    const view = toTableView(server);
+    const winners = new Set(h.showdown?.pots.flatMap((p) => p.winnerIds));
+    expect(view.winnerSeats).toEqual(h.players.filter((p) => winners.has(p.playerId)).map((p) => p.seat));
+    expect(view.winningCards).toEqual(h.showdown?.pots[0]?.winningHand?.cards);
+    expect(view.handNumber).toBe(1);
+    expect(view.board).toHaveLength(5);
+  });
+
+  it('Ergebnis zurückgehalten: Board gekürzt, Stacks vor der Auszahlung, ganzer Pot, keine Gewinner', () => {
+    const game = allInHeadsUp();
+    const server = serverView(game, 1);
+    const view = toTableView(server, { reveal: { board: 3, result: false } });
+    expect(view.board).toEqual(hand(server).board.slice(0, 3));
+    expect(view.winnerSeats).toBeUndefined();
+    expect(view.winningCards).toBeUndefined();
+    expect(view.pots).toEqual([{ amount: 3000 }]);
+    for (const seat of view.seats.filter((s) => s.kind === 'player')) expect(player(seat).stack).toBe(0);
+  });
+
+  it('Fold-out: Gewinner aus den Auszahlungen, keine Gewinnerhand', () => {
+    const game = startGame(2);
+    act(game, { type: 'fold' });
+    const view = toTableView(serverView(game, 1));
+    expect(view.winnerSeats).toHaveLength(1);
+    expect(view.winningCards).toBeUndefined();
+  });
+
+  it('laufende Hand: keine Gewinner', () => {
+    const view = toTableView(serverView(startGame(), 1));
+    expect(view.winnerSeats).toBeUndefined();
+  });
+});

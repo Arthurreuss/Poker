@@ -9,6 +9,8 @@ Alle Grafiken, Schriften und Sounds der Web-App mit Herkunft und Lizenz (D-008: 
 | `public/icons/icon-maskable-512.png` | wie oben, vollflächig ohne Rundung (Maskable-Safe-Zone eingehalten) | Projekt-eigen |
 | `public/icons/apple-touch-icon.png` | wie oben, 180 × 180 px, vollflächig | Projekt-eigen |
 
+Sounds (WP-031): keine Audiodateien. Alle Klänge am Tisch (Karten, Chips, Check, Fold, „Du bist dran“, Gewinn) werden zur Laufzeit per Web Audio API aus Rauschen und einfachen Tönen synthetisiert (`src/sound/synth.ts`) – Projekt-eigen, keine fremden Assets.
+
 Schriften: keine eigenen – `--font-sans` nutzt die Systemschrift des Geräts.
 
 Werkzeug: `@resvg/resvg-js` (MPL-2.0) wird nur als Entwicklungswerkzeug zum Rendern genutzt und nicht ausgeliefert.
