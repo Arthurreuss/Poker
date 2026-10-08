@@ -9,7 +9,7 @@ describe('loadConfig', () => {
       host: '0.0.0.0',
       port: 1234,
       databaseUrl: 'postgres://u:p@db/x',
-      publicOrigin: 'http://example.test',
+      publicOrigins: ['http://example.test'],
       nodeEnv: 'production',
       trustProxy: true,
     });
@@ -25,6 +25,18 @@ describe('loadConfig', () => {
   it.each(['PORT', 'DATABASE_URL', 'PUBLIC_ORIGIN'])('wirft, wenn %s fehlt', (name) => {
     expect(() => loadConfig({ ...base, [name]: undefined })).toThrow(name);
   });
+
+  it('erlaubt mehrere Origins, durch Komma getrennt (D-023)', () => {
+    const config = loadConfig({ ...base, PUBLIC_ORIGIN: 'https://a.example, https://b.example' });
+    expect(config.publicOrigins).toEqual(['https://a.example', 'https://b.example']);
+  });
+
+  it.each(['https://a.example/', 'https://a.example/pfad', 'a.example', 'https://a.example,kaputt'])(
+    'wirft bei ungültiger Origin %s',
+    (value) => {
+      expect(() => loadConfig({ ...base, PUBLIC_ORIGIN: value })).toThrow('PUBLIC_ORIGIN');
+    },
+  );
 
   it('wirft bei ungültigem PORT', () => {
     expect(() => loadConfig({ ...base, PORT: 'abc' })).toThrow('PORT');

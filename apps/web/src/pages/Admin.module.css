@@ -1,0 +1,122 @@
+.links {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-left: var(--space-5);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.title {
+  font-size: var(--font-size-md);
+}
+
+.muted {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.filter {
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--color-surface-2);
+  border-radius: var(--radius-pill);
+  background: transparent;
+}
+
+.filter[aria-pressed='true'] {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.alert {
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-2);
+  border-left: 4px solid var(--color-danger);
+}
+
+.entries {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.entry {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  border-left: 4px solid var(--color-accent);
+}
+
+.entry[data-status='read'] {
+  border-left-color: var(--color-surface-2);
+}
+
+.entry[data-status='done'] {
+  border-left-color: var(--color-success);
+}
+
+.entryHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.entryTitle {
+  font-size: var(--font-size-md);
+}
+
+.badge {
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-2);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+}
+
+.badge[data-category='bug'] {
+  color: var(--color-danger);
+}
+
+.badge[data-category='idea'] {
+  color: var(--color-accent);
+}
+
+.message {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.userAgent {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  overflow-wrap: anywhere;
+}
+
+.statusField {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
+}
+
+.statusField select {
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--color-surface-2);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+}

@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import react from '@vitejs/plugin-react';
 import { defineConfig, type Plugin } from 'vite';
@@ -17,6 +18,20 @@ const bgMatch = /--color-bg:\s*(#[0-9a-fA-F]{6})/.exec(tokens);
 if (bgMatch?.[1] === undefined) throw new Error('--color-bg fehlt in src/styles/tokens.css');
 const themeColor = bgMatch[1];
 
+// App-Version für das Feedback (WP-024): APP_VERSION (Docker-Build, gesetzt von scripts/prod.sh), sonst der
+// aktuelle Commit (git), sonst „unbekannt“ (z. B. im dev-Container ohne git). Im Code: __APP_VERSION__.
+function gitCommit(): string | undefined {
+  try {
+    return execFileSync('git', ['rev-parse', '--short', 'HEAD'], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+  } catch {
+    return undefined;
+  }
+}
+const appVersion = env['APP_VERSION']?.trim() || gitCommit() || 'unbekannt';
+
 /** Ersetzt %THEME_COLOR% in index.html. */
 function themeColorHtml(): Plugin {
   return {
@@ -26,6 +41,7 @@ function themeColorHtml(): Plugin {
 }
 
 export default defineConfig({
+  define: { __APP_VERSION__: JSON.stringify(appVersion) },
   plugins: [
     react(),
     themeColorHtml(),

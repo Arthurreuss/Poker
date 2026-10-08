@@ -1,6 +1,7 @@
 // Gemeinsame Bausteine für Login- und Registrierungsseite.
 import type { ReactNode } from 'react';
 import { ApiError } from '../api';
+import { LegalFooter } from '../legal/LegalFooter';
 import { cx } from '../styles/cx';
 import styles from './AuthPage.module.css';
 
@@ -15,6 +16,7 @@ export function AuthPageLayout({ title, children }: { title: string; children: R
         <h1 className={styles.title}>{title}</h1>
         {children}
       </main>
+      <LegalFooter />
     </div>
   );
 }

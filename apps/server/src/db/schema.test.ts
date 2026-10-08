@@ -22,7 +22,9 @@ describe.skipIf(testDatabaseUrl === undefined)('Schema (Test-DB)', () => {
   });
 
   beforeEach(async () => {
-    await s.pool.query('TRUNCATE users, sessions, tables, rounds, round_players, hands, hand_actions RESTART IDENTITY');
+    await s.pool.query(
+      'TRUNCATE users, sessions, tables, rounds, round_players, hands, hand_actions RESTART IDENTITY CASCADE',
+    );
   });
 
   async function insertUser(username: string): Promise<UserRow> {
@@ -181,6 +183,22 @@ describe.skipIf(testDatabaseUrl === undefined)('Schema (Test-DB)', () => {
         roundId,
         carol.id,
       ]);
+    });
+
+    it('Hände: Deck hat 52 Karten, Blind-Sitze 0–8, Small Blind darf fehlen (0003, WP-013)', async () => {
+      const { roundId } = await seedRound();
+      const deck = Array.from({ length: 52 }, (_, i) => `c${String(i)}`);
+      const insert = (n: number, sb: number | null, bb: number, d: string[]) =>
+        s.pool.query(
+          `INSERT INTO hands (round_id, hand_number, button_seat, small_blind, big_blind, small_blind_seat, big_blind_seat, deck)
+           VALUES ($1, $2, 0, 1, 2, $3, $4, $5)`,
+          [roundId, n, sb, bb, d],
+        );
+      await expectPgError(insert(10, 0, 1, deck.slice(1)), CHECK_VIOLATION);
+      await expectPgError(insert(11, 9, 1, deck), CHECK_VIOLATION);
+      await expectPgError(insert(12, 0, -1, deck), CHECK_VIOLATION);
+      await insert(13, null, 1, deck);
+      await insert(14, 0, 1, deck);
     });
 
     it('Statuswerte und Zeitpunkte müssen zusammenpassen', async () => {

@@ -5,8 +5,11 @@ import { ApiError, type Credentials, type User } from '../api';
 
 export type AuthState =
   | { status: 'loading' }
-  /** `loggedOut`: bewusst abgemeldet – dann kein „zurück zur Zielseite“ nach dem nächsten Login. */
-  | { status: 'anonymous'; loggedOut?: boolean }
+  /**
+   * `loggedOut`: bewusst abgemeldet – dann kein „zurück zur Zielseite“ nach dem nächsten Login.
+   * `accountDeleted`: das Konto wurde eben gelöscht (WP-022) – die Login-Seite zeigt eine Bestätigung.
+   */
+  | { status: 'anonymous'; loggedOut?: boolean; accountDeleted?: boolean }
   | { status: 'authenticated'; user: User };
 
 export interface AuthContextValue {
@@ -16,6 +19,8 @@ export interface AuthContextValue {
   login: (credentials: Credentials) => Promise<User>;
   register: (credentials: Credentials) => Promise<User>;
   logout: () => Promise<void>;
+  /** Konto löschen (WP-022); danach ausgeloggt. Wirft `ApiError` z. B. bei falschem Passwort (403). */
+  deleteAccount: (password: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -63,9 +68,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const deleteAccount = useCallback(async (password: string) => {
+    await api.deleteAccount(password);
+    setState({ status: 'anonymous', loggedOut: true, accountDeleted: true });
+  }, []);
+
   const value = useMemo<AuthContextValue>(
-    () => ({ state, user: state.status === 'authenticated' ? state.user : null, login, register, logout }),
-    [state, login, register, logout],
+    () => ({
+      state,
+      user: state.status === 'authenticated' ? state.user : null,
+      login,
+      register,
+      logout,
+      deleteAccount,
+    }),
+    [state, login, register, logout, deleteAccount],
   );
 
   return <AuthContext value={value}>{children}</AuthContext>;

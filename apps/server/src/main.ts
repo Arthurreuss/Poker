@@ -10,7 +10,7 @@ const config = loadConfig(process.env);
 const db = createPgDatabase(config.databaseUrl);
 const app = buildApp({
   db,
-  publicOrigin: config.publicOrigin,
+  publicOrigin: config.publicOrigins,
   trustProxy: config.trustProxy,
   logger: true,
 });
@@ -25,7 +25,7 @@ await runMigrations(config.databaseUrl, {
 });
 
 // Tische leben nur im Speicher (WP-011): was vor dem Neustart offen war oder lief, ist verloren.
-// Laufende Runden → aborted (ohne Punkte), offene/laufende Tische → closed (WP-013 präzisiert das).
+// Laufende Runden → aborted (ohne Punkte), offene/laufende Tische → closed; gespeicherte Hände bleiben (D-019).
 const orphaned = await closeOrphanedTables(db);
 if (orphaned.rounds > 0 || orphaned.tables > 0) {
   app.log.warn(orphaned, 'Nach Neustart: verwaiste Runden abgebrochen und Tische geschlossen');

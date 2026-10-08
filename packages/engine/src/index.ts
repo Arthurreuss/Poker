@@ -98,3 +98,7 @@ export type { BlindLevel, BlindStructure } from './blind-structure';
 export { firstHandPositions, nextHandPositions } from './button';
 export type { HandPositions } from './button';
 export { WINNER_BONUS_POINTS, placementPoints } from './points';
+
+// --- Replay gespeicherter Hände (WP-013) ---
+export { initialDeck, replayHand } from './replay';
+export type { ReplayEvent, ReplaySetup } from './replay';

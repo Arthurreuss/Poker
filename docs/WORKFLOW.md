@@ -66,6 +66,8 @@ Unabhängige WPs werden von Teil-Sessions (Subagents) parallel bearbeitet:
 - **Koordinator** (Haupt-Session) setzt Status (`in-progress`, `review`, `done`), führt `docs:sync` aus, mergt und schreibt das PROGRESS-Log. Alles auf `dev`.
 - **Teil-Session** arbeitet in einem eigenen Git-Worktree auf `wp/WP-XXX` (von `dev` abgezweigt). Sie ändert nur Code, Tests, die betroffene Doku und **in ihrer WP-Datei** Checkboxen und Log, aber nie den Status und nie PROGRESS.md. So entstehen keine Merge-Konflikte in generierten Dateien.
 - Teil-Sessions committen nur grün (`npm run check`), der Koordinator mergt `wp/WP-XXX → dev` mit `--no-ff`, prüft erneut und setzt den Status.
+- Die Worktrees unter `.claude/worktrees/` sind für VS Code ausgeschlossen (`.vscode/settings.json`: Watcher, Suche, Git-Erkennung, TS-Server) – sonst überlastet VS Code bei mehreren parallelen Sessions.
+- Hat ein Merge `package.json`/`package-lock.json` geändert: `npm install` im Arbeitsordner und `npm run dev:up` (baut das Dev-Image neu und erneuert das `node_modules`-Volume), sonst startet der Dev-Container mit fehlenden Paketen nicht.
 - Parallel nur, wenn die WPs verschiedene Bereiche anfassen (z. B. `packages/engine` vs. Docker/Infra). Gemeinsame Dateien (Root-`package.json`, Lockfile) ändert im Zweifel nur der Koordinator.
 - Rückfragen und Entscheidungen gehen immer an Arthur. Teil-Sessions treffen keine Entscheidungen, die D-Einträge ändern würden, sondern melden sie zurück.
 

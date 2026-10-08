@@ -27,6 +27,15 @@ export const MAX_MESSAGE_BYTES = 64 * 1024;
 /** Höchstlänge einer frei wählbaren `requestId` (wird in Antworten und Fehlern zurückgegeben). */
 export const MAX_REQUEST_ID_LENGTH = 64;
 
+/**
+ * WebSocket-Schließcodes des Servers (WP-011/WP-012). Der Client verbindet sich nach 4000 und 4001 **nicht**
+ * automatisch neu; nach allen anderen Codes (z. B. 1006 bei Netzabbruch, 1001 beim Herunterfahren) schon.
+ */
+/** Andere Protokollversion (`hello`) – Seite neu laden. */
+export const CLOSE_UNSUPPORTED_VERSION = 4000;
+/** Eine neuere Verbindung desselben Users hat `hello` gesendet und übernimmt (anderer Tab/Gerät). */
+export const CLOSE_REPLACED = 4001;
+
 // ---------------------------------------------------------------------------
 // Tisch-Einstellungen
 // ---------------------------------------------------------------------------
@@ -41,16 +50,19 @@ export interface TableSettings {
   maxSeats: number;
   startingStack: number;
   blindStructure: BlindStructure;
-  /** Sekunden pro Zug (D-013). */
+  /** Sekunden pro Zug (D-013), 10–120 (D-020). */
   turnTimeSeconds: number;
-  /** Zeitbank pro Spieler und Runde in Sekunden (D-013). */
+  /** Zeitbank pro Spieler und Runde in Sekunden (D-013), 0–300 (D-020). */
   timeBankSeconds: number;
 }
 
 /** Eingabe beim Erstellen: nur `name` ist Pflicht, alles andere hat Defaults (`DEFAULT_TABLE_SETTINGS`). */
 export type TableSettingsInput = { name: string } & Partial<Omit<TableSettings, 'name'>>;
 
-/** Status eines Tisches aus Client-Sicht: offen (Plätze wählbar) → läuft → beendet (Ergebnis steht). */
+/**
+ * Status eines Tisches aus Client-Sicht: offen (Plätze wählbar) → läuft → beendet (Ergebnis steht, „Runde
+ * beendet“). Aus `finished` kann der Ersteller mit `table.rematch` wieder nach `running` (D-020).
+ */
 export type TableStatus = 'open' | 'running' | 'finished';
 
 export interface PublicUser {
@@ -70,6 +82,13 @@ interface ClientBase {
 export interface HelloMessage extends ClientBase {
   type: 'hello';
   protocolVersion: number;
+}
+/**
+ * Anwendungs-Heartbeat (WP-012): Browser sehen WebSocket-Pings nicht, also fragt der Client selbst nach.
+ * Erlaubt auch vor `hello`. Antwort: `pong` mit derselben `requestId` und der Server-Uhr.
+ */
+export interface PingMessage extends ClientBase {
+  type: 'ping';
 }
 export interface LobbySubscribeMessage extends ClientBase {
   type: 'lobby.subscribe';
@@ -103,6 +122,14 @@ export interface TableStartMessage extends ClientBase {
   tableId: number;
 }
 /**
+ * „Nochmal“ (D-020, WP-015): Nur der Ersteller, nur im Status `finished`. Startet eine neue Runde am selben
+ * Tisch mit denselben Sitzen (wer saß, spielt wieder mit – auch Getrennte) und frischen Stacks/Zeitbanken.
+ */
+export interface TableRematchMessage extends ClientBase {
+  type: 'table.rematch';
+  tableId: number;
+}
+/**
  * Aktion des Spielers am Zug. `handNumber` und `seq` stammen aus der zuletzt empfangenen `HandView`
  * (`handNumber`, `actionSeq`); passt eins nicht mehr, ist der Klick veraltet und wird abgelehnt.
  */
@@ -116,6 +143,7 @@ export interface TableActionMessage extends ClientBase {
 
 export type ClientMessage =
   | HelloMessage
+  | PingMessage
   | LobbySubscribeMessage
   | LobbyUnsubscribeMessage
   | TableCreateMessage
@@ -124,6 +152,7 @@ export type ClientMessage =
   | TableSitMessage
   | TableStandMessage
   | TableStartMessage
+  | TableRematchMessage
   | TableActionMessage;
 
 export type ClientMessageType = ClientMessage['type'];
@@ -208,6 +237,36 @@ export interface SeatView {
   user: PublicUser;
   /** Hat der Spieler gerade mindestens eine offene Verbindung zu diesem Tisch? */
   connected: boolean;
+  /**
+   * Verbleibende Zeitbank in ms zum Zeitpunkt `TableView.serverNowMs` (WP-012, pro Spieler und Runde).
+   * Vor dem Start: `settings.timeBankSeconds × 1000`. Läuft gerade die Zeitbank dieses Spielers, ist das
+   * der Stand bei `serverNowMs`; der Client rechnet selbst weiter (siehe `TurnClockView`).
+   */
+  timeBankMs: number;
+}
+
+/**
+ * Zug-Uhr des Spielers am Zug (WP-012, D-013). Alle Zeitpunkte in ms seit Epoche nach **Server-Uhr**;
+ * der Client gleicht seine Uhr über `TableView.serverNowMs` ab (Versatz = serverNowMs − lokale Zeit beim Empfang).
+ * Phase 1 (normale Zugzeit): bis `turnEndsAtMs`. Phase 2 (Zeitbank): von `turnEndsAtMs` bis `deadlineMs`.
+ * Ist `deadlineMs` ≤ `turnEndsAtMs`, gibt es keine Zeitbank-Phase (Zeitbank leer oder Spieler getrennt).
+ * Bei `deadlineMs` handelt der Server automatisch: Check, wenn erlaubt, sonst Fold.
+ */
+export interface TurnClockView {
+  playerId: string;
+  seat: number;
+  /** Gehört zu dieser Hand/Aktion (`HandView.handNumber`/`actionSeq`). */
+  handNumber: number;
+  actionSeq: number;
+  /** Beginn des Zugs. */
+  startedAtMs: number;
+  /** Ende der normalen Zugzeit (`startedAtMs + turnTimeSeconds × 1000`). */
+  turnEndsAtMs: number;
+  /**
+   * Zeitpunkt der automatischen Aktion: normalerweise `turnEndsAtMs` + Zeitbank zu Zugbeginn; ist der
+   * Spieler getrennt, höchstens das Ende der kurzen Gnadenfrist (`DISCONNECT_GRACE_MS` auf dem Server).
+   */
+  deadlineMs: number;
 }
 
 export interface TableView {
@@ -221,6 +280,10 @@ export interface TableView {
   /** Anzahl Beobachter ohne Sitz. */
   spectators: number;
   round: RoundView | null;
+  /** Zug-Uhr, solange in einer laufenden Hand jemand am Zug ist; sonst `null` (WP-012). */
+  turnClock: TurnClockView | null;
+  /** Server-Uhr beim Erstellen dieser Sicht (ms seit Epoche) – Bezug für alle Zeitpunkte (WP-012). */
+  serverNowMs: number;
   /** Wer diese Sicht bekommt. */
   you: { userId: number; seat: number | null; isCreator: boolean };
 }
@@ -263,6 +326,7 @@ export type ErrorCode =
   | 'ROUND_STARTED'
   | 'NOT_CREATOR'
   | 'NOT_ENOUGH_PLAYERS'
+  | 'ROUND_NOT_FINISHED'
   | 'NO_HAND_IN_PROGRESS'
   | 'STALE_ACTION'
   | 'NOT_YOUR_TURN'
@@ -284,6 +348,13 @@ export interface ErrorMessage {
   message: string;
   requestId: string | null;
   tableId: number | null;
+}
+/** Antwort auf `ping` (WP-012). */
+export interface PongMessage {
+  type: 'pong';
+  requestId: string | null;
+  /** Server-Uhr (ms seit Epoche), z. B. zum Abgleich der Client-Uhr. */
+  serverNowMs: number;
 }
 export interface LobbySnapshotMessage {
   type: 'lobby.snapshot';
@@ -318,15 +389,28 @@ export interface RoundFinishedMessage {
   standings: StandingView[];
 }
 
+/**
+ * Der Tisch existiert nicht mehr (WP-015): `abandoned` = verwaiste Runde, 10 Minuten lang kein Spieler
+ * verbunden → Runde ohne Punkte abgebrochen (D-022). Geht an alle, die den Tisch noch beobachten; danach
+ * liefert `table.join` für diesen Tisch `TABLE_NOT_FOUND`.
+ */
+export interface TableClosedMessage {
+  type: 'table.closed';
+  tableId: number;
+  reason: 'abandoned';
+}
+
 export type ServerMessage =
   | WelcomeMessage
   | ErrorMessage
+  | PongMessage
   | LobbySnapshotMessage
   | LobbyUpdateMessage
   | LobbyRemoveMessage
   | TableCreatedMessage
   | TableStateMessage
   | TableLeftMessage
-  | RoundFinishedMessage;
+  | RoundFinishedMessage
+  | TableClosedMessage;
 
 export type ServerMessageType = ServerMessage['type'];

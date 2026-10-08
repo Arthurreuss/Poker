@@ -58,3 +58,16 @@ export function validateLogin(body: unknown): ValidationResult {
   }
   return { ok: true, value: credentials };
 }
+
+export type PasswordConfirmationResult = { ok: true; password: string } | { ok: false; message: string };
+
+/** Body von `DELETE /api/me` (Konto löschen, WP-022): `{ password }` als Bestätigung. */
+export function validatePasswordConfirmation(body: unknown): PasswordConfirmationResult {
+  const password =
+    typeof body === 'object' && body !== null ? (body as Record<string, unknown>)['password'] : undefined;
+  if (typeof password !== 'string' || password === '') {
+    return { ok: false, message: 'password (Text) ist erforderlich' };
+  }
+  if (password.length > PASSWORD_MAX) return { ok: false, message: 'Eingabe zu lang' };
+  return { ok: true, password };
+}

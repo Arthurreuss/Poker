@@ -131,5 +131,38 @@ Format: Kontext → Entscheidung → Konsequenzen. Status: `akzeptiert`, `offen`
 ## D-018: Geteilte Platzierungen bei gleichzeitigem Ausscheiden
 - **Status:** akzeptiert
 - **Kontext:** Scheiden mehrere Spieler in derselben Hand aus, ist ihre Reihenfolge nicht eindeutig. Das Schema aus WP-009 erzwang `UNIQUE (round_id, placement)`.
-- **Entscheidung:** Gleichzeitig Ausgeschiedene teilen sich die Platzierung. Ihre Punkte sind der gerundete Durchschnitt der Punkte der belegten Plätze. Beispiel: Zwei Spieler teilen sich die Plätze 3 und 4 und bekommen beide die gerundeten Punkte für Platz 3,5. Die Unique-Bedingung auf die Platzierung entfällt (neue Migration, D-015).
+- **Entscheidung:** Gleichzeitig Ausgeschiedene teilen sich die Platzierung. Ihre Punkte sind der **abgerundete** Durchschnitt der Punkte der belegten Plätze (so werden nie mehr Punkte verteilt als ohne Gleichstand). Beispiel: Zwei Spieler teilen sich bei 4 Spielern die Plätze 3 und 4 → (1 + 0) / 2 = 0,5 → je 0 Punkte. Die Unique-Bedingung auf die Platzierung entfällt (neue Migration, D-015).
 - **Konsequenzen:** Rangliste und Statistiken (WP-019) müssen geteilte Plätze darstellen können.
+
+## D-019: Server-Neustart bricht laufende Runden ohne Punkte ab
+- **Status:** akzeptiert
+- **Kontext:** Tische und Runden leben im Speicher des Servers (WP-011). Nach einem Neustart oder Absturz lässt sich eine laufende Runde nicht fortsetzen.
+- **Entscheidung:** Beim Start werden laufende Runden `aborted` und offene oder laufende Tische `closed`. Für abgebrochene Runden gibt es keine Punkte. Bereits gespeicherte Hände bleiben in der Historie.
+- **Konsequenzen:** Releases während laufender Runden kosten diese Runde. Releases deshalb möglichst dann machen, wenn niemand spielt.
+
+## D-020: Tisch-Defaults, Grenzen und „Nochmal“
+- **Status:** akzeptiert
+- **Kontext:** D-012/D-013 legen Rundenmodell und Zeiten fest, aber keinen Startstack und keine Grenzen für die Tisch-Einstellungen. Nach WP-011 wird ein Tisch nach einer Runde geschlossen.
+- **Entscheidung:** Startstack-Default 1.500 Chips. Zugzeit einstellbar 10–120 s, Zeitbank 0–300 s (Defaults 20 s/60 s nach D-013). Nach Rundenende kann der Ersteller mit „Nochmal“ eine neue Runde am selben Tisch mit derselben Besetzung starten.
+- **Konsequenzen:** Umsetzung in WP-015 (Formular, Server-Validierung, „Nochmal“).
+
+## D-021: Erzwungenes Layout wird eingepasst, nicht gedreht
+- **Status:** akzeptiert
+- **Kontext:** WP-017: Wählt man „Quer“, während das Gerät hochkant steht (oder umgekehrt), passt nicht alles in den Bildschirm.
+- **Entscheidung:** Der Tisch wird im gewählten Layout verkleinert eingepasst und nicht per CSS um 90° gedreht. Standard ist „Auto“ (D-009).
+- **Konsequenzen:** Keine Sonderfälle für Drehrichtung oder Desktop. Bei erzwungenem Layout gegen die Gerätelage wird es eng.
+
+## D-022: Verbindungsabbrüche, verwaiste Runden, ein aktiver Tab
+- **Status:** akzeptiert
+- **Kontext:** WP-012 musste D-012 („getrennte Spieler werden automatisch gecheckt/gefoldet“) konkret auslegen.
+- **Entscheidung:**
+  - Ist ein Spieler am Zug getrennt, wartet der Server 3 s (Gnadenfrist), dann checkt oder foldet er automatisch. Die Frist kostet keine Zeitbank.
+  - Ist an einem laufenden Tisch 10 Minuten lang kein Spieler verbunden, wird die Runde abgebrochen, ohne Punkte (wie D-019).
+  - Pro User ist nur eine Verbindung aktiv: Die neuere übernimmt, die ältere wird mit Close-Code 4001 getrennt und zeigt einen Hinweis.
+- **Konsequenzen:** Der Abbruch verwaister Runden wird in WP-015 umgesetzt. Hände abgebrochener Runden bleiben in der Historie, zählen aber nicht in Statistiken (WP-019).
+
+## D-023: Zweite Domain `poker.deinemudda.win` neben `poker.arthur-reuss.de`
+- **Status:** akzeptiert
+- **Kontext:** Arthur hat eine zweite Domain gekauft. Wer sie eingibt, soll sie auch in der Adresszeile sehen, also keine Weiterleitung.
+- **Entscheidung:** Beide Domains liefern die App über denselben Tunnel aus (zweiter Public Hostname → `web:8080`). `PUBLIC_ORIGIN` darf mehrere, kommagetrennte Origins enthalten. Der WebSocket-Origin-Check (D-014) akzeptiert jede davon. Die erste ist die Hauptadresse (Smoke-Test, Status). Alles andere bleibt relativ (eine Origin pro Aufruf).
+- **Konsequenzen:** Login, PWA-Installation und lokale Einstellungen gelten pro Domain getrennt; Accounts und Punkte sind gemeinsam. Impressum und Datenschutz gelten für beide Domains. HSTS muss pro Domain in Cloudflare eingeschaltet werden.
