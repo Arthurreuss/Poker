@@ -214,6 +214,7 @@ Accounts mit Benutzername + Passwort, offene Registrierung (D-011). Code in `app
 | `POST /api/login` | `{ username, password }` | `200 { user }` + Session-Cookie | `400` Felder fehlen/zu lang, `401 invalid_credentials`, `429` |
 | `POST /api/logout` | – | `204`, Session gelöscht, Cookie geleert (auch ohne Session) | – |
 | `GET /api/me` | – | `200 { user }` | `401 unauthorized` (Cookie fehlt, unbekannt oder abgelaufen; ein ungültiges Cookie wird geleert) |
+| `DELETE /api/me` | `{ password }` | `204`, Konto anonymisiert, alle Sessions gelöscht, Cookie geleert (WP-022) | `400` Passwort fehlt, `401 unauthorized`, `403 invalid_credentials` (falsches Passwort, Session bleibt), `429` |
 
 `user` = `{ id, username, isAdmin }`. Fehler haben immer die Form `{ error, message }` (`error` ist ein fester Code, `message` deutscher Text für die UI).
 
@@ -226,7 +227,7 @@ Accounts mit Benutzername + Passwort, offene Registrierung (D-011). Code in `app
 - **Logging:** Request-Bodies und Header (inkl. `Cookie`) werden nicht geloggt (Fastify-Standard-Serializer loggen nur Methode, URL, Host, IP); das Auth-Plugin hat einen eigenen Fehler-Handler, der nur Fehlerobjekte loggt. Ein Test fängt die Logs ab und prüft, dass weder Passwort noch Token vorkommen.
 
 ### Rate-Limit
-`@fastify/rate-limit`, nur für `POST /api/login` und `POST /api/register` (je Route ein eigener Zähler, im Speicher des Prozesses). Standard: 10 Anfragen pro 60 s und Client-IP, danach `429 rate_limited`. Gezählt werden alle Anfragen, nicht nur Fehlversuche. Schlüssel: in prod (`NODE_ENV=production`) `CF-Connecting-IP` (Cloudflare, D-014), sonst/fallback `request.ip` – in dev wird der Header ignoriert, sonst ließe sich das Limit per Header umgehen.
+`@fastify/rate-limit`, nur für `POST /api/login`, `POST /api/register` und `DELETE /api/me` (je Route ein eigener Zähler, im Speicher des Prozesses). Standard: 10 Anfragen pro 60 s und Client-IP, danach `429 rate_limited`. Gezählt werden alle Anfragen, nicht nur Fehlversuche. Schlüssel: in prod (`NODE_ENV=production`) `CF-Connecting-IP` (Cloudflare, D-014), sonst/fallback `request.ip` – in dev wird der Header ignoriert, sonst ließe sich das Limit per Header umgehen.
 
 ### Konfiguration (`auth/config.ts`, `loadAuthConfig(env)`)
 | Variable | Standard | Wirkung |
@@ -240,6 +241,13 @@ Tests übergeben `buildApp({ db, auth })` eine eigene `AuthConfig` (z. B. Limit 
 
 ### Session im WebSocket-Handshake
 `getUserFromCookieHeader(db, request.headers.cookie)` (exportiert aus `session.ts` und dem Paket-Index) liest das Token aus einem rohen `Cookie`-Header (eigener kleiner Parser, unabhängig vom Fastify-Cookie-Plugin) und liefert `AuthUser | null` – gedacht für das WebSocket-Upgrade (WP-011), wo der Browser das Cookie automatisch mitschickt (gleiche Origin, D-014). `getUserFromSessionToken(db, token)` ist die Variante mit bereits extrahiertem Token.
+
+### Konto löschen (WP-022, DSGVO)
+`DELETE /api/me` (in `routes.ts`, Rate-Limit wie Login) prüft das Passwort und ruft `anonymizeAccount(db, userId)` (`account.ts`): **eine** SQL-Anweisung setzt `username`, `password_hash` → `NULL`, `is_admin` → `false`, `deleted_at` → `now()`, löscht alle Sessions des Users und löst Zeilen in `DETACHED_USER_TABLES` vom Account (`user_id → NULL`; derzeit `feedback` aus WP-024, übersprungen, solange die Tabelle fehlt). Die User-Zeile bleibt als Platzhalter, damit Runden, Hände und Aktionen der anderen Spieler vollständig bleiben (siehe „Datenmodell“ → Löschverhalten). Migration `0005` erzwingt per Check-Constraint, dass ein gelöschter Account keinen Namen, Hash und keine Adminrechte hat.
+- **Anzeige:** Wer Namen aus `users` liest (Historie, Rangliste, Statistik), nutzt `displayNameSql('u.username')` → `coalesce(u.username, 'Gelöschter Spieler')` bzw. die Konstante `DELETED_USER_NAME`.
+- **Laufende Verbindungen:** `buildApp` übergibt `onAccountDeleted`; `registerWebSocket` schließt alle offenen WebSockets des Users (Code `1008`, `CLOSE_ACCOUNT_DELETED`). Sitzt er an einem laufenden Tisch, gilt er als getrennt und wird automatisch gecheckt/gefoldet (D-022); die Runde läuft für die anderen weiter und wird mit seiner (anonymisierten) ID gespeichert. Bis Rundenende steht im Speicher des Tisches noch der alte Name.
+- **Neue Tabellen mit `user_id`:** personenbezogene Inhalte entweder in `DETACHED_USER_TABLES` aufnehmen (Zeile bleibt, Bezug weg) oder im selben Statement löschen – ein `ON DELETE`-Verhalten greift nicht, weil die User-Zeile nicht gelöscht wird.
+- **Tests:** `auth/account.db.test.ts` (Fehlerfälle, Anonymisierung, Sessions, Name wieder frei, Feedback-Stellvertretertabelle, Constraint, Löschen mitten in einer laufenden Runde mit WebSocket-Trennung und konsistenter Historie).
 
 ### Admin
 Admin-Flag `users.is_admin` (in `/api/me` als `isAdmin`). CLI-Skripte in `src/cli/` mit Kernlogik in `auth/admin.ts` (getestet): `admin:reset-password` setzt ein neues Passwort und löscht in derselben SQL-Anweisung alle Sessions des Users, `admin:make-admin` setzt/entzieht das Flag. Aufrufe: README, Abschnitt „Admin“.
@@ -344,7 +352,7 @@ Postgres 16 (D-010). Schema in `apps/server/migrations/*.sql`, Runner und Zeilen
 ### Tabellen
 | Tabelle | Inhalt | Schlüssel / wichtige Constraints |
 |---|---|---|
-| `users` | Account: `username`, `password_hash` (argon2id, D-011), `is_admin`, `created_at`, `deleted_at` | Unique-Index auf `lower(username)` (case-insensitive), Länge 3–20; `username`/`password_hash` dürfen nur bei gesetztem `deleted_at` `NULL` sein |
+| `users` | Account: `username`, `password_hash` (argon2id, D-011), `is_admin`, `created_at`, `deleted_at` | Unique-Index auf `lower(username)` (case-insensitive), Länge 3–20; `username`/`password_hash` dürfen nur bei gesetztem `deleted_at` `NULL` sein, und bei gesetztem `deleted_at` **müssen** sie `NULL` und `is_admin` `false` sein (0005) |
 | `sessions` | Login-Sessions: `token_hash` (SHA-256 des Tokens, 32 Byte), `user_id`, `created_at`, `expires_at` | PK `token_hash`; Indizes auf `user_id` und `expires_at` (Aufräumen) |
 | `tables` | Tisch: `created_by`, `name`, `is_public`, `invite_code` (Link-Code, jeder Tisch hat einen), `max_seats` (2–9, D-007), `starting_stack`, `small_blind`, `big_blind`, `blind_structure` (JSONB, Form legt der Game-Server fest), `turn_time_seconds` (Standard 20) und `time_bank_seconds` (Standard 60, D-013), `status` (`open`/`running`/`closed`), `created_at`, `closed_at` | `invite_code` eindeutig; Partial-Index für die Lobby (öffentlich, nicht geschlossen) |
 | `rounds` | Freezeout-Runde (D-012): `table_id`, `started_at`, `finished_at`, `status` (`running`/`finished`/`aborted`) | `finished_at` gesetzt ⇔ Status ≠ `running` |
@@ -360,7 +368,7 @@ users 1─n tables (created_by) 1─n rounds 1─n round_players n─1 users
                                      rounds 1─n hands 1─n hand_actions n─1 users
 ```
 
-- **Löschverhalten:** Alle Verweise auf `users` (außer `sessions` und `feedback`, siehe „Feedback“) sind `ON DELETE RESTRICT`. Accounts werden nie hart gelöscht, sondern anonymisiert (`username`/`password_hash` → `NULL`, `deleted_at` setzen, WP-022) – so bleibt die Hand-Historie der anderen Spieler vollständig, und der Name wird wieder frei. `sessions` kaskadieren mit dem User. Innerhalb eines Aggregats wird kaskadiert: Runde → `round_players`, `hands`; Hand → `hand_actions`. Tische werden nicht gelöscht, sondern auf `closed` gesetzt (`rounds.table_id` ist `RESTRICT`).
+- **Löschverhalten:** Alle Verweise auf `users` (außer `sessions` und `feedback`, siehe „Feedback“) sind `ON DELETE RESTRICT`. Accounts werden nie hart gelöscht, sondern anonymisiert (`username`/`password_hash` → `NULL`, `deleted_at` setzen; `anonymizeAccount`, siehe „Auth“ → „Konto löschen“) – so bleibt die Hand-Historie der anderen Spieler vollständig, und der Name wird wieder frei. `sessions` kaskadieren mit dem User. Innerhalb eines Aggregats wird kaskadiert: Runde → `round_players`, `hands`; Hand → `hand_actions`. Tische werden nicht gelöscht, sondern auf `closed` gesetzt (`rounds.table_id` ist `RESTRICT`).
 - **Indizes für spätere Abfragen:** Rangliste `SUM(points) GROUP BY user_id` über `round_players (user_id, points)` (Index-Only-Scan); Runden und Hand-Historie eines Users über `round_players (user_id, round_id)` → `hands (round_id, hand_number)`; Statistiken pro User (VPIP, PFR) über `hand_actions (user_id, hand_id)`.
 - **Zahlentypen:** IDs, Chips und Punkte sind `integer`. Grund: `pg` liefert `integer` als JS-`number`, `bigint` dagegen als String (eigene Parser nötig). Die Größenordnung passt: `starting_stack` ist per Constraint auf 10⁸ begrenzt, damit die Summe aller Stacks (max. 9 Spieler) unter 2³¹ bleibt; Punkte pro Runde sind ≤ 9; 2³¹ Zeilen pro Tabelle erreicht eine Freundesrunde nicht. Achtung: `sum()`/`count()` liefern in Postgres `bigint` → in Queries `::int` casten.
 - **Typen:** `src/db/types.ts` enthält handgeschriebene Zeilentypen (`UserRow`, `TableRow`, `HandRow` …, Spalten 1:1 in snake_case) für `pool.query<T>()` – kein ORM. Ändert eine Migration eine Tabelle, wird der Typ im selben Commit angepasst.
@@ -406,7 +414,7 @@ Host 127.0.0.1:4321 (Debug) ─────────────────�
 - Alle Dienste `restart: unless-stopped` (geprüft von `scripts/test/compose-prod.test.mjs`), damit poker-prod nach einem Neustart von Docker Desktop ohne Eingreifen wieder läuft. DB-Daten im Named Volume `poker-prod-db`.
 - **Backup:** `backup` dumpt täglich (`BACKUP_SCHEDULE`, Standard `@daily`, Zeitzone `BACKUP_TZ`) per `pg_dump -Z6` (Plain-SQL, gzip) über das Netz `backend` in einen Host-Ordner außerhalb von Docker (`BACKUP_DIR`, Standard `~/poker-backups`, aufgelöst in `scripts/lib/prod-env.sh`); Aufbewahrung 7 täglich / 4 wöchentlich / 6 monatlich (`last/`, `daily/`, `weekly/`, `monthly/`). Restore per `scripts/restore.sh`: Server stoppen → DB neu anlegen → Dump in einer Transaktion einspielen → Server starten. Netz `backend` ist `internal` (kein Zugang nach außen), die DB hat keinen Host-Port.
 - **Server-Image:** Build-Stage mit allen Abhängigkeiten → `esbuild`-Bundle; eigene Stage installiert nur die Laufzeit-Abhängigkeiten des Servers (`npm ci --omit=dev -w @poker/server`, ohne Source-Maps); Runtime `node:22-alpine` mit `node_modules` + `server.mjs`, User `node`, `NODE_ENV=production`.
-- **Web-Image:** Build-Stage `vite build` → Runtime `nginxinc/nginx-unprivileged` (User `nginx`, Port 8080). Konfiguration `docker/nginx/default.conf.template`, Ziel des Proxys per `API_UPSTREAM=server:4321` (envsubst beim Start, Auflösung über Docker-DNS zur Laufzeit). `/api/` und `/ws` gehen an den Server (`/ws` mit Upgrade-Headern, Read-/Send-Timeout 1 h); gzip; `/assets/*` (gehasht) `Cache-Control: public, max-age=31536000, immutable`, `index.html` und SPA-Fallback `no-cache`, `/api/` `no-store`.
+- **Web-Image:** Build-Stage `vite build` → Runtime `nginxinc/nginx-unprivileged` (User `nginx`, Port 8080). Konfiguration `docker/nginx/default.conf.template`, Ziel des Proxys per `API_UPSTREAM=server:4321` (envsubst beim Start, Auflösung über Docker-DNS zur Laufzeit). `/api/` und `/ws` gehen an den Server (`/ws` mit Upgrade-Headern, Read-/Send-Timeout 1 h); gzip; `/assets/*` (gehasht) `Cache-Control: public, max-age=31536000, immutable`, `index.html` und SPA-Fallback `no-cache`, `/api/` `no-store`. Security-Header (WP-022) aus `docker/nginx/security-headers.conf`, per `include` in **jedem** `location`-Block (nginx vererbt `add_header` nicht in Blöcke mit eigenem `add_header`): CSP nur `'self'` (keine Inline-Skripte, kein `eval`, `connect-src 'self' wss://$host`, `frame-ancestors 'none'`), `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: same-origin`, `Permissions-Policy` (Kamera, Mikrofon, Standort, Zahlung, Sensoren … aus), `Cross-Origin-Opener-Policy: same-origin`. HSTS setzt Cloudflare. Geprüft von `scripts/test/nginx-headers.test.mjs`; Wortlaut und manueller Test: [OPERATIONS.md](OPERATIONS.md#security-checkliste).
 - **Proxy-Header:** nginx setzt `X-Forwarded-For` auf `CF-Connecting-IP` (hinter dem Tunnel) bzw. die Peer-Adresse und reicht `X-Forwarded-Proto` von cloudflared durch; der Server vertraut ihnen nur in prod (`trustProxy`).
 - **cloudflared:** eigener Tunnel für Poker, unabhängig vom Jarvis-Tunnel (D-014); `TUNNEL_TOKEN` aus `.env.prod`. Public Hostname `poker.arthur-reuss.de` → `http://web:8080`.
 
@@ -440,12 +448,14 @@ React 19 + Vite, Routing mit `react-router` (Deklarativ: `BrowserRouter`/`Routes
 | Pfad | Inhalt |
 |---|---|
 | `main.tsx`, `App.tsx` | Einstieg; `App` = `AuthProvider` + `BrowserRouter` + `AppRoutes` (Tests rendern `AppRoutes` in einem `MemoryRouter`) |
-| `api/` | `client.ts` (`apiRequest`, `ApiError`), `auth.ts` (`register`, `login`, `logout`, `me`), `feedback.ts` (`sendFeedback`, `listFeedback`, `updateFeedbackStatus`), `ws.ts` (`wsUrl`); Export über `api/index.ts` |
+| `api/` | `client.ts` (`apiRequest`, `ApiError`), `auth.ts` (`register`, `login`, `logout`, `me`, `deleteAccount`), `feedback.ts` (`sendFeedback`, `listFeedback`, `updateFeedbackStatus`), `ws.ts` (`wsUrl`); Export über `api/index.ts` |
 | `auth/` | `AuthContext.tsx` (`AuthProvider`, `useAuth`), `guards.tsx` (`RequireAuth`, `RequireAdmin`, `RedirectIfAuthenticated`), `validation.ts` (Regeln wie der Server) |
-| `layout/AppShell.tsx` | Kopfzeile mit App-Name, Menü (Lobby, Rangliste, Einstellungen, Admin nur für Admins, Abmelden) und Feedback-Slot; `<Outlet>` für die Seite |
+| `layout/AppShell.tsx` | Kopfzeile mit App-Name, Menü (Lobby, Rangliste, Einstellungen, Admin nur für Admins, Abmelden) und Feedback-Slot; `<Outlet>` für die Seite; `LegalFooter` |
+| `legal/` | Impressum und Datenschutz (WP-022): `LegalPage.tsx` (Seiten), `LegalFooter.tsx` (Spielgeld-Hinweis D-001 + Links, in App-Shell, Login/Registrierung und den Rechtstexten), `Placeholder.tsx` (markiert offene Angaben); **Texte nur in `legal/content/impressum.tsx` und `datenschutz.tsx`** – die Datenschutzerklärung muss mitgeändert werden, wenn sich die Datenverarbeitung ändert |
 | `feedback/` | Feedback (WP-024): `FeedbackSlot` (Knopf „Feedback“ in der App-Shell, `data-slot="feedback"`), `FeedbackForm`, `FeedbackDialog`/`FeedbackButton`/`useFeedbackDialog` (Einstieg von überall, z. B. Tisch-Menü), `context.ts` (automatischer Kontext); Export über `feedback/index.ts` |
 | `pages/` | Login, Registrierung, Lobby, Rangliste, Einstellungen, Admin, Tisch – außer Login/Registrierung/Einstellungen noch Platzhalter |
 | `settings/orientation.ts` | `useOrientationPreference()` (D-009) |
+| `settings/DeleteAccount.tsx` | Einstellungen → „Konto löschen“ mit Passwort-Bestätigung (WP-022) |
 | `styles/` | `tokens.css` (Vertrag, siehe „Design-Tokens (Web)“), `global.css`, `cx.ts` (Klassen verbinden) |
 | `table/` | Tischansicht (WP-016 ff.) |
 | `test/` | Test-Setup (jest-dom, Cleanup) und `mockApi` (ersetzt `fetch` je `"METHODE /pfad"`) |
@@ -454,14 +464,15 @@ React 19 + Vite, Routing mit `react-router` (Deklarativ: `BrowserRouter`/`Routes
 | Pfad | Seite | Zugriff |
 |---|---|---|
 | `/login`, `/register` | Anmelden, Registrieren | nur ausgeloggt (eingeloggt → Zielseite bzw. `/`) |
+| `/impressum`, `/datenschutz` | Rechtstexte (WP-022) | immer, ohne Login, eigener schlichter Rahmen |
 | `/` | Lobby (Platzhalter bis WP-015) | eingeloggt, in der App-Shell |
 | `/leaderboard` | Rangliste (Platzhalter bis WP-019) | eingeloggt, App-Shell |
-| `/settings` | Einstellungen (Ausrichtung) | eingeloggt, App-Shell |
+| `/settings` | Einstellungen (Ausrichtung, Konto löschen) | eingeloggt, App-Shell |
 | `/admin/*` | Admin (`pages/AdminPage.tsx` mit Unterrouten): Übersicht, `/admin/feedback` (`AdminFeedbackPage`, WP-024) | nur `isAdmin`, sonst Umleitung auf `/` |
 | `/table/:id` | Tisch (`pages/TablePage.tsx`, Platzhalter bis WP-016/018) | eingeloggt, **ohne** App-Shell (volle Fläche, eigenes Tisch-Menü) |
 | sonst | „Seite nicht gefunden“ | eingeloggt, App-Shell |
 
-Auth-Zustand: `AuthProvider` fragt beim Start einmal `GET /api/me` (`loading` → `authenticated` bzw. `anonymous`; auch ein nicht erreichbarer Server gilt als ausgeloggt). `RequireAuth` leitet Ausgeloggte auf `/login` und merkt sich die Zielseite in `location.state.from` (nur interne Pfade); nach Login/Registrierung leitet `RedirectIfAuthenticated` dorthin. Nach bewusstem Abmelden gibt es kein Rücksprungziel. Das Admin-Flag kommt aus `/api/me` (`isAdmin`); die echte Prüfung macht der Server.
+Auth-Zustand: `AuthProvider` fragt beim Start einmal `GET /api/me` (`loading` → `authenticated` bzw. `anonymous`; auch ein nicht erreichbarer Server gilt als ausgeloggt). `RequireAuth` leitet Ausgeloggte auf `/login` und merkt sich die Zielseite in `location.state.from` (nur interne Pfade); nach Login/Registrierung leitet `RedirectIfAuthenticated` dorthin. Nach bewusstem Abmelden gibt es kein Rücksprungziel. Nach dem Löschen des Kontos (`deleteAccount`) ist man abgemeldet, die Login-Seite zeigt „Dein Konto wurde gelöscht.“ Das Admin-Flag kommt aus `/api/me` (`isAdmin`); die echte Prüfung macht der Server.
 
 ### API-Client (`src/api/`)
 - `apiRequest<T>(path, { method, body, signal })`: nur relative Pfade (`/api/...`, absolute URLs werfen – D-014), `credentials: 'same-origin'` (Session-Cookie), Body als JSON.
@@ -483,7 +494,7 @@ CSS-Modules (`*.module.css` neben der Komponente, von Vite ohne Zusatzpaket unte
 - nginx (prod) liefert `sw.js`, `registerSW.js`, Manifest und `index.html` mit `Cache-Control: no-cache`, gehashte `/assets/` langlebig.
 
 ### Tests
-Vitest mit jsdom und Testing Library (`*.test.ts(x)` neben dem Code): `App.test.tsx` (Routen-Schutz, Rücksprung nach Login, Login-/Registrierungsfehler 400/401/409/429/Netzwerk, Admin-Menü, Abmelden, Einstellungen), `api/api.test.ts` (Client, Fehler, `wsUrl`), `auth/validation.test.ts`, `settings/orientation.test.ts`, `feedback/Feedback.test.tsx` (Formular, Zähler, Kontext, Dialog, Einstieg in der App-Shell), `pages/AdminFeedbackPage.test.tsx` (Liste, Filter, Statuswechsel, Fehler). `fetch` wird mit `test/mockApi.ts` ersetzt.
+Vitest mit jsdom und Testing Library (`*.test.ts(x)` neben dem Code): `App.test.tsx` (Routen-Schutz, Rücksprung nach Login, Login-/Registrierungsfehler 400/401/409/429/Netzwerk, Admin-Menü, Abmelden, Einstellungen), `api/api.test.ts` (Client, Fehler, `wsUrl`), `auth/validation.test.ts`, `settings/orientation.test.ts`, `legal/legal.test.tsx` (Rechtstexte ohne Login, Footer auf allen Seiten), `feedback/Feedback.test.tsx` (Formular, Zähler, Kontext, Dialog, Einstieg in der App-Shell), `pages/AdminFeedbackPage.test.tsx` (Liste, Filter, Statuswechsel, Fehler). `fetch` wird mit `test/mockApi.ts` ersetzt.
 
 ## Design-Tokens (Web)
 Gemeinsamer Vertrag für alle Frontend-WPs (D-008: Anmutung PokerStars, eigene Werte). Definiert in [`apps/web/src/styles/tokens.css`](../apps/web/src/styles/tokens.css) (WP-014); Komponenten nutzen nur diese CSS-Variablen.

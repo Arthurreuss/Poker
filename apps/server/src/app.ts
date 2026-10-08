@@ -10,7 +10,7 @@ import { createPgTableRepository } from './game/pg-repository';
 import { combineHooks, createHandHistoryHooks } from './history/hooks';
 import { DEFAULT_RETRY_DELAYS_MS, withFinishRoundRetry } from './history/retry';
 import { createPgHandHistoryStore, type HandHistoryStore } from './history/store';
-import { registerWebSocket, type Authenticate } from './ws';
+import { CLOSE_ACCOUNT_DELETED, registerWebSocket, type Authenticate } from './ws';
 
 export interface AppOptions {
   db: Database;
@@ -99,7 +99,7 @@ export function buildApp({
     await db.close();
   });
 
-  registerWebSocket(app, {
+  const webSocket = registerWebSocket(app, {
     publicOrigin,
     authenticate,
     game,
@@ -117,7 +117,15 @@ export function buildApp({
     }
   });
 
-  void app.register(authRoutes, { db, config: auth });
+  void app.register(authRoutes, {
+    db,
+    config: auth,
+    // Konto gelöscht (WP-022): offene Verbindungen schließen. Am Tisch gilt der Spieler damit als getrennt und
+    // wird automatisch gecheckt/gefoldet (D-022); die laufende Runde läuft für die anderen weiter.
+    onAccountDeleted: (userId) => {
+      webSocket.closeUserConnections(userId, CLOSE_ACCOUNT_DELETED, 'account deleted');
+    },
+  });
   void app.register(feedbackRoutes, { db, config: feedback });
 
   return app;

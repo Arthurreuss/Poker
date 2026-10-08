@@ -107,7 +107,7 @@ describe('Registrierung', () => {
     mockApi({ 'GET /api/me': unauthorized() });
     renderApp('/register');
     await heading('Registrieren');
-    expect(screen.getByText(/Spielgeld – kein Echtgeld/)).toBeInTheDocument();
+    expect(screen.getByText(/Spielgeld – kein Echtgeld\. Chips haben keinen Geldwert/)).toBeInTheDocument();
   });
 
   it.each([

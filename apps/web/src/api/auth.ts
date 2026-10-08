@@ -33,3 +33,8 @@ export async function logout(): Promise<void> {
 export async function me(signal?: AbortSignal): Promise<User> {
   return (await apiRequest<UserResponse>('/api/me', signal === undefined ? {} : { signal })).user;
 }
+
+/** Löscht das eigene Konto (WP-022, Passwort als Bestätigung). Der Server anonymisiert es und beendet alle Sessions. */
+export async function deleteAccount(password: string): Promise<void> {
+  await apiRequest<undefined>('/api/me', { method: 'DELETE', body: { password } });
+}

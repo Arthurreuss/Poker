@@ -4,6 +4,8 @@ import { BrowserRouter, Route, Routes } from 'react-router';
 import { AuthProvider } from './auth/AuthContext';
 import { RedirectIfAuthenticated, RequireAdmin, RequireAuth } from './auth/guards';
 import { AppShell } from './layout/AppShell';
+import { DATENSCHUTZ_PATH, IMPRESSUM_PATH } from './legal/LegalFooter';
+import { DatenschutzPage, ImpressumPage } from './legal/LegalPage';
 import { AdminPage } from './pages/AdminPage';
 import { LeaderboardPage } from './pages/LeaderboardPage';
 import { LobbyPage } from './pages/LobbyPage';
@@ -38,6 +40,9 @@ export function AppRoutes() {
           </RedirectIfAuthenticated>
         }
       />
+      {/* Rechtstexte ohne Login (WP-022). */}
+      <Route path={IMPRESSUM_PATH} element={<ImpressumPage />} />
+      <Route path={DATENSCHUTZ_PATH} element={<DatenschutzPage />} />
       {TableDevPage && (
         <Route
           path="/dev/table"
