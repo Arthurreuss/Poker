@@ -73,10 +73,18 @@ export interface HandRow {
   big_blind: number;
   /** Karten-Strings der Engine, z. B. `["As", "Td", "2c"]`. */
   board: string[];
+  /** Form: `StoredHandPlayer[]` (`history/records.ts`). */
   players: Json[];
+  /** Form: `StoredHandResult` (`history/records.ts`); `null` solange die Hand läuft. */
   result: Json | null;
   started_at: Date;
   finished_at: Date | null;
+  /** 0003: Sitz des Small Blinds; `null` = kein Small Blind (oder Altzeile vor WP-013). */
+  small_blind_seat: number | null;
+  /** 0003: Sitz des Big Blinds; `null` nur bei Altzeilen vor WP-013. */
+  big_blind_seat: number | null;
+  /** 0003: Deck zu Handbeginn (52 Karten, erstes = oberste); nur serverseitig (D-003). */
+  deck: string[] | null;
 }
 
 export interface HandActionRow {
