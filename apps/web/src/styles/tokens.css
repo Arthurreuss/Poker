@@ -1,0 +1,60 @@
+/*
+ * Design-Tokens (D-008: Anmutung eines klassischen Online-Pokerraums, eigene Werte).
+ * Vertrag für alle Frontend-WPs: docs/ARCHITECTURE.md, Abschnitt „Design-Tokens (Web)“.
+ * Genau diese Variablen – neue nur über eine Änderung des Vertrags dort.
+ * vite.config.ts liest --color-bg für Manifest und theme-color aus dieser Datei.
+ */
+:root {
+  /* Hintergrund und Flächen */
+  --color-bg: #10151c;
+  --color-surface: #1b232d;
+  --color-surface-2: #273341;
+
+  /* Tisch */
+  --color-felt: #1e6b47;
+  --color-felt-edge: #4a3424;
+
+  /* Text */
+  --color-text: #eef2f5;
+  --color-text-muted: #9aa8b6;
+
+  /* Akzent gold: aktiver Spieler, Dealer-Button, Hervorhebungen */
+  --color-accent: #e2b244;
+
+  /* Aktionsbuttons */
+  --color-fold: #c4423b;
+  --color-call: #2e9a5a;
+  --color-raise: #e0891f;
+
+  /* Zustände */
+  --color-danger: #e5564e;
+  --color-success: #3fb26f;
+
+  /* Karten */
+  --color-card-face: #fbfaf5;
+  --color-card-red: #c8202f;
+  --color-card-black: #1b1b1f;
+
+  /* Rundungen */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 16px;
+  --radius-pill: 999px;
+
+  /* Abstände */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+
+  /* Typografie */
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-size-sm: 0.875rem;
+  --font-size-md: 1rem;
+  --font-size-lg: 1.25rem;
+
+  /* Schatten für Plaketten/Karten */
+  --shadow-md: 0 2px 8px rgb(0 0 0 / 0.45);
+}

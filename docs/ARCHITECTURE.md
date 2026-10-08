@@ -9,7 +9,7 @@ npm-Workspaces-Monorepo (D-004). Alle Workspaces sind TypeScript (ESM, `strict`)
 |---|---|---|
 | `packages/engine` | `@poker/engine` | reine Poker-Logik, keine I/O-Abhängigkeiten |
 | `apps/server` | `@poker/server` | Game-Server: Fastify mit `GET /api/health` (prüft die DB per `pg`), Auth-Endpunkten (`/api/register`, `/login`, `/logout`, `/me`) und Platzhalter-WebSocket `/ws` (`ws`); importiert `@poker/engine` |
-| `apps/web` | `@poker/web` | Frontend: React + Vite, derzeit Platzhalterseite mit Health-Anzeige (PWA folgt) |
+| `apps/web` | `@poker/web` | Frontend: React + Vite als installierbare PWA mit Routing, Login/Registrierung und App-Shell (Abschnitt „Frontend“) |
 
 ### Server (`apps/server/src`)
 - `config.ts` – `loadConfig(env)`: Konfiguration **nur** aus Umgebungsvariablen (D-014): `PORT`, `DATABASE_URL`, `PUBLIC_ORIGIN` (Pflicht), `HOST` (Standard `127.0.0.1`, im Container `0.0.0.0`), `NODE_ENV` (Standard `development`). Abgeleitet: `trustProxy` = `NODE_ENV === 'production'` (Proxy-Header nur in prod vertrauen, D-014).
@@ -22,7 +22,10 @@ npm-Workspaces-Monorepo (D-004). Alle Workspaces sind TypeScript (ESM, `strict`)
 
 ### Web (`apps/web`)
 - `vite.config.ts` – Dev-Server-Einstellungen nur aus Umgebungsvariablen: `WEB_DEV_HOST`, `WEB_DEV_PORT`, `API_PROXY_TARGET` (Proxy für `/api` und `/ws` mit `ws: true`), `VITE_USE_POLLING`.
-- `src/health.ts` – `fetchHealth()` mit relativer URL `/api/health` (eine Origin, D-014); `src/App.tsx` zeigt Titel („Poker – dev“) und Health-Status.
+  Dazu das PWA-Plugin (siehe „Frontend“) und ein kleines Plugin, das `%THEME_COLOR%` in `index.html` durch `--color-bg` aus `tokens.css` ersetzt.
+- `vitest.config.ts` – eigene Test-Konfiguration (jsdom, `src/test/setup.ts`), damit das PWA-Plugin in Tests nicht läuft.
+- `src/health.ts` – `fetchHealth()` mit relativer URL `/api/health` (eine Origin, D-014) und `appTitle(mode)` („Poker – dev“ außerhalb von prod); die Lobby zeigt den Health-Status.
+- Aufbau von `src/`, Routing, API-Client, Styling und PWA: Abschnitt „Frontend“.
 
 Workspaces importieren sich gegenseitig über den Paketnamen; `@poker/engine` exportiert direkt seine TypeScript-Quellen (`exports: ./src/index.ts`) und hat keinen eigenen Build-Schritt – Server (esbuild) und Web (Vite) bündeln es beim Prod-Build mit ein.
 
@@ -300,8 +303,60 @@ Host 127.0.0.1:4321 (Debug) ─────────────────�
 - **Proxy-Header:** nginx setzt `X-Forwarded-For` auf `CF-Connecting-IP` (hinter dem Tunnel) bzw. die Peer-Adresse und reicht `X-Forwarded-Proto` von cloudflared durch; der Server vertraut ihnen nur in prod (`trustProxy`).
 - **cloudflared:** eigener Tunnel für Poker, unabhängig vom Jarvis-Tunnel (D-014); `TUNNEL_TOKEN` aus `.env.prod`. Public Hostname `poker.arthur-reuss.de` → `http://web:8080`.
 
+## Frontend
+React 19 + Vite, Routing mit `react-router` (Deklarativ: `BrowserRouter`/`Routes`). Keine UI-Bibliothek.
+
+### Struktur (`apps/web/src`)
+| Pfad | Inhalt |
+|---|---|
+| `main.tsx`, `App.tsx` | Einstieg; `App` = `AuthProvider` + `BrowserRouter` + `AppRoutes` (Tests rendern `AppRoutes` in einem `MemoryRouter`) |
+| `api/` | `client.ts` (`apiRequest`, `ApiError`), `auth.ts` (`register`, `login`, `logout`, `me`), `ws.ts` (`wsUrl`); Export über `api/index.ts` |
+| `auth/` | `AuthContext.tsx` (`AuthProvider`, `useAuth`), `guards.tsx` (`RequireAuth`, `RequireAdmin`, `RedirectIfAuthenticated`), `validation.ts` (Regeln wie der Server) |
+| `layout/AppShell.tsx` | Kopfzeile mit App-Name, Menü (Lobby, Rangliste, Einstellungen, Admin nur für Admins, Abmelden) und Feedback-Slot; `<Outlet>` für die Seite |
+| `feedback/FeedbackSlot.tsx` | leerer Platzhalter (`data-slot="feedback"`) für den Feedback-Button aus WP-024 |
+| `pages/` | Login, Registrierung, Lobby, Rangliste, Einstellungen, Admin, Tisch – außer Login/Registrierung/Einstellungen noch Platzhalter |
+| `settings/orientation.ts` | `useOrientationPreference()` (D-009) |
+| `styles/` | `tokens.css` (Vertrag, siehe „Design-Tokens (Web)“), `global.css`, `cx.ts` (Klassen verbinden) |
+| `table/` | Tischansicht (WP-016 ff.) |
+| `test/` | Test-Setup (jest-dom, Cleanup) und `mockApi` (ersetzt `fetch` je `"METHODE /pfad"`) |
+
+### Routing
+| Pfad | Seite | Zugriff |
+|---|---|---|
+| `/login`, `/register` | Anmelden, Registrieren | nur ausgeloggt (eingeloggt → Zielseite bzw. `/`) |
+| `/` | Lobby (Platzhalter bis WP-015) | eingeloggt, in der App-Shell |
+| `/leaderboard` | Rangliste (Platzhalter bis WP-019) | eingeloggt, App-Shell |
+| `/settings` | Einstellungen (Ausrichtung) | eingeloggt, App-Shell |
+| `/admin/*` | Admin (Platzhalter; WP-024: `/admin/feedback`) | nur `isAdmin`, sonst Umleitung auf `/` |
+| `/table/:id` | Tisch (`pages/TablePage.tsx`, Platzhalter bis WP-016/018) | eingeloggt, **ohne** App-Shell (volle Fläche, eigenes Tisch-Menü) |
+| sonst | „Seite nicht gefunden“ | eingeloggt, App-Shell |
+
+Auth-Zustand: `AuthProvider` fragt beim Start einmal `GET /api/me` (`loading` → `authenticated` bzw. `anonymous`; auch ein nicht erreichbarer Server gilt als ausgeloggt). `RequireAuth` leitet Ausgeloggte auf `/login` und merkt sich die Zielseite in `location.state.from` (nur interne Pfade); nach Login/Registrierung leitet `RedirectIfAuthenticated` dorthin. Nach bewusstem Abmelden gibt es kein Rücksprungziel. Das Admin-Flag kommt aus `/api/me` (`isAdmin`); die echte Prüfung macht der Server.
+
+### API-Client (`src/api/`)
+- `apiRequest<T>(path, { method, body, signal })`: nur relative Pfade (`/api/...`, absolute URLs werfen – D-014), `credentials: 'same-origin'` (Session-Cookie), Body als JSON.
+- Antworten ≥ 400 werden zu `ApiError { status, code, message }`; `code`/`message` stammen aus dem Server-Format `{ error, message }` (siehe „Auth“). Clientseitige Codes: `network` (Server nicht erreichbar, `status` 0) und `unknown` (Antwort ohne Fehler-Body). Die UI zeigt `message` direkt an (deutsche Texte vom Server).
+- `wsUrl('/ws')` baut die WebSocket-URL aus `location` (`https:` → `wss:`, sonst `ws:`; gleicher Host inkl. Port). Die Verbindung selbst folgt mit WP-011/018.
+- Formular-Validierung (`auth/validation.ts`) spiegelt die Server-Regeln (Name 3–20 aus `[A-Za-z0-9_-]`, Passwort 8–128, Registrierung mit Wiederholung; Login prüft nur Pflichtfelder) – nur für schnelle Rückmeldung, der Server prüft selbst.
+
+### Styling
+CSS-Modules (`*.module.css` neben der Komponente, von Vite ohne Zusatzpaket unterstützt) für Komponenten, dazu `styles/global.css` (Reset, Body, `100dvh`, `overscroll-behavior: none` gegen Pull-to-Refresh/Gummiband, Klasse `.safe-area` mit `env(safe-area-inset-*)` für Notch/Home-Indikator, `viewport-fit=cover` in `index.html`) und `styles/tokens.css`. Farben, Abstände, Rundungen und Schrift nur über die Tokens. Klassen aus CSS-Modules sind `string | undefined` typisiert → zusammensetzen mit `cx(...)`.
+
+### Einstellungen
+`useOrientationPreference()` liefert `[preference, setPreference]` mit `'auto' | 'portrait' | 'landscape'` (D-009). Gespeichert in `localStorage` unter `poker.orientation` (Zugriffe in try/catch, sonst nur im Speicher); alle Hook-Nutzer und andere Tabs (`storage`-Event) sehen Änderungen sofort (`useSyncExternalStore`). Wie das Layout daraus folgt, entscheidet die Tischansicht (WP-017).
+
+### PWA
+- `vite-plugin-pwa` (`generateSW`, `registerType: 'autoUpdate'`, Registrierung per `registerSW.js` mit `defer`, kein Inline-Script). Der Service Worker precacht nur die Build-Dateien (`js, css, html, svg, png, webmanifest`); `navigateFallback: /index.html` für SPA-Navigation mit Denylist für `/api` und `/ws`, **kein** Runtime-Caching. API und WebSocket gehen immer ans Netz. Im Dev-Server ist der Service Worker aus.
+- Manifest (`manifest.webmanifest`, generiert): Name/Kurzname „Poker“, `display: standalone`, `orientation: any`, `start_url`/`scope` `/`, Theme- und Hintergrundfarbe = `--color-bg`, Icons 192/512, maskable 512, SVG.
+- iOS: `apple-mobile-web-app-capable`, `apple-mobile-web-app-status-bar-style: black-translucent` (Inhalt unter der Statusleiste, deshalb Safe-Area-Insets), `apple-touch-icon` 180 px; dazu `mobile-web-app-capable` und `theme-color`.
+- Icons in `public/icons/` sind eigene Grafiken, erzeugt von `scripts/generate-icons.mjs` (`npm run icons -w @poker/web`, rendert ein im Skript definiertes SVG mit `@resvg/resvg-js`; Farben aus `tokens.css`). Die PNGs sind eingecheckt, der Build braucht das Skript nicht. Herkunft/Lizenzen: [apps/web/ASSETS.md](../apps/web/ASSETS.md).
+- nginx (prod) liefert `sw.js`, `registerSW.js`, Manifest und `index.html` mit `Cache-Control: no-cache`, gehashte `/assets/` langlebig.
+
+### Tests
+Vitest mit jsdom und Testing Library (`*.test.ts(x)` neben dem Code): `App.test.tsx` (Routen-Schutz, Rücksprung nach Login, Login-/Registrierungsfehler 400/401/409/429/Netzwerk, Admin-Menü, Abmelden, Einstellungen), `api/api.test.ts` (Client, Fehler, `wsUrl`), `auth/validation.test.ts`, `settings/orientation.test.ts`. `fetch` wird mit `test/mockApi.ts` ersetzt.
+
 ## Design-Tokens (Web)
-Gemeinsamer Vertrag für alle Frontend-WPs (D-008: Anmutung PokerStars, eigene Werte). Definiert in `apps/web/src/styles/tokens.css` (WP-014); Komponenten nutzen nur diese CSS-Variablen.
+Gemeinsamer Vertrag für alle Frontend-WPs (D-008: Anmutung PokerStars, eigene Werte). Definiert in [`apps/web/src/styles/tokens.css`](../apps/web/src/styles/tokens.css) (WP-014); Komponenten nutzen nur diese CSS-Variablen.
 
 | Variable | Zweck |
 |---|---|
@@ -336,7 +391,7 @@ packages/
   engine/               @poker/engine – Poker-Logik (src/, Tests als *.test.ts daneben)
 apps/
   server/               @poker/server – Game-Server (src/main.ts Einstieg, src/app.ts buildApp, build.mjs Prod-Bundle)
-  web/                  @poker/web – Frontend (index.html, vite.config.ts, src/)
+  web/                  @poker/web – Frontend (index.html, vite.config.ts, src/, public/icons/, scripts/generate-icons.mjs, ASSETS.md)
 docker/
   dev.Dockerfile        Node-Image für server/web in dev
   server.Dockerfile     Prod-Image Server (multi-stage)

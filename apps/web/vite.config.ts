@@ -1,5 +1,7 @@
-import { defineConfig } from 'vite';
+import { readFileSync } from 'node:fs';
 import react from '@vitejs/plugin-react';
+import { defineConfig, type Plugin } from 'vite';
+import { VitePWA } from 'vite-plugin-pwa';
 
 // Alles über Umgebungsvariablen, keine Hostnamen/Ports im Code (D-014).
 // API_PROXY_TARGET: Ziel für /api und /ws im Dev-Server, z. B. http://server:4311 im Compose-Netz.
@@ -9,8 +11,58 @@ const env = process.env;
 const proxyTarget = env['API_PROXY_TARGET'];
 const port = env['WEB_DEV_PORT'] === undefined ? undefined : Number(env['WEB_DEV_PORT']);
 
+// Theme-/Hintergrundfarbe für Manifest und <meta name="theme-color"> kommen aus den Design-Tokens.
+const tokens = readFileSync(new URL('./src/styles/tokens.css', import.meta.url), 'utf8');
+const bgMatch = /--color-bg:\s*(#[0-9a-fA-F]{6})/.exec(tokens);
+if (bgMatch?.[1] === undefined) throw new Error('--color-bg fehlt in src/styles/tokens.css');
+const themeColor = bgMatch[1];
+
+/** Ersetzt %THEME_COLOR% in index.html. */
+function themeColorHtml(): Plugin {
+  return {
+    name: 'poker-theme-color',
+    transformIndexHtml: (html) => html.replaceAll('%THEME_COLOR%', themeColor),
+  };
+}
+
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    themeColorHtml(),
+    // PWA (WP-014): Service Worker nur für statische Assets, nie für /api oder /ws.
+    VitePWA({
+      registerType: 'autoUpdate',
+      injectRegister: 'script-defer',
+      includeAssets: ['icons/icon.svg', 'icons/apple-touch-icon.png'],
+      manifest: {
+        id: '/',
+        name: 'Poker',
+        short_name: 'Poker',
+        description: 'Texas Hold’em mit Freunden – nur Spielgeld',
+        lang: 'de',
+        start_url: '/',
+        scope: '/',
+        display: 'standalone',
+        orientation: 'any',
+        theme_color: themeColor,
+        background_color: themeColor,
+        icons: [
+          { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+          { src: '/icons/icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+          { src: '/icons/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
+        ],
+      },
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,svg,png,webmanifest}'],
+        cleanupOutdatedCaches: true,
+        // SPA-Navigation offline aus dem Precache – aber nie für API und WebSocket.
+        navigateFallback: '/index.html',
+        navigateFallbackDenylist: [/^\/api(\/|$)/, /^\/ws(\/|$)/],
+        runtimeCaching: [],
+      },
+    }),
+  ],
   server: {
     host: env['WEB_DEV_HOST'] ?? '127.0.0.1',
     ...(port === undefined ? {} : { port, strictPort: true }),
