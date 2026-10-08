@@ -116,6 +116,20 @@ describe('PokerTable – Status', () => {
     expect(within(seatEl(7)).getByRole('progressbar').getAttribute('aria-valuenow')).toBe('45');
   });
 
+  it('zeigt keinen Timer-Ring ohne Restzeit vom Server (WP-018)', () => {
+    const view: TableView = { ...mock('six-flop') };
+    delete (view as { timeRemaining?: number }).timeRemaining;
+    render(<PokerTable view={view} />);
+    expect(seatEl(7).dataset['toAct']).toBe('true');
+    expect(screen.queryByTestId('timer')).toBeNull();
+  });
+
+  it('färbt den Ring bei wenig Restzeit rot und zeigt die laufende Zeitbank', () => {
+    render(<PokerTable view={{ ...mock('six-flop'), timeRemaining: 0, timeBankSeconds: 42 }} />);
+    expect(screen.getByTestId('timer').getAttribute('class')).toContain('pt-timer-ring--low');
+    expect(within(seatEl(7)).getByTestId('time-bank').textContent).toBe('Zeitbank 42 s');
+  });
+
   it('zeigt Dealer-Button und Blind-Marker', () => {
     render(<PokerTable view={mock('six-flop')} />);
     expect(within(seatEl(4)).getByTestId('marker').dataset['marker']).toBe('dealer');

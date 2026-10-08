@@ -1,0 +1,179 @@
+/*
+ * Aktionsleiste (WP-018). Liegt im `actionBar`-Bereich der Tischansicht (Hochformat: Zeile unten,
+ * Querformat: Fläche unten rechts). Farben nur über Design-Tokens; Knöpfe mindestens 44 px hoch.
+ */
+.ab-root {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: var(--space-2) var(--space-3);
+  box-sizing: border-box;
+  font-family: var(--font-sans);
+  color: var(--color-text);
+}
+
+.ab-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.ab-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+  min-height: 52px;
+  padding: var(--space-1) var(--space-2);
+  border: 0;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  color: var(--color-text);
+  font-size: var(--font-size-md);
+  font-weight: 700;
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.ab-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.ab-btn:not(:disabled):active {
+  filter: brightness(0.9);
+}
+.ab-btn--fold {
+  background: var(--color-fold);
+}
+.ab-btn--call {
+  background: var(--color-call);
+}
+.ab-btn--raise {
+  background: var(--color-raise);
+}
+.ab-btn-amount {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
+/* Vorab-Aktionen: Umschalter mit Häkchen */
+.ab-btn--pre {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+  background: var(--color-surface);
+  border: 1px solid var(--color-surface-2);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  white-space: normal;
+}
+.ab-btn--pre[aria-pressed='true'] {
+  border-color: var(--color-accent);
+  background: var(--color-surface-2);
+}
+.ab-check {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border-radius: var(--radius-sm);
+  border: 2px solid var(--color-text-muted);
+}
+.ab-btn--pre[aria-pressed='true'] .ab-check {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+}
+
+/* Einsatzwahl: öffnet sich über der Leiste */
+.ab-panel {
+  position: absolute;
+  left: var(--space-2);
+  right: var(--space-2);
+  bottom: calc(100% - var(--space-1));
+  z-index: 20;
+  padding: var(--space-3);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  border: 1px solid var(--color-surface-2);
+  box-shadow: var(--shadow-md);
+}
+.ab-sizer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.ab-presets {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+.ab-preset {
+  min-height: 44px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-surface-2);
+  background: var(--color-bg);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+.ab-preset[aria-pressed='true'] {
+  border-color: var(--color-raise);
+  color: var(--color-raise);
+}
+.ab-slider-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.ab-range {
+  flex: 1;
+  min-width: 0;
+  height: 44px;
+  margin: 0;
+  accent-color: var(--color-raise);
+}
+.ab-amount {
+  flex: none;
+  width: 8ch;
+  min-height: 44px;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-surface-2);
+  background: var(--color-bg);
+  text-align: right;
+  font-weight: 700;
+}
+.ab-amount[aria-invalid='true'] {
+  border-color: var(--color-danger);
+}
+.ab-limits {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+/* Querformat: kleine Fläche unten rechts – kompakter, Einsatzwahl rechtsbündig darüber. */
+.pt-root--landscape .ab-root {
+  padding: var(--space-1) var(--space-2);
+}
+.pt-root--landscape .ab-row {
+  gap: var(--space-1);
+}
+.pt-root--landscape .ab-btn {
+  min-height: 44px;
+  font-size: var(--font-size-sm);
+  padding: var(--space-1);
+}
+.pt-root--landscape .ab-btn-amount {
+  font-size: 0.75rem;
+}
+.pt-root--landscape .ab-panel {
+  left: auto;
+  right: var(--space-1);
+  width: min(340px, 90vw);
+}

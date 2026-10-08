@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { AppRoutes } from './App';
 import { AuthProvider } from './auth/AuthContext';
 import { ADMIN, PLAYER, json, mockApi, requestBody, unauthorized } from './test/mockApi';
@@ -49,10 +49,33 @@ describe('Geschützte Routen', () => {
     await heading('Lobby');
   });
 
-  it('/table/:id zeigt den Platzhalter', async () => {
+  it('/table/:id verbindet sich mit dem Tisch (WP-018)', async () => {
     mockApi({ 'GET /api/me': json(200, { user: PLAYER }) });
+    const urls: string[] = [];
+    vi.stubGlobal(
+      'WebSocket',
+      class {
+        onopen = null;
+        onmessage = null;
+        onclose = null;
+        onerror = null;
+        readyState = 0;
+        constructor(url: string) {
+          urls.push(url);
+        }
+        send() {}
+        close() {}
+      },
+    );
     renderApp('/table/42');
-    await heading('Tisch 42');
+    expect(await screen.findByText('Tisch wird geladen …')).toBeInTheDocument();
+    expect(urls).toEqual([expect.stringMatching(/\/ws$/)]);
+  });
+
+  it('/table/:id ohne gültige Nummer', async () => {
+    mockApi({ 'GET /api/me': json(200, { user: PLAYER }) });
+    renderApp('/table/abc');
+    await heading('Tisch nicht gefunden');
   });
 });
 
@@ -211,5 +234,16 @@ describe('App-Shell', () => {
     await userEvent.click(screen.getByLabelText('Querformat'));
     expect(screen.getByLabelText('Querformat')).toBeChecked();
     expect(window.localStorage.getItem('poker.orientation')).toBe('landscape');
+  });
+
+  it('Einstellungen schalten die Animationen am Tisch ab (WP-018)', async () => {
+    mockApi({ 'GET /api/me': json(200, { user: PLAYER }) });
+    renderApp('/settings');
+    await heading('Einstellungen');
+    const toggle = screen.getByLabelText('Animationen (Karten, Chips)');
+    expect(toggle).toBeChecked();
+    await userEvent.click(toggle);
+    expect(toggle).not.toBeChecked();
+    expect(window.localStorage.getItem('poker.animations')).toBe('off');
   });
 });
