@@ -1,0 +1,22 @@
+{
+  // Parallele WP-Sessions arbeiten in .claude/worktrees/ (je eine volle Projektkopie mit node_modules).
+  // VS Code soll sie weder beobachten, durchsuchen noch als eigene Git-Repos öffnen.
+  "files.watcherExclude": {
+    "**/.claude/worktrees/**": true,
+    "**/node_modules/**": true,
+    "**/dist/**": true,
+    "**/e2e-visual/test-results/**": true
+  },
+  "files.exclude": {
+    "**/.claude/worktrees": true
+  },
+  "search.exclude": {
+    "**/.claude/worktrees": true,
+    "**/dist": true
+  },
+  "git.detectWorktrees": false,
+  "git.repositoryScanIgnoredFolders": ["node_modules", ".claude"],
+  "typescript.tsserver.watchOptions": {
+    "excludeDirectories": ["**/.claude/worktrees", "**/node_modules"]
+  }
+}
