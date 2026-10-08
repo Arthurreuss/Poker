@@ -38,6 +38,7 @@ prod läuft aus einem eigenen Git-Worktree auf `main` (`~/code/Arthurreuss/poker
 npm run prod:setup               # einmalig: Prod-Worktree anlegen, dann dort .env.prod anlegen (POSTGRES_PASSWORD setzen)
 npm run prod:up                  # Projekt poker-prod unter http://localhost:4320 (läuft parallel zu dev)
 npm run prod:smoke               # Health + WebSocket prüfen
+npm run prod:e2e                 # Browser-Test: zwei Test-Konten spielen eine Runde (WP-020)
 npm run prod:status              # Container, letztes Backup, Health
 npm run prod:down
 ```

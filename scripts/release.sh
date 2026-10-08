@@ -30,6 +30,7 @@ npm run check
 
 # 3. Merge im Prod-Worktree. main enthält nur Merges von dev, deshalb gibt es keine Konflikte; falls doch,
 #    wird der Merge abgebrochen und main bleibt unverändert. Ein Merge löst den pre-commit-Hook nicht aus.
+PREV_MAIN="$(git -C "$POKER_PROD_DIR" rev-parse --short HEAD)" # Ziel eines Rollbacks (release-verify.sh)
 echo "→ merge dev → main (in $POKER_PROD_DIR)"
 if ! git -C "$POKER_PROD_DIR" merge --no-ff --no-stat dev -m "Release: merge dev → main"; then
   git -C "$POKER_PROD_DIR" merge --abort 2>/dev/null || true
@@ -39,16 +40,16 @@ fi
 echo "→ push main und dev"
 git push origin main dev
 
-# 4. prod aus dem Prod-Worktree neu bauen und starten (mit Tunnel, wenn TUNNEL_TOKEN gesetzt ist), dann Smoke-Test.
+# 4. prod aus dem Prod-Worktree neu bauen und starten (mit Tunnel, wenn TUNNEL_TOKEN gesetzt ist).
 if [ -n "$(sed -n 's/^TUNNEL_TOKEN=//p' "$POKER_PROD_DIR/.env.prod" | tail -n 1)" ]; then
-  echo "→ prod:tunnel:up (baut aus main)"
-  POKER_PROD_DIR="$POKER_PROD_DIR" npm --prefix "$POKER_PROD_DIR" run prod:tunnel:up
+  UP_SCRIPT=prod:tunnel:up
 else
-  echo "→ prod:up (baut aus main)"
-  POKER_PROD_DIR="$POKER_PROD_DIR" npm --prefix "$POKER_PROD_DIR" run prod:up
+  UP_SCRIPT=prod:up
 fi
+echo "→ $UP_SCRIPT (baut aus main)"
+POKER_PROD_DIR="$POKER_PROD_DIR" npm --prefix "$POKER_PROD_DIR" run "$UP_SCRIPT"
 
-echo "→ Smoke-Test"
-POKER_PROD_DIR="$POKER_PROD_DIR" npm --prefix "$POKER_PROD_DIR" run prod:smoke
+# 5. Smoke-Test und E2E gegen das neue prod (WP-020); bei Fehler Abbruch mit Rollback-Hinweis.
+POKER_PROD_DIR="$POKER_PROD_DIR" bash scripts/release-verify.sh "$PREV_MAIN" "$UP_SCRIPT"
 
 echo "✓ Release fertig. Arbeitsordner weiter auf dev, prod läuft aus $POKER_PROD_DIR."

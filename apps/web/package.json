@@ -12,7 +12,8 @@
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p e2e-visual && tsc --noEmit -p e2e-game",
     "test": "vitest run",
     "test:visual": "playwright test -c e2e-visual/playwright.config.ts",
-    "test:game": "playwright test -c e2e-game/playwright.config.ts"
+    "test:game": "playwright test -c e2e-game/playwright.config.ts",
+    "test:e2e": "E2E_BASE_URL=${E2E_BASE_URL:-http://localhost:4310} playwright test -c e2e-game/playwright.config.ts smoke.pw.ts"
   },
   "dependencies": {
     "@poker/engine": "*",
