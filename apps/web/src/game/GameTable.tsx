@@ -4,6 +4,7 @@ import { useCallback } from 'react';
 import { Link } from 'react-router';
 import { useFeedbackDialog } from '../feedback';
 import { DATENSCHUTZ_PATH, IMPRESSUM_PATH } from '../legal/LegalFooter';
+import { invitePath, tablePath } from '../lobby/invite';
 import { InviteShare } from '../lobby/InviteShare';
 import { useAnimationsPreference } from '../settings/animations';
 import { cx } from '../styles/cx';
@@ -65,12 +66,14 @@ export function GameTable({ snapshot, store, onLeave }: GameTableProps) {
             menuItems={
               <div className="gp-menu-items">
                 <p className="gp-menu-info">{table.settings.name}</p>
-                {!table.settings.isPublic && (
-                  <div className="gp-menu-invite" aria-label="Einladen" role="group">
-                    <p className="gp-menu-heading">Einladen</p>
-                    <InviteShare inviteCode={table.inviteCode} tableName={table.settings.name} />
-                  </div>
-                )}
+                {/* Öffentlich: Link direkt zum Tisch; privat: Einladungslink (WP-030). */}
+                <div className="gp-menu-invite" aria-label="Einladen" role="group">
+                  <p className="gp-menu-heading">Einladen</p>
+                  <InviteShare
+                    path={table.settings.isPublic ? tablePath(table.id) : invitePath(table.inviteCode)}
+                    tableName={table.settings.name}
+                  />
+                </div>
                 <button type="button" className="gp-btn gp-btn--muted gp-btn--block" onClick={feedback.open}>
                   Feedback senden
                 </button>

@@ -1,6 +1,6 @@
 # Betrieb
 
-Wie dev und prod gestartet, gestoppt und released werden, wie der Cloudflare-Tunnel eingerichtet wird, Backup, Restore, Status, Logs, Betrieb nach Neustart und die Security-Checkliste. Aufbau der Umgebungen: [ARCHITECTURE.md](ARCHITECTURE.md); Begründungen: D-002, D-005, D-006, D-010, D-014, D-017 in [DECISIONS.md](DECISIONS.md).
+Wie dev und prod gestartet, gestoppt und released werden, wie der Cloudflare-Tunnel eingerichtet wird, Backup, Restore, Status, Logs, Betrieb nach Neustart und die Security-Checkliste. Aufbau der Umgebungen: [ARCHITECTURE.md](ARCHITECTURE.md); Begründungen: D-002, D-005, D-006, D-010, D-014, D-017, D-028 in [DECISIONS.md](DECISIONS.md).
 
 | | dev | prod |
 |---|---|---|
@@ -42,6 +42,7 @@ Alle `prod:*`-Befehle werden im Arbeitsordner aufgerufen, arbeiten aber mit `com
 ```sh
 npm run prod:up          # baut die Images aus dem Prod-Worktree (main) und startet db, server, web, backup, logrotate (ohne Tunnel); wartet auf healthy
 npm run prod:smoke       # Smoke-Test: /api/health und WebSocket (401 ohne Session, 403 fremde Origin) über http://localhost:4320
+npm run prod:e2e         # E2E-Smoke-Test im Browser: zwei Test-Konten spielen eine Runde, danach gelöscht (siehe Release)
 npm run prod:status      # Zustandsbericht (siehe Status)
 npm run prod:logs        # Container-Logs folgen (Request-Logs von server/web: siehe Logs)
 npm run prod:tunnel:up   # wie prod:up, zusätzlich cloudflared (braucht TUNNEL_TOKEN)
@@ -59,12 +60,36 @@ npm run prod:restore -- <dump.sql.gz> [--yes]   # Restore (siehe Restore)
 `npm run release` (Skript `scripts/release.sh`) – der Arbeitsordner wird dabei **nicht** umgeschaltet:
 1. prüft: Arbeitsordner auf `dev` und sauber; Prod-Worktree vorhanden, auf `main`, ohne lokale Änderungen, mit `.env.prod`
 2. `npm run check` im Arbeitsordner
-3. Merge im Prod-Worktree: `git -C ~/code/Arthurreuss/poker-prod merge --no-ff dev` (Merge-Commit „Release: merge dev → main“; ein Merge löst den Pre-Commit-Hook nicht aus). Schlägt der Merge fehl, wird er abgebrochen und `main` bleibt unverändert.
+3. merkt sich den bisherigen `main`-Stand (Ziel eines Rollbacks), dann Merge im Prod-Worktree: `git -C ~/code/Arthurreuss/poker-prod merge --no-ff dev` (Merge-Commit „Release: merge dev → main“; ein Merge löst den Pre-Commit-Hook nicht aus). Schlägt der Merge fehl, wird er abgebrochen und `main` bleibt unverändert.
 4. `git push origin main dev`
 5. prod aus dem Prod-Worktree neu bauen und starten: `prod:tunnel:up`, wenn `TUNNEL_TOKEN` gesetzt ist, sonst `prod:up`
-6. `prod:smoke`
+6. Prüfung des neuen prod (`scripts/release-verify.sh`): erst `prod:smoke`, dann `prod:e2e`. Schlägt einer fehl, bricht der Release mit Exit-Code 1 ab und gibt die Rollback-Befehle aus (siehe unten).
 
-Vorher dev lokal per Docker getestet haben (D-005). Schlägt der Smoke-Test fehl, steht main schon auf dem neuen Stand: Fehler auf dev beheben und erneut releasen.
+Vorher dev lokal per Docker getestet haben (D-005), am besten auch mit dem E2E-Test: `npm run test:e2e -w @poker/web` (gegen http://localhost:4310).
+
+### E2E-Smoke-Test (WP-020)
+Playwright-Test `apps/web/e2e-game/smoke.pw.ts`: zwei Spieler registrieren sich über `/register` (Namen `e2e_<Zeitstempel>…`), A erstellt über die Lobby einen **privaten** Tisch „E2E-Test …“ (2 Plätze, Stack 200, feste Blinds), B tritt über den Einladungslink bei, beide nehmen Platz, A startet, beide gehen All-in, bis bei beiden der Dialog „Runde beendet“ mit zwei Platzierungen und demselben Sieger steht. Danach werden beide Konten per `DELETE /api/me` gelöscht – auch wenn der Test scheitert. Dauer: wenige Sekunden; greift das Auth-Rate-Limit (10 pro Minute und IP), wartet der Test es ab.
+```sh
+npm run test:e2e -w @poker/web                      # gegen dev-Docker (http://localhost:4310)
+npm run prod:e2e                                    # gegen prod (http://localhost:4320 über den Origin-Proxy)
+E2E_BASE_URL=https://poker.arthur-reuss.de npm run prod:e2e   # gegen die echte Domain (über Cloudflare, ohne Proxy)
+npm run test:e2e -w @poker/web -- --repeat-each=10  # Stabilität prüfen
+```
+- **Warum ein Proxy (D-028):** Der prod-WebSocket nimmt nur Origins aus `PUBLIC_ORIGIN` an. `prod:e2e` startet deshalb für die Dauer des Tests `scripts/e2e-origin-proxy.mjs` auf `localhost:4318`, der alles an `http://127.0.0.1:4320` weiterreicht und nur den `Origin`-Header durch die erste `PUBLIC_ORIGIN` ersetzt. prod braucht dafür keine Konfigurationsänderung. Andere Werte: `E2E_ORIGIN`, `E2E_PROXY_PORT`, `E2E_BASE_URL`.
+- Playwright läuft aus dem Arbeitsordner (der Prod-Worktree hat keine `node_modules`); Chromium einmalig: `npx playwright install chromium` in `apps/web`.
+- **Spuren in prod:** zwei gelöschte (anonymisierte) Konten und eine private Runde, die nur ihre (gelöschten) Teilnehmer sehen dürften – nicht in Lobby, Rangliste, Profilen oder Rundenlisten (D-024, D-028). Fehlerbericht und Trace: `apps/web/node_modules/.cache/playwright-game-results/` (`npx playwright show-trace …/trace.zip`).
+
+### Release abgebrochen – Rollback
+Schlägt Smoke-Test oder E2E fehl, steht `main` schon auf dem neuen Stand (gepusht) und prod läuft damit. Das Skript nennt den vorherigen Stand `<vorher>` und die Befehle:
+1. Erst prüfen, ob der Fehler bleibt: `npm run prod:e2e` bzw. `npm run prod:smoke` (Fehlerbericht siehe oben).
+2. Zurückrollen – prod aus dem vorherigen Commit neu bauen:
+   ```sh
+   git -C ~/code/Arthurreuss/poker-prod checkout --detach <vorher>
+   npm run prod:tunnel:up     # bzw. prod:up ohne Tunnel
+   npm run prod:smoke
+   ```
+3. Fehler auf dev beheben. Vor dem nächsten Release den Prod-Worktree zurück auf `main` setzen (`release` verlangt das): `git -C ~/code/Arthurreuss/poker-prod checkout main`, dann `npm run release`.
+4. Hat der neue Stand Datenbank-Migrationen ausgeführt, läuft der alte Server auf dem neueren Schema. Migrationen sind bisher nur additiv; im Zweifel das letzte Backup einspielen (`npm run prod:restore`, siehe Restore).
 
 ## Cloudflare-Tunnel einrichten (Arthur, einmalig)
 Poker bekommt einen **eigenen** Tunnel mit eigenem `cloudflared`-Container im Projekt `poker-prod` (D-014). Der Jarvis-Tunnel und sein Container bleiben unberührt – nichts davon anfassen oder umkonfigurieren.
@@ -204,6 +229,7 @@ Grundschutz der öffentlichen Seite (WP-022). Vor jedem Release mit Änderungen 
 
 **Automatisch (in `npm run check`):**
 - [ ] `scripts/test/nginx-headers.test.mjs`: jede `location` bindet `docker/nginx/security-headers.conf` ein, CSP ohne `unsafe-inline`/`unsafe-eval`, keine Inline-Skripte in `index.html`, PWA-Registrierung als eigene Datei.
+- [ ] `scripts/test/og-tags.test.mjs`: Open-Graph-Tags, `sub_filter` für die Origin, CSP-Wortlaut unverändert (WP-030).
 - [ ] `scripts/test/compose-prod.test.mjs` und `scripts/test/log-rotate.test.mjs`: Log-Rotation nach D-025 (Größen-Rotation aller Container-Logs, Request-Logs in rotierten Dateien, Löschfrist < 14 Tage, cloudflared nicht auf `debug`).
 
 **Security-Header (nginx, prod):** Wortlaut in `docker/nginx/security-headers.conf`:
@@ -266,6 +292,28 @@ Für **jede** der beiden Zonen:
 - [ ] Wird ein Backup eingespielt (`prod:restore`), Konten, die seit dem Backup gelöscht wurden, erneut löschen (die Datenschutzerklärung sagt das zu). **Vor** dem Restore die IDs aus der aktuellen DB holen (das Server-Log reicht nur 14 Tage zurück; notfalls aus dem Dump in `pre-restore/`):
   `docker compose -p poker-prod exec db psql -U poker -d poker -tAc 'SELECT id FROM users WHERE deleted_at IS NOT NULL'`.
   Nach dem Restore die IDs, die im Backup noch nicht gelöscht sind, erneut anonymisieren, z. B. per `UPDATE users SET username = NULL, password_hash = NULL, is_admin = false, deleted_at = now() WHERE id = … AND deleted_at IS NULL` (der Trigger trennt dabei auch ihr Feedback) plus `DELETE FROM sessions WHERE user_id = …`. Abgelaufenes Feedback löscht der Server beim Start nach dem Restore selbst.
+
+## Link-Vorschau
+Messenger zeigen für geteilte Links (Startseite, `/join/…`, `/table/…`) Bild und Titel aus den Open-Graph-Tags (WP-030, ARCHITECTURE.md → „Frontend“ → „Link-Vorschau“). nginx setzt dabei die aufgerufene Domain in Bild- und Seiten-URL ein.
+
+**Lokal gegen ein gebautes Web-Image** (Ports 4324/4325, wie bei der Security-Checkliste):
+```sh
+docker build -f docker/web.Dockerfile -t poker-ogtest-web .
+docker run -d --name poker-ogtest -p 127.0.0.1:4324:8080 -e API_UPSTREAM=127.0.0.1:9 poker-ogtest-web
+for d in poker.arthur-reuss.de poker.deinemudda.win; do
+  curl -s -H "Host: $d" -H 'X-Forwarded-Proto: https' http://127.0.0.1:4324/join/abc | grep -E 'og:(url|image)"'
+done   # erwartet https://<domain>/ bzw. https://<domain>/og-image.png
+docker rm -f poker-ogtest && docker rmi poker-ogtest-web
+```
+
+**Nach dem Release (beide Domains):**
+```sh
+for d in poker.arthur-reuss.de poker.deinemudda.win; do
+  curl -s -A 'WhatsApp/2.23' "https://$d/join/test" | grep -E 'og:(title|url|image)"'
+  curl -sI "https://$d/og-image.png" | grep -iE '^HTTP|content-type'   # 200, image/png
+done
+```
+Dann in WhatsApp (und Signal) einen Einladungslink an sich selbst bzw. eine Testgruppe schicken: Vorschau mit Bild und „Poker – Spiel mit Freunden“. Messenger cachen Vorschauen pro URL; nach Änderungen am Bild mit einer neuen URL testen (z. B. anderer Einladungscode). Fehlt die Vorschau, prüfen, ob Cloudflare den Crawler blockt (Security → Events, „Bot Fight Mode“).
 
 ## Fehlersuche
 - `npm run prod:logs` bzw. `docker compose -p poker-prod ps` (Status inkl. Healthchecks); Requests und Fehler des Servers stehen in der Log-Datei (siehe [Logs](#logs)).

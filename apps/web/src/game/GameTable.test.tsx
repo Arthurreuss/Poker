@@ -175,7 +175,7 @@ describe('GameTable', () => {
     expect(onLeave).toHaveBeenCalled();
   });
 
-  it('Tisch-Menü: Feedback, Impressum, Datenschutz; Einladen nur bei privaten Tischen', async () => {
+  it('Tisch-Menü: Feedback, Impressum, Datenschutz; Einladen mit Tisch- bzw. Einladungslink', async () => {
     const user = userEvent.setup();
     const { state } = renderGame(1);
     const view = serverView(null, 1);
@@ -183,9 +183,11 @@ describe('GameTable', () => {
     await user.click(screen.getByRole('button', { name: 'Tisch-Menü' }));
     expect(screen.getByRole('link', { name: 'Impressum' })).toHaveAttribute('target', '_blank');
     expect(screen.getByRole('link', { name: 'Datenschutz' })).toHaveAttribute('href', '/datenschutz');
-    expect(screen.queryByRole('group', { name: 'Einladen' })).toBeNull();
+    // Öffentlich: Link direkt zum Tisch (WP-030).
+    const invite = () => within(screen.getByRole('group', { name: 'Einladen' }));
+    expect(invite().getByLabelText('Einladungslink')).toHaveValue(`${window.location.origin}/table/${String(view.id)}`);
     state({ ...view, settings: { ...view.settings, isPublic: false } });
-    expect(screen.getByRole('group', { name: 'Einladen' })).toHaveTextContent('Einladungslink');
+    expect(invite().getByLabelText('Einladungslink')).toHaveValue(`${window.location.origin}/join/${view.inviteCode}`);
     await user.click(screen.getByRole('button', { name: 'Feedback senden' }));
     expect(screen.getByRole('dialog')).toBeInTheDocument();
   });

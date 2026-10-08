@@ -8,6 +8,7 @@ Alle Grafiken, Schriften und Sounds der Web-App mit Herkunft und Lizenz (D-008: 
 | `public/icons/icon-192.png`, `icon-512.png` | aus demselben SVG gerendert (`@resvg/resvg-js`) | Projekt-eigen |
 | `public/icons/icon-maskable-512.png` | wie oben, vollflächig ohne Rundung (Maskable-Safe-Zone eingehalten) | Projekt-eigen |
 | `public/icons/apple-touch-icon.png` | wie oben, 180 × 180 px, vollflächig | Projekt-eigen |
+| `public/og-image.png` | Vorschaubild für Messenger-Links (Open Graph, 1200 × 630 px, WP-030): eigenes SVG (Tisch, Karten, Chips, Pik-Logo, Text in Systemschrift), erzeugt von `scripts/generate-og-image.mjs` | Projekt-eigen |
 
 Schriften: keine eigenen – `--font-sans` nutzt die Systemschrift des Geräts.
 

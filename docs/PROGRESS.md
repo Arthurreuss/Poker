@@ -24,13 +24,20 @@
 | M4 | [WP-017](work-packages/WP-017.md) | Tischansicht Querformat und Umschalter | done | WP-016 |
 | M4 | [WP-018](work-packages/WP-018.md) | Spielablauf im UI: Aktionen, Timer, Showdown | done | WP-011, WP-016 |
 | M4 | [WP-019](work-packages/WP-019.md) | Rangliste und Statistiken | done | WP-013, WP-014 |
-| M5 | [WP-020](work-packages/WP-020.md) | E2E-Smoke-Test | in-progress | WP-015, WP-018 |
+| M5 | [WP-020](work-packages/WP-020.md) | E2E-Smoke-Test | done | WP-015, WP-018 |
 | M5 | [WP-021](work-packages/WP-021.md) | Backups und Betrieb | done | WP-003, WP-009 |
 | M5 | [WP-022](work-packages/WP-022.md) | Rechtliches und Security-Check | done | WP-014 |
 | M5 | [WP-023](work-packages/WP-023.md) | Go-Live: main auf poker.arthur-reuss.de | todo | WP-003, WP-012, WP-020, WP-021, WP-022, WP-024 |
 | M4 | [WP-024](work-packages/WP-024.md) | Feedback-Button | done | WP-010, WP-014 |
 | M5 | [WP-025](work-packages/WP-025.md) | Zweite Domain poker.deinemudda.win | done | WP-003 |
 | M5 | [WP-026](work-packages/WP-026.md) | Nacharbeiten aus der Abnahme (Tische, Zugang, Rangliste) | done | WP-015, WP-019 |
+| M6 | [WP-027](work-packages/WP-027.md) | Gemeinsame WebSocket-Verbindung für die ganze App | todo | WP-026 |
+| M6 | [WP-028](work-packages/WP-028.md) | Admin-Rolle und Berechtigungen | in-progress | WP-026 |
+| M6 | [WP-029](work-packages/WP-029.md) | Admin-Dashboard | todo | WP-028 |
+| M6 | [WP-030](work-packages/WP-030.md) | Einladungslink teilen mit Vorschau | review | WP-026 |
+| M6 | [WP-031](work-packages/WP-031.md) | Sounds und Animationen am Tisch | in-progress | WP-026 |
+| M6 | [WP-032](work-packages/WP-032.md) | Avatare und Emoji-Reaktionen | in-progress | WP-026 |
+| M6 | [WP-033](work-packages/WP-033.md) | Admin: verdeckte Karten aufdecken | todo | WP-028 |
 <!-- END GENERATED -->
 
 ## Meilensteine
@@ -42,6 +49,7 @@
 | M3 | Server | Accounts, WebSocket-Tische, Timer, Reconnect, Persistenz |
 | M4 | Frontend | Spielbare mobile App (Hoch/Quer), Lobby, Rangliste → **Prototyp** |
 | M5 | Go-Live | E2E, Backups, Rechtliches, öffentlich unter poker.arthur-reuss.de |
+| M6 | Ausbau | Eine Verbindung mit „Du bist dran“, Admin-Rechte und -Dashboard, Teilen, Sounds/Animationen, Avatare/Emojis |
 
 ## Parallelisierung
 - Nach WP-001 können drei Stränge parallel laufen: **Infra** (002 → 003, 009 → 010), **Engine** (004 → 005/006 → 007 → 008), später **Frontend** (014 → 016 → 017).
