@@ -31,13 +31,15 @@ DATABASE_URL=postgres://poker:poker@localhost:4312/poker npm test
 Nach Änderungen an Abhängigkeiten `npm run dev:up` erneut ausführen (baut das Image neu).
 
 ## Prod lokal starten
+prod läuft aus einem eigenen Git-Worktree auf `main` (`~/code/Arthurreuss/poker-prod`), der Arbeitsordner bleibt auf `dev`.
 ```sh
-cp .env.prod.example .env.prod   # POSTGRES_PASSWORD setzen (gitignored)
+npm run prod:setup               # einmalig: Prod-Worktree anlegen, dann dort .env.prod anlegen (POSTGRES_PASSWORD setzen)
 npm run prod:up                  # Projekt poker-prod unter http://localhost:4320 (läuft parallel zu dev)
 npm run prod:smoke               # Health + WebSocket prüfen
+npm run prod:status              # Container, letztes Backup, Health
 npm run prod:down
 ```
-Release, Tunnel-Einrichtung und Fehlersuche: [docs/OPERATIONS.md](docs/OPERATIONS.md).
+Release, Tunnel-Einrichtung, Backup/Restore, Betrieb nach Neustart und Fehlersuche: [docs/OPERATIONS.md](docs/OPERATIONS.md).
 
 | Branch | Umgebung |
 |---|---|

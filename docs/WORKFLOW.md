@@ -70,16 +70,17 @@ Unabhängige WPs werden von Teil-Sessions (Subagents) parallel bearbeitet:
 - Rückfragen und Entscheidungen gehen immer an Arthur. Teil-Sessions treffen keine Entscheidungen, die D-Einträge ändern würden, sondern melden sie zurück.
 
 ## Branches und Umgebungen
-Details und Begründung: D-005 (Branches) und D-006 (Ports) in [DECISIONS.md](DECISIONS.md).
+Details und Begründung: D-005 (Branches), D-006 (Ports) und D-017 (Prod-Worktree) in [DECISIONS.md](DECISIONS.md); Bedienung: [OPERATIONS.md](OPERATIONS.md).
 
 | Branch | Zweck | Läuft wo |
 |---|---|---|
-| `dev` | Arbeitsbranch, hier wird committet | lokal: http://localhost:4310 |
-| `main` | Release, nur per Merge von dev | später öffentlich per Cloudflare Tunnel (Ports 4320/4321) |
+| `dev` | Arbeitsbranch, hier wird committet; der Arbeitsordner `~/code/Arthurreuss/poker` bleibt immer auf dev | lokal: http://localhost:4310 |
+| `main` | Release, nur per Merge von dev; ausgecheckt im eigenen Prod-Worktree `~/code/Arthurreuss/poker-prod` | http://localhost:4320, öffentlich https://poker.arthur-reuss.de (Cloudflare Tunnel) |
 
 - Gearbeitet wird auf `dev` (bei größeren WPs optional auf `wp/WP-XXX` abzweigen und zurück nach dev mergen).
-- Release: `npm run check` grün auf dev, lokal per Docker getestet, dann `git checkout main && git merge --no-ff dev`.
-- Direkte Commits auf `main` blockiert der Pre-Commit-Hook.
+- Release: `npm run check` grün auf dev, lokal per Docker getestet, dann `npm run release` – mergt `dev → main` per `--no-ff` **im Prod-Worktree** (der Arbeitsordner wird nicht umgeschaltet), pusht beide Branches und startet prod aus dem Prod-Worktree neu. Einmalige Einrichtung des Worktrees: `npm run prod:setup`.
+- Im Prod-Worktree wird nie direkt gearbeitet oder committet; er ändert sich nur durch `npm run release`.
+- Direkte Commits auf `main` blockiert der Pre-Commit-Hook (Merge-Commits per `git merge` lösen ihn nicht aus).
 - Keine fremden Ports verwenden: Auf dem Rechner laufen andere Docker-Projekte, Poker bleibt in 4310–4329.
 
 ## Commits

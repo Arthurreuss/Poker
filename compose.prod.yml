@@ -69,6 +69,39 @@ services:
       start_period: 5s
     restart: unless-stopped
 
+  # Tägliches pg_dump (WP-021) in einen Host-Ordner außerhalb von Docker-Volumes. BACKUP_DIR setzen die
+  # npm-Skripte (scripts/lib/prod-env.sh, Standard ~/poker-backups). Aufbewahrung 7 täglich / 4 wöchentlich /
+  # 6 monatlich, Unterordner last/ daily/ weekly/ monthly/. Manuell: npm run prod:backup.
+  backup:
+    image: prodrigestivill/postgres-backup-local:16
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_USER: ${POSTGRES_USER:-poker}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-poker}
+      # Plain-SQL-Dump, gzip-komprimiert (.sql.gz); Restore: npm run prod:restore.
+      POSTGRES_EXTRA_OPTS: -Z6
+      SCHEDULE: ${BACKUP_SCHEDULE:-@daily}
+      TZ: ${BACKUP_TZ:-Europe/Berlin}
+      BACKUP_KEEP_DAYS: 7
+      BACKUP_KEEP_WEEKS: 4
+      BACKUP_KEEP_MONTHS: 6
+      HEALTHCHECK_PORT: 8080
+    volumes:
+      - ${BACKUP_DIR:?BACKUP_DIR fehlt – prod über npm run prod:* starten (setzt ~/poker-backups)}:/backups
+    networks: [backend]
+    depends_on:
+      db:
+        condition: service_healthy
+    # go-cron meldet über HTTP, ob der Scheduler läuft und der letzte Lauf geklappt hat.
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -fsS -o /dev/null "http://localhost:$$HEALTHCHECK_PORT/" || exit 1']
+      interval: 60s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
   # Eigener Tunnel für Poker (D-014) – unabhängig vom Jarvis-Tunnel. Public Hostname im
   # Cloudflare-Dashboard: poker.arthur-reuss.de → http://web:8080. Nur mit Profil "tunnel".
   cloudflared:
