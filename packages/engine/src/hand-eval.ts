@@ -412,7 +412,7 @@ function describe(category: number, value: number): string {
     case FULL_HOUSE:
       return `Full House, ${plural(r(0))} über ${plural(r(1))}`;
     case FLUSH:
-      return `Flush, ${name(r(0))} hoch`;
+      return `Flush: ${kickers(0, 5).map(name).join(', ')}`;
     case STRAIGHT:
       return `Straße bis ${UP_TO[r(0)] ?? ''}`;
     case TRIPS:

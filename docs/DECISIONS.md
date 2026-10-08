@@ -121,3 +121,9 @@ Format: Kontext → Entscheidung → Konsequenzen. Status: `akzeptiert`, `offen`
 - **Kontext:** WP-006 hat Antes optional implementiert und einige Grenzfälle nach TDA ausgelegt (siehe WP-006-Log).
 - **Entscheidung:** Es gibt nur Small und Big Blind, keine Antes (weder pro Spieler noch Big-Blind-Ante). Die TDA-Auslegungen aus WP-006 gelten, insbesondere: Big Blind All-in für weniger → andere callen trotzdem den vollen Big Blind; ein unvollständiger All-in-Raise öffnet die Setzrunde für bereits agierte Spieler (auch nach Check) nicht wieder.
 - **Konsequenzen:** Tisch- und Rundenkonfiguration (WP-008, WP-015) bieten kein Ante an. Die optionale Ante-Unterstützung der Engine bleibt ungenutzt und kann später entfernt werden.
+
+## D-017: Prod läuft aus eigenem Worktree auf main
+- **Status:** akzeptiert
+- **Kontext:** Das Release-Skript hat main im Arbeitsordner ausgecheckt; dev (Bind-Mount) sah dabei kurz den main-Stand.
+- **Entscheidung:** main liegt dauerhaft in einem eigenen Git-Worktree (Standard `~/code/Arthurreuss/poker-prod`, `POKER_PROD_DIR`). Prod wird nur von dort gebaut und betrieben, `.env.prod` liegt dort. Der Arbeitsordner bleibt immer auf dev. Einrichtung einmalig per `npm run prod:setup`.
+- **Konsequenzen:** `release` mergt dev → main im Prod-Worktree, pusht und startet prod von dort. Umsetzung in WP-021.

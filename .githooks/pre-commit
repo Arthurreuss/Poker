@@ -6,4 +6,9 @@ if [ "$branch" = "main" ] && [ -z "$ALLOW_MAIN_COMMIT" ]; then
   echo "  Notfall: ALLOW_MAIN_COMMIT=1 git commit ..."
   exit 1
 fi
+# Node-Version aus .nvmrc verwenden (Hook läuft auch aus Shells mit anderer Default-Version)
+if [ -s "$HOME/.nvm/nvm.sh" ] && [ -f .nvmrc ]; then
+  . "$HOME/.nvm/nvm.sh"
+  nvm use --silent >/dev/null || exit 1
+fi
 npm run --silent check

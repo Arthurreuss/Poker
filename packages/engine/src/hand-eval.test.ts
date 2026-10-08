@@ -58,7 +58,7 @@ describe('evaluateHand: Kategorien und Grenzfälle', () => {
       cards: 'Ad 9d 6d 3d Qd',
       category: 'flush',
       best: 'Ad Qd 9d 6d 3d',
-      description: 'Flush, Ass hoch',
+      description: 'Flush: Ass, Dame, Neun, Sechs, Drei',
     },
     {
       name: 'Straße',
@@ -137,21 +137,21 @@ describe('evaluateHand: Kategorien und Grenzfälle', () => {
       cards: '4h 5h 6c 7h 8d 9h Kh',
       category: 'flush',
       best: 'Kh 9h 7h 5h 4h',
-      description: 'Flush, König hoch',
+      description: 'Flush: König, Neun, Sieben, Fünf, Vier',
     },
     {
       name: 'Flush mit 6 Karten einer Farbe → beste 5',
       cards: '2s 5s 9s Js Ks 3s Ad',
       category: 'flush',
       best: 'Ks Js 9s 5s 3s',
-      description: 'Flush, König hoch',
+      description: 'Flush: König, Bube, Neun, Fünf, Drei',
     },
     {
       name: 'Flush mit 7 Karten einer Farbe → beste 5',
       cards: '2c 4c 6c 8c Tc Qc Ac',
       category: 'flush',
       best: 'Ac Qc Tc 8c 6c',
-      description: 'Flush, Ass hoch',
+      description: 'Flush: Ass, Dame, Zehn, Acht, Sechs',
     },
     {
       name: 'Straight Flush in 7 Karten mit höherer Straße in anderer Farbe',

@@ -11,8 +11,8 @@
 | M2 | [WP-004](work-packages/WP-004.md) | Engine: Karten, Deck, Mischen | done | WP-001 |
 | M2 | [WP-005](work-packages/WP-005.md) | Engine: Handbewertung | done | WP-004 |
 | M2 | [WP-006](work-packages/WP-006.md) | Engine: Setzrunden | done | WP-004 |
-| M2 | [WP-007](work-packages/WP-007.md) | Engine: Side Pots und Showdown | in-progress | WP-005, WP-006 |
-| M2 | [WP-008](work-packages/WP-008.md) | Engine: Freezeout-Runde mit Blind-Leveln und Punkten | todo | WP-007 |
+| M2 | [WP-007](work-packages/WP-007.md) | Engine: Side Pots und Showdown | done | WP-005, WP-006 |
+| M2 | [WP-008](work-packages/WP-008.md) | Engine: Freezeout-Runde mit Blind-Leveln und Punkten | in-progress | WP-007 |
 | M3 | [WP-009](work-packages/WP-009.md) | Datenbankschema und Migrationen | done | WP-002 |
 | M3 | [WP-010](work-packages/WP-010.md) | Accounts: Registrierung, Login, Sessions | in-progress | WP-009 |
 | M3 | [WP-011](work-packages/WP-011.md) | Game-Server: WebSocket-Protokoll und Tische | todo | WP-008, WP-010 |
@@ -27,7 +27,8 @@
 | M5 | [WP-020](work-packages/WP-020.md) | E2E-Smoke-Test | todo | WP-015, WP-018 |
 | M5 | [WP-021](work-packages/WP-021.md) | Backups und Betrieb | in-progress | WP-003, WP-009 |
 | M5 | [WP-022](work-packages/WP-022.md) | Rechtliches und Security-Check | todo | WP-014 |
-| M5 | [WP-023](work-packages/WP-023.md) | Go-Live: main auf poker.arthur-reuss.de | todo | WP-003, WP-012, WP-020, WP-021, WP-022 |
+| M5 | [WP-023](work-packages/WP-023.md) | Go-Live: main auf poker.arthur-reuss.de | todo | WP-003, WP-012, WP-020, WP-021, WP-022, WP-024 |
+| M4 | [WP-024](work-packages/WP-024.md) | Feedback-Button | todo | WP-010, WP-014 |
 <!-- END GENERATED -->
 
 ## Meilensteine
@@ -45,11 +46,12 @@
 - Strang-Zusammenführung bei WP-011 (Engine + Accounts) und WP-018 (Server + UI).
 
 ## Nächster Schritt
-Parallel in Arbeit: WP-007 (Side Pots/Showdown), WP-010 (Accounts), WP-021 (Backups/Betrieb). Danach WP-008, WP-014, WP-011.
+Parallel in Arbeit: WP-008 (Freezeout-Runde), WP-010 (Accounts), WP-021 (Backups/Betrieb + Prod-Worktree D-017). Danach WP-014, WP-011.
 
 ## Log
 Neueste Einträge oben. Pro Session 1–3 Zeilen.
 
+- 2026-10-08: WP-007 done – Side Pots, Showdown wird in `applyAction` direkt aufgelöst (keine Phase `showdown` mehr), Property-Test über 1.500 Hände. Flush-Text nennt alle fünf Karten (Arthur). D-017 Prod-Worktree, WP-024 Feedback-Button neu. WP-008 gestartet.
 - 2026-10-08: WP-003 done – `poker-prod` (nginx 4320, Server, Postgres, cloudflared-Profil), Release-/Smoke-Skripte, docs/OPERATIONS.md. Merge-Fix: Prod-Image enthält Migrationen (`MIGRATIONS_DIR`); Prod-Lauf mit Smoke-Test und Migration verifiziert. D-016: keine Antes.
 - 2026-10-08: WP-009 done – eigener Migrations-Runner (D-015), Schema mit 7 Tabellen, 27 DB-Tests (`npm run test:db -w @poker/server`). WP-010 gestartet.
 - 2026-10-08: WP-006 done – Setzrunden als reine Zustandsmaschine (TDA-Auslegungen im WP-Log), Property-Test über 400 Hände. Merge-Fix: `HandResult` (Setzrunden) → `ActionResult`. Offen für Arthur: Antes pro Spieler vs. Big-Blind-Ante. WP-007 gestartet.
