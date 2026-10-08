@@ -7,11 +7,14 @@ import { AppShell } from './layout/AppShell';
 import { DATENSCHUTZ_PATH, IMPRESSUM_PATH } from './legal/LegalFooter';
 import { DatenschutzPage, ImpressumPage } from './legal/LegalPage';
 import { AdminPage } from './pages/AdminPage';
+import { HandPage } from './pages/HandPage';
 import { LeaderboardPage } from './pages/LeaderboardPage';
 import { LobbyPage } from './pages/LobbyPage';
 import { LoginPage } from './pages/LoginPage';
 import { NotFoundPage } from './pages/NotFoundPage';
+import { PlayerPage } from './pages/PlayerPage';
 import { RegisterPage } from './pages/RegisterPage';
+import { RoundPage } from './pages/RoundPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { TablePage } from './pages/TablePage';
 
@@ -71,6 +74,9 @@ export function AppRoutes() {
       >
         <Route index element={<LobbyPage />} />
         <Route path="leaderboard" element={<LeaderboardPage />} />
+        <Route path="players/:name" element={<PlayerPage />} />
+        <Route path="rounds/:id" element={<RoundPage />} />
+        <Route path="hands/:id" element={<HandPage />} />
         <Route path="settings" element={<SettingsPage />} />
         <Route
           path="admin/*"

@@ -23,7 +23,7 @@
 | M4 | [WP-016](work-packages/WP-016.md) | Tischansicht Hochformat | done | WP-002 |
 | M4 | [WP-017](work-packages/WP-017.md) | Tischansicht Querformat und Umschalter | done | WP-016 |
 | M4 | [WP-018](work-packages/WP-018.md) | Spielablauf im UI: Aktionen, Timer, Showdown | in-progress | WP-011, WP-016 |
-| M4 | [WP-019](work-packages/WP-019.md) | Rangliste und Statistiken | in-progress | WP-013, WP-014 |
+| M4 | [WP-019](work-packages/WP-019.md) | Rangliste und Statistiken | done | WP-013, WP-014 |
 | M5 | [WP-020](work-packages/WP-020.md) | E2E-Smoke-Test | todo | WP-015, WP-018 |
 | M5 | [WP-021](work-packages/WP-021.md) | Backups und Betrieb | done | WP-003, WP-009 |
 | M5 | [WP-022](work-packages/WP-022.md) | Rechtliches und Security-Check | review | WP-014 |
