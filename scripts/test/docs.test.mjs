@@ -15,7 +15,7 @@ import {
 } from '../docs.mjs';
 
 const wpText = ({ id = 'WP-001', status = 'todo', depends = '[]', body = '- [ ] a' } = {}) =>
-  `---\nid: ${id}\ntitle: Test\nstatus: ${status}\ndepends: ${depends}\n---\n\n${body}\n`;
+  `---\nid: ${id}\ntitle: Test\nmilestone: M1\nstatus: ${status}\ndepends: ${depends}\n---\n\n${body}\n`;
 const wp = (opts = {}) => parseWorkPackage(`${opts.id ?? 'WP-001'}.md`, wpText(opts));
 
 test('parseFrontmatter liest Werte und Listen', () => {
@@ -43,9 +43,15 @@ test('Abhängigkeiten müssen existieren und für in-progress done sein', () => 
   assert.match(errors[0], /nicht done/);
 });
 
-test('maximal ein WP in-progress', () => {
-  const errors = validateWorkPackages([wp({ id: 'WP-001', status: 'in-progress' }), wp({ id: 'WP-002', status: 'in-progress' })]);
-  assert.match(errors[0], /Zu viele/);
+test('maximal drei WPs in-progress', () => {
+  const active = (n) => Array.from({ length: n }, (_, i) => wp({ id: `WP-00${i + 1}`, status: 'in-progress' }));
+  assert.deepEqual(validateWorkPackages(active(3)), []);
+  assert.match(validateWorkPackages(active(4))[0], /Zu viele/);
+});
+
+test('milestone ist Pflicht', () => {
+  const text = wpText().replace('milestone: M1\n', '');
+  assert.match(parseWorkPackage('WP-001.md', text).errors[0], /milestone/);
 });
 
 test('PROGRESS-Tabelle: Sync erzeugt Stand, den der Check akzeptiert', () => {

@@ -21,7 +21,7 @@ todo → in-progress → review → done
        blocked (mit Grund im WP-Log)
 ```
 - **todo**: definiert, Akzeptanzkriterien stehen, Abhängigkeiten bekannt.
-- **in-progress**: es wird daran gearbeitet. Höchstens **ein** WP gleichzeitig.
+- **in-progress**: es wird daran gearbeitet. Höchstens **drei** WPs gleichzeitig, und nur aus verschiedenen Strängen (siehe Parallele Sessions).
 - **review**: alle Kriterien aus Sicht des Bearbeiters erfüllt, Mensch schaut drüber.
 - **done**: alle Checkboxen abgehakt, Tests grün, Doku aktuell, gemerged.
 - **blocked**: Grund + was zum Entblocken nötig ist steht im WP-Log.
@@ -53,12 +53,21 @@ Ein WP darf erst `in-progress` werden, wenn alle WPs in `depends` `done` sind.
 `npm run check` (auch als Pre-Commit-Hook) prüft automatisch:
 - WP-Frontmatter gültig, ID passt zum Dateinamen, Status erlaubt, `depends` existieren.
 - `done`-WPs haben keine offenen Checkboxen; `in-progress` nur, wenn Abhängigkeiten `done` sind.
-- Höchstens ein WP `in-progress`.
+- Höchstens drei WPs `in-progress`.
+- Jedes WP hat einen Meilenstein (`milestone: M1` …).
 - Die generierte Tabelle in PROGRESS.md entspricht den WP-Dateien.
 - Relative Links in allen Markdown-Dateien zeigen auf existierende Dateien.
 - Entscheidungs-IDs in DECISIONS.md sind eindeutig und fortlaufend.
 
 Was der Check **nicht** sieht (Inhalt veraltet, Architektur beschreibt alten Stand) wird über die Definition of Done abgefangen: Doku-Update gehört zum WP.
+
+## Parallele Sessions
+Unabhängige WPs werden von Teil-Sessions (Subagents) parallel bearbeitet:
+- **Koordinator** (Haupt-Session) setzt Status (`in-progress`, `review`, `done`), führt `docs:sync` aus, mergt und schreibt das PROGRESS-Log. Alles auf `dev`.
+- **Teil-Session** arbeitet in einem eigenen Git-Worktree auf `wp/WP-XXX` (von `dev` abgezweigt). Sie ändert nur Code, Tests, die betroffene Doku und **in ihrer WP-Datei** Checkboxen und Log, aber nie den Status und nie PROGRESS.md. So entstehen keine Merge-Konflikte in generierten Dateien.
+- Teil-Sessions committen nur grün (`npm run check`), der Koordinator mergt `wp/WP-XXX → dev` mit `--no-ff`, prüft erneut und setzt den Status.
+- Parallel nur, wenn die WPs verschiedene Bereiche anfassen (z. B. `packages/engine` vs. Docker/Infra). Gemeinsame Dateien (Root-`package.json`, Lockfile) ändert im Zweifel nur der Koordinator.
+- Rückfragen und Entscheidungen gehen immer an Arthur. Teil-Sessions treffen keine Entscheidungen, die D-Einträge ändern würden, sondern melden sie zurück.
 
 ## Branches und Umgebungen
 Details und Begründung: D-005 (Branches) und D-006 (Ports) in [DECISIONS.md](DECISIONS.md).
