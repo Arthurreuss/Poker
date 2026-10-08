@@ -73,6 +73,7 @@ function TableSeat({ placed, view, fourColor }: { placed: PlacedSeat; view: Tabl
         connected={player.connected}
         toAct={toAct}
         timeRemaining={toAct ? view.timeRemaining : undefined}
+        timeBankSeconds={toAct ? view.timeBankSeconds : undefined}
         isHero={isHero}
       />
       {marker !== null && (

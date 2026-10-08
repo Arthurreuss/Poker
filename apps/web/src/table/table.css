@@ -379,20 +379,47 @@
   color: var(--pt-text-muted);
 }
 
-/* Timer-Platzhalter: Balken am unteren Rand (Ring folgt in WP-018). */
-.pt-timer {
+/* Timer-Ring um die Plakette (WP-018): Restzeit als Strich entlang des Rands. */
+.pt-timer-ring {
   position: absolute;
-  left: 6%;
-  right: 6%;
-  bottom: calc(0.8 * var(--u));
-  height: calc(0.9 * var(--u));
-  border-radius: var(--pt-radius-pill);
-  background: rgb(255 255 255 / 0.15);
-  overflow: hidden;
+  inset: calc(-0.9 * var(--u));
+  width: calc(100% + 1.8 * var(--u));
+  height: calc(100% + 1.8 * var(--u));
+  overflow: visible;
+  pointer-events: none;
 }
-.pt-timer-fill {
-  height: 100%;
-  background: var(--pt-accent);
+.pt-timer-ring rect {
+  fill: none;
+  vector-effect: non-scaling-stroke;
+  stroke-width: max(2px, calc(0.9 * var(--u)));
+}
+.pt-timer-track {
+  /* Abgelaufener Teil: deutlich heller als der Hintergrund, damit der Rest-Bogen lesbar bleibt. */
+  stroke: rgb(255 255 255 / 0.22);
+}
+.pt-timer-arc {
+  stroke: var(--pt-accent);
+  stroke-linecap: round;
+  transition: stroke-dasharray 0.25s linear;
+}
+.pt-timer-ring--low .pt-timer-arc {
+  stroke: var(--pt-danger);
+}
+/* Zeitbank läuft: Etikett unter der Plakette */
+.pt-timebank {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  z-index: 1;
+  transform: translate(-50%, 60%);
+  padding: calc(0.2 * var(--u)) calc(2 * var(--u));
+  border-radius: var(--pt-radius-pill);
+  background: var(--pt-danger);
+  color: var(--pt-text);
+  font-size: var(--pt-fs-sm);
+  font-weight: 700;
+  line-height: 1.25;
+  white-space: nowrap;
 }
 
 /* Hole Cards über der Plakette */

@@ -1,0 +1,277 @@
+/*
+ * Spielseite (WP-018): Verbindungshinweis, Panels im Aktionsbereich, Fehlermeldung, Rundenende-Dialog
+ * und dezente Animationen. Farben nur über Design-Tokens.
+ */
+.gp-page {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+.gp-table {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+.gp-center {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  text-align: center;
+}
+.gp-muted {
+  color: var(--color-text-muted);
+}
+
+/* Knöpfe (mind. 44 px) */
+.gp-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--color-surface-2);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-2);
+  color: var(--color-text);
+  font-weight: 700;
+  font-size: var(--font-size-sm);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.gp-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.gp-btn--primary {
+  background: var(--color-call);
+  border-color: var(--color-call);
+}
+.gp-btn--muted {
+  background: var(--color-surface);
+}
+.gp-btn--small {
+  min-height: 36px;
+  padding: 0 var(--space-3);
+}
+.gp-btn--block {
+  width: 100%;
+}
+
+/* Verbindungshinweis oben über dem Tisch */
+.gp-banner {
+  position: absolute;
+  top: calc(env(safe-area-inset-top) + var(--space-2));
+  left: 50%;
+  z-index: 30;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  max-width: calc(100% - 2 * var(--space-3));
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  border: 1px solid var(--color-danger);
+  box-shadow: var(--shadow-md);
+  font-size: var(--font-size-sm);
+}
+.gp-banner[data-status='connecting'] {
+  border-color: var(--color-surface-2);
+}
+.gp-banner-text {
+  min-width: 0;
+}
+
+/* Fehlermeldung über dem Aktionsbereich */
+.gp-toast {
+  position: absolute;
+  left: 50%;
+  bottom: calc(env(safe-area-inset-bottom) + 132px);
+  z-index: 30;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: max-content;
+  max-width: calc(100% - 2 * var(--space-3));
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-danger);
+  color: var(--color-text);
+  box-shadow: var(--shadow-md);
+  font-size: var(--font-size-sm);
+}
+.gp-toast-close {
+  min-width: 36px;
+  min-height: 36px;
+  border: 0;
+  background: transparent;
+  font-size: var(--font-size-lg);
+}
+
+/* Panels im Aktionsbereich (füllen den actionBar-Bereich) */
+.gp-panel {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  box-sizing: border-box;
+  font-size: var(--font-size-sm);
+  overflow: hidden;
+}
+.gp-panel-text {
+  text-align: center;
+}
+.gp-panel-row {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-2);
+}
+.gp-panel-row > .gp-btn {
+  flex: 1;
+  max-width: 220px;
+}
+/* Ergebnis darf schrumpfen und scrollen, Knöpfe bleiben sichtbar. */
+.gp-panel > * {
+  flex-shrink: 0;
+}
+.gp-panel > .gp-result {
+  flex-shrink: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+.gp-result-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  text-align: center;
+  overflow-y: auto;
+}
+.gp-result-line {
+  font-weight: 600;
+}
+.gp-result-label {
+  color: var(--color-accent);
+}
+.pt-root--landscape .gp-panel {
+  padding: var(--space-1) var(--space-2);
+  font-size: 0.8125rem;
+}
+
+/* Menü-Einträge (Tisch-Menü aus WP-017) */
+.gp-menu-items {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-surface-2);
+}
+.gp-menu-info {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  overflow-wrap: anywhere;
+}
+
+/* Rundenende-Dialog */
+.gp-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  background: rgb(0 0 0 / 0.6);
+}
+.gp-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: min(420px, 100%);
+  max-height: 100%;
+  overflow-y: auto;
+  padding: var(--space-5);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-md);
+}
+.gp-dialog-title {
+  font-size: var(--font-size-lg);
+  text-align: center;
+}
+.gp-standings {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+}
+.gp-standings th,
+.gp-standings td {
+  padding: var(--space-2);
+  text-align: left;
+  border-bottom: 1px solid var(--color-surface-2);
+}
+.gp-standings th:last-child,
+.gp-standings td:last-child {
+  text-align: right;
+}
+.gp-standings th {
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+.gp-standings-you td {
+  color: var(--color-accent);
+  font-weight: 700;
+}
+
+/* ---------- Dezente Animationen (abschaltbar, D-008-Anmutung) ---------- */
+/* `translate`/`scale` statt `transform`, damit die Drehungen/Verschiebungen aus table.css erhalten bleiben. */
+@keyframes pg-card-in {
+  from {
+    opacity: 0;
+    translate: 0 -40%;
+  }
+}
+@keyframes pg-chip-in {
+  from {
+    opacity: 0;
+    scale: 0.6;
+  }
+}
+@keyframes pg-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+.pg-anim .pt-card {
+  animation: pg-card-in 260ms ease-out both;
+}
+.pg-anim .pt-bet,
+.pg-anim .pt-pot {
+  animation: pg-chip-in 220ms ease-out both;
+}
+.pg-anim .gp-panel,
+.pg-anim .ab-panel {
+  animation: pg-fade-in 160ms ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pg-anim *,
+  .pg-anim *::before,
+  .pg-anim *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}

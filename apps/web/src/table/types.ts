@@ -1,7 +1,7 @@
 /**
  * View-Model der Tischansicht (WP-016): darstellungsorientierter, bereits gefilterter Tischzustand.
  * Der Server schickt nur eigene Karten und den öffentlichen Zustand (D-003); das Mapping
- * Protokoll → `TableView` folgt in WP-018. Hier bewusst keine Server-/Protokolltypen.
+ * Protokoll → `TableView` steht in `src/game/adapter.ts` (WP-018). Hier bewusst keine Server-/Protokolltypen.
  * Beschreibung: ARCHITECTURE.md, Abschnitt „Frontend: Tischansicht (Layout-Schicht)“.
  */
 import type { Card } from '@poker/engine';
@@ -77,6 +77,8 @@ export interface TableView {
   readonly toActSeat: number | null;
   /** Restzeit des Spielers am Zug als Anteil 0–1 (Timer läuft auf dem Server, D-013). */
   readonly timeRemaining?: number;
+  /** Restliche Zeitbank (s) des Spielers am Zug, solange sie läuft (D-013); sonst nicht gesetzt. */
+  readonly timeBankSeconds?: number;
   /** 0, 3, 4 oder 5 Karten. */
   readonly board: readonly Card[];
   /** Main Pot zuerst, danach Side Pots. Leer = noch nichts im Pot. */
