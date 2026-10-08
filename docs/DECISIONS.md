@@ -205,7 +205,7 @@ Format: Kontext → Entscheidung → Konsequenzen. Status: `akzeptiert`, `offen`
 - **Konsequenzen:** Ein Admin hat am Tisch einen Informationsvorteil; Admin-Rechte nur an Vertrauenspersonen vergeben. Das Protokoll macht Missbrauch im Nachhinein nachvollziehbar. Die Datenschutzerklärung nennt das Protokoll als Admin-Protokoll.
 
 ## D-028: E2E-Smoke-Test gegen prod über einen lokalen Origin-Proxy (WP-020)
-- **Status:** vorgeschlagen (Rückfrage an Arthur im WP-020-Log)
+- **Status:** akzeptiert
 - **Kontext:** Der Release soll nach dem prod-Start einen Browser-Test fahren (zwei Spieler, eine Runde). Der WebSocket nimmt nur Origins aus `PUBLIC_ORIGIN` an (D-014, D-023) – ein Browser auf `http://localhost:4320` schickt `Origin: http://localhost:4320` und wird mit `403` abgelehnt. Playwright kann den `Origin` des Browser-WebSockets nicht per Header überschreiben. Optionen: (a) Test über die echte Domain, (b) Host-Mapping im Browser, (c) zusätzliche Origin `http://localhost:4320` in `.env.prod`, (d) lokaler Proxy, der nur den `Origin`-Header ersetzt.
 - **Entscheidung:** (d). `scripts/e2e-origin-proxy.mjs` (ohne Abhängigkeiten) läuft während des Tests auf `localhost:4318`, reicht HTTP und WebSocket-Upgrade unverändert an `http://127.0.0.1:4320` (nginx → Server → DB) weiter und ersetzt nur einen vorhandenen `Origin` durch die erste `PUBLIC_ORIGIN`. Der Browser nutzt `localhost`, damit Chromium die `Secure`-Cookies von prod auch über http annimmt.
   - (a) hängt an Tunnel, Internet und Cloudflare (Release ohne `TUNNEL_TOKEN` ginge nicht) – bleibt als Option per `E2E_BASE_URL=https://poker.arthur-reuss.de npm run prod:e2e`.
