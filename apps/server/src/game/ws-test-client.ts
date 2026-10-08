@@ -26,7 +26,7 @@ export function fakeAuthenticate(cookie: string | undefined): Promise<AuthUser |
   const match = /poker_session=(user|admin)-(\d+)/.exec(cookie ?? '');
   if (match?.[2] === undefined) return Promise.resolve(null);
   const id = Number(match[2]);
-  return Promise.resolve({ id, username: `user${String(id)}`, isAdmin: match[1] === 'admin' });
+  return Promise.resolve({ id, username: `user${String(id)}`, isAdmin: match[1] === 'admin', avatar: null });
 }
 
 type Outgoing = ClientMessage | Record<string, unknown>;

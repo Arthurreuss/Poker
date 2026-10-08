@@ -226,3 +226,13 @@ Format: Kontext → Entscheidung → Konsequenzen. Status: `akzeptiert`, `offen`
   - Jede Admin-Aktion (API, CLI, später WebSocket) steht in `admin_audit_log` (wer, Aktion als `bereich.aktion`, Ziel-User/-Tisch, Details als JSON, Quelle, Zeitpunkt); Nutzeraktionen atomar in derselben SQL-Anweisung. Lesende Admin-Zugriffe werden nicht protokolliert. Details enthalten keine Namen oder Passwörter, Freitext nur als Begründung (`reason`).
   - Konto-Löschung: Einträge bleiben, verlieren aber per Trigger den Bezug zum gelöschten Account (Admin wie Ziel); die Begründung wird bei gelöschtem Ziel entfernt. Speicherdauer 1 Jahr (D-025).
 - **Konsequenzen:** WP-029 (Dashboard) baut nur auf diese API; WP-033 schreibt `table.reveal_cards` mit `writeAudit`. Ein gesperrter Spieler kann sich unter neuem Namen neu registrieren (offene Registrierung, D-011) – bewusst hingenommen. Die Datenschutzerklärung nennt Sperre und Admin-Protokoll.
+
+## D-030: Avatare und Emoji-Reaktionen (WP-032)
+- **Status:** akzeptiert
+- **Kontext:** Spieler sollen ein Profilbild wählen und am Tisch reagieren können, ohne Upload, Chat oder neue Datenschutzrisiken.
+- **Entscheidung:**
+  - Feste Auswahl von 24 eigenen SVG-Avataren (`users.avatar`, Migration 0008); ohne Avatar zeigen Rangliste/Profil den Anfangsbuchstaben, der Tisch kein Abzeichen. Avatare stehen nur in `seats[]`, nicht in `PublicUser`.
+  - Acht feste Emoji-Reaktionen über `table.react`/`table.reaction`; flüchtig (nicht gespeichert, nicht geloggt, nicht in `table.state`), nur sitzende Spieler senden, Zuschauer sehen sie; Server-Limit 1 pro 2 s je User (`RATE_LIMITED`).
+  - Ein Schalter pro Gerät: Reaktionen aus = weder sehen noch senden; Standard an.
+  - Protokoll bleibt Version 1 (nur Ergänzungen; Server und Web werden zusammen ausgeliefert).
+- **Konsequenzen:** Kontolöschung setzt den Avatar zurück; die Datenschutzerklärung nennt Avatar und Reaktionen.

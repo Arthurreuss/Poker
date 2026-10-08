@@ -68,7 +68,11 @@ export function DatenschutzContent() {
           das Passwort nur als Hash (Verfahren argon2id) – das Passwort selbst kennen wir nicht und können es nicht
           auslesen,
         </li>
-        <li>Zeitpunkt der Registrierung und ob das Konto Administratorrechte hat.</li>
+        <li>Zeitpunkt der Registrierung und ob das Konto Administratorrechte hat,</li>
+        <li>
+          falls du einen gewählt hast: deinen Avatar (eines der fest vorgegebenen Bilder der App – eigene Bilder kann
+          man nicht hochladen).
+        </li>
       </ul>
       <p>
         Rechtsgrundlage ist die Bereitstellung des Spiels, das du mit der Registrierung nutzen möchtest (Art. 6 Abs. 1
@@ -91,9 +95,10 @@ export function DatenschutzContent() {
         Nr. 2 TDDDG); deshalb gibt es kein Cookie-Banner. Tracking- oder Werbe-Cookies verwenden wir nicht.
       </p>
       <p>
-        Im Speicher deines Browsers legt die App außerdem deine Einstellung zur Tisch-Ausrichtung ab (localStorage) und
-        speichert die App-Dateien zwischen, damit sie schnell startet und als App installiert werden kann (Service
-        Worker). Diese Daten verlassen dein Gerät nicht und lassen sich über die Browser-Einstellungen löschen.
+        Im Speicher deines Browsers legt die App außerdem deine Einstellungen zur Tisch-Ausrichtung und dazu, ob du
+        Emoji-Reaktionen am Tisch sehen möchtest, ab (localStorage) und speichert die App-Dateien zwischen, damit sie
+        schnell startet und als App installiert werden kann (Service Worker). Diese Daten verlassen dein Gerät nicht und
+        lassen sich über die Browser-Einstellungen löschen.
       </p>
 
       <h2>7. Spieldaten, Rangliste und Statistiken</h2>
@@ -103,10 +108,12 @@ export function DatenschutzContent() {
         automatische Aktionen bei Zeitablauf oder Verbindungsabbruch). Daraus berechnen wir Rangliste und Statistiken.
       </p>
       <p>
-        Für andere Spieler sichtbar sind dein Benutzername, dein Spiel am Tisch, deine Punkte in der Rangliste, deine
-        Statistiken und die Hand-Historie gemeinsamer Runden. Verdeckte Karten anderer Spieler werden nie angezeigt, nur
-        im Showdown aufgedeckte. Rechtsgrundlage ist Art. 6 Abs. 1 lit. b DSGVO. Während des Spiels besteht eine
-        dauerhafte Verbindung (WebSocket) zum Server; dabei wird verarbeitet, ob du verbunden bist.
+        Für andere Spieler sichtbar sind dein Benutzername, dein Avatar, dein Spiel am Tisch, deine Punkte in der
+        Rangliste, deine Statistiken und die Hand-Historie gemeinsamer Runden. Emoji-Reaktionen, die du am Tisch
+        sendest, sehen alle an diesem Tisch kurz über deinem Platz; sie werden nicht gespeichert. Verdeckte Karten
+        anderer Spieler werden nie angezeigt, nur im Showdown aufgedeckte. Rechtsgrundlage ist Art. 6 Abs. 1 lit. b
+        DSGVO. Während des Spiels besteht eine dauerhafte Verbindung (WebSocket) zum Server; dabei wird verarbeitet, ob
+        du verbunden bist.
       </p>
 
       <h2>8. Feedback</h2>
@@ -131,10 +138,10 @@ export function DatenschutzContent() {
       <h2>10. Konto löschen</h2>
       <p>
         Du kannst dein Konto jederzeit selbst löschen: Einstellungen → „Konto löschen“, Bestätigung mit deinem Passwort.
-        Dabei werden Benutzername und Passwort-Hash entfernt, alle Anmeldungen beendet und dein Feedback sowie Einträge
-        im Admin-Protokoll vom Konto getrennt (eine Begründung zu deinem Konto wird gelöscht). Deine bisherigen Runden
-        und Hände bleiben für die anderen Spieler erhalten, erscheinen aber nur noch als „Gelöschter Spieler“ und lassen
-        sich keinem Namen mehr zuordnen. Der Benutzername wird wieder frei.
+        Dabei werden Benutzername, Passwort-Hash und Avatar entfernt, alle Anmeldungen beendet und dein Feedback sowie
+        Einträge im Admin-Protokoll vom Konto getrennt (eine Begründung zu deinem Konto wird gelöscht). Deine bisherigen
+        Runden und Hände bleiben für die anderen Spieler erhalten, erscheinen aber nur noch als „Gelöschter Spieler“ und
+        lassen sich keinem Namen mehr zuordnen. Der Benutzername wird wieder frei.
       </p>
 
       <h2>11. Empfänger</h2>

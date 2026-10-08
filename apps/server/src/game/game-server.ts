@@ -8,10 +8,13 @@ import {
   CLOSE_REPLACED,
   CLOSE_UNSUPPORTED_VERSION,
   PROTOCOL_VERSION,
+  REACTION_COOLDOWN_MS,
   parseClientMessage,
+  type AvatarId,
   type ClientMessage,
   type ErrorCode,
   type PublicUser,
+  type ReactionId,
   type ServerMessage,
   type TableSettings,
   type TableSettingsInput,
@@ -100,6 +103,8 @@ export interface GameClient {
 }
 
 interface Client extends GameClient {
+  /** Avatar des Users (WP-032); wird beim Hinsetzen an den Tisch übergeben. */
+  avatar: AvatarId | null;
   conn: Connection;
   /** Admin-Flag aus der Session beim Verbinden (WP-033). */
   isAdmin: boolean;
@@ -121,6 +126,10 @@ export class GameServer {
   private readonly lobbyClients = new Set<Client>();
   /** Aktive Verbindung (nach `hello`) je User – höchstens eine (WP-012: die neuere übernimmt). */
   private readonly activeByUser = new Map<number, Client>();
+  /** Alle offenen Verbindungen (für Avatar-Änderungen, WP-032). */
+  private readonly clients = new Set<Client>();
+  /** Zeitpunkt der letzten Emoji-Reaktion je User (Rate-Limit, WP-032). */
+  private readonly lastReactionAt = new Map<number, number>();
   /** Zuletzt an die Lobby gesendeter Eintrag je Tisch (JSON), um nur Änderungen zu schicken. */
   private readonly lobbyCache = new Map<number, string>();
   /** Geplantes Aufräumen von Tischen ohne Beobachter (WP-015). */
@@ -154,10 +163,11 @@ export class GameServer {
   // Verbindungen
   // -------------------------------------------------------------------------
 
-  connect(user: PublicUser, conn: Connection, options: ConnectOptions = {}): GameClient {
+  connect(user: PublicUser & { avatar?: AvatarId | null }, conn: Connection, options: ConnectOptions = {}): GameClient {
     const client: Client = {
       id: this.nextClientId++,
       user: { id: user.id, username: user.username },
+      avatar: user.avatar ?? null,
       conn,
       isAdmin: options.isAdmin === true,
       hello: false,
@@ -165,12 +175,25 @@ export class GameServer {
       tables: new Set(),
       replaced: false,
     };
+    this.clients.add(client);
     return client;
+  }
+
+  /**
+   * Avatar eines Users geändert (WP-032, `PUT /api/me/avatar`): gilt ab sofort für seine Verbindungen und an
+   * allen Tischen, an denen er sitzt (neuer `table.state` an deren Beobachter).
+   */
+  setAvatar(userId: number, avatar: AvatarId | null): void {
+    for (const client of this.clients) if (client.user.id === userId) client.avatar = avatar;
+    for (const table of this.tables.values()) {
+      if (table.setAvatar(userId, avatar)) this.broadcastState(table);
+    }
   }
 
   /** Verbindung ist weg (oder abgelöst): Lobby/Tische abmelden. Mehrfacher Aufruf ist harmlos. */
   disconnect(gameClient: GameClient): void {
     const client = gameClient as Client;
+    this.clients.delete(client);
     if (this.activeByUser.get(client.user.id) === client) this.activeByUser.delete(client.user.id);
     this.lobbyClients.delete(client);
     for (const tableId of [...client.tables]) {
@@ -298,7 +321,7 @@ export class GameServer {
         return OK;
       }
       case 'table.sit':
-        return this.withTable(client, msg.tableId, (t) => t.sit(client.user, msg.seat));
+        return this.withTable(client, msg.tableId, (t) => t.sit(client.user, msg.seat, client.avatar));
       case 'table.stand':
         return this.withTable(client, msg.tableId, (t) => t.stand(client.user.id));
       case 'table.start':
@@ -307,6 +330,8 @@ export class GameServer {
         return this.withTable(client, msg.tableId, (t) => t.rematch(client.user.id));
       case 'table.action':
         return this.withTable(client, msg.tableId, (t) => t.act(client.user.id, msg.handNumber, msg.seq, msg.action));
+      case 'table.react':
+        return this.withTable(client, msg.tableId, (t) => this.react(client, t, msg.reaction));
       case 'admin.revealCards':
         return this.withTable(client, msg.tableId, (t) => this.revealCards(client, t, msg.seat, msg.requestId ?? null));
     }
@@ -330,6 +355,23 @@ export class GameServer {
       seat: result.seat,
       cards: result.cards,
     });
+    return OK;
+  }
+
+  /**
+   * Emoji-Reaktion (WP-032): nur Spieler mit Sitz, höchstens eine pro {@link REACTION_COOLDOWN_MS} und User
+   * (abgelehnte Versuche zählen nicht). Geht an alle Beobachter des Tisches, auch den Absender.
+   */
+  private react(client: Client, table: Table, reaction: ReactionId): TableResult {
+    const seat = table.seatOf(client.user.id);
+    if (seat === null) return err('NOT_SEATED', 'Nur Spieler am Tisch können reagieren');
+    const now = this.clock.now();
+    const last = this.lastReactionAt.get(client.user.id);
+    if (last !== undefined && now - last < REACTION_COOLDOWN_MS) {
+      return err('RATE_LIMITED', 'Nicht so schnell – höchstens eine Reaktion alle 2 Sekunden');
+    }
+    this.lastReactionAt.set(client.user.id, now);
+    this.broadcast(table.id, { type: 'table.reaction', tableId: table.id, seat, userId: client.user.id, reaction });
     return OK;
   }
 

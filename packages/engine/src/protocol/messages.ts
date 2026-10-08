@@ -17,6 +17,7 @@ import type {
   Street,
 } from '../hand-state';
 import type { RoundPhase, RoundPlayer, RoundStanding } from '../round';
+import type { AvatarId, ReactionId } from './avatars';
 
 /** Version des Protokolls; der Client nennt sie in `hello`, bei Abweichung lehnt der Server ab. */
 export const PROTOCOL_VERSION = 1;
@@ -145,6 +146,15 @@ export interface TableActionMessage extends ClientBase {
   seq: number;
   action: Action;
 }
+/**
+ * Emoji-Reaktion (WP-032): nur Spieler mit Sitz an diesem Tisch, höchstens eine pro `REACTION_COOLDOWN_MS`
+ * (sonst `RATE_LIMITED`). Der Server verteilt sie als `table.reaction` an alle Beobachter des Tisches.
+ */
+export interface TableReactMessage extends ClientBase {
+  type: 'table.react';
+  tableId: number;
+  reaction: ReactionId;
+}
 
 /**
  * Admin deckt die verdeckten Karten eines Mitspielers auf (WP-033, D-027). Nur Admins (Flag aus der Session), nur am
@@ -171,6 +181,7 @@ export type ClientMessage =
   | TableStartMessage
   | TableRematchMessage
   | TableActionMessage
+  | TableReactMessage
   | AdminRevealCardsMessage;
 
 export type ClientMessageType = ClientMessage['type'];
@@ -253,6 +264,8 @@ export interface RoundView {
 export interface SeatView {
   seat: number;
   user: PublicUser;
+  /** Gewählter Avatar (WP-032); `null` = keiner (Client zeigt den Anfangsbuchstaben). */
+  avatar: AvatarId | null;
   /** Hat der Spieler gerade mindestens eine offene Verbindung zu diesem Tisch? */
   connected: boolean;
   /**
@@ -352,6 +365,7 @@ export type ErrorCode =
   | 'ILLEGAL_ACTION'
   | 'AMOUNT_TOO_SMALL'
   | 'AMOUNT_TOO_LARGE'
+  | 'RATE_LIMITED'
   /** Aktion nur für Admins (WP-033). */
   | 'FORBIDDEN'
   | 'INTERNAL';
@@ -427,6 +441,18 @@ export interface TableClosedMessage {
 }
 
 /**
+ * Emoji-Reaktion eines Spielers (WP-032) an alle Beobachter des Tisches (auch den Absender). Flüchtig: wird
+ * nicht gespeichert und nach einem Reconnect nicht wiederholt.
+ */
+export interface TableReactionMessage {
+  type: 'table.reaction';
+  tableId: number;
+  seat: number;
+  userId: number;
+  reaction: ReactionId;
+}
+
+/**
  * Antwort auf `admin.revealCards` (WP-033, D-027): die verdeckten Karten eines Mitspielers der laufenden Hand. Geht
  * **nur** an die anfragende Verbindung des Admins, nie an andere und nie in `table.state`. Gilt nur für diese Hand
  * (`handNumber`); der Client vergisst die Karten, sobald die Hand endet.
@@ -452,6 +478,7 @@ export type ServerMessage =
   | TableLeftMessage
   | RoundFinishedMessage
   | TableClosedMessage
+  | TableReactionMessage
   | AdminCardsMessage;
 
 export type ServerMessageType = ServerMessage['type'];

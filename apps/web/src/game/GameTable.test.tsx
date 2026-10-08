@@ -203,3 +203,49 @@ describe('GameTable', () => {
     expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
 });
+
+describe('GameTable – Avatare und Reaktionen (WP-032)', () => {
+  afterEach(() => {
+    window.localStorage.clear();
+  });
+
+  it('Sitz zeigt den Avatar; Spieler senden Reaktionen, die über dem Sitz erscheinen', async () => {
+    const user = userEvent.setup();
+    const { state, last } = renderGame(2);
+    state(serverView(startGame(), 2));
+    const seat0 = screen.getAllByTestId('seat').find((s) => s.dataset['seat'] === '0');
+    expect(seat0 && within(seat0).getByTestId('avatar').dataset['avatar']).toBe('fox');
+
+    await user.click(screen.getByRole('button', { name: 'Reaktion senden' }));
+    await user.click(screen.getByRole('button', { name: 'Applaus' }));
+    expect(last().sent.at(-1)).toEqual({ type: 'table.react', tableId: 42, reaction: 'clap' });
+    expect(screen.getByRole('button', { name: 'Reaktion senden' })).toBeDisabled();
+
+    act(() => {
+      last().receive({ type: 'table.reaction', tableId: 42, seat: 1, userId: 2, reaction: 'clap' });
+    });
+    expect(screen.getByTestId('reaction')).toHaveAccessibleName('ben: Applaus');
+    expect(screen.getByTestId('reaction')).toHaveTextContent('👏');
+  });
+
+  it('Zuschauer haben keinen Reaktions-Knopf, sehen Reaktionen aber', () => {
+    const { state, last } = renderGame(3);
+    state(serverView(startGame(2), 3));
+    expect(screen.queryByRole('button', { name: 'Reaktion senden' })).toBeNull();
+    act(() => {
+      last().receive({ type: 'table.reaction', tableId: 42, seat: 0, userId: 1, reaction: 'fire' });
+    });
+    expect(screen.getByTestId('reaction')).toHaveTextContent('🔥');
+  });
+
+  it('ausgeschaltet: weder Knopf noch Reaktionen', () => {
+    window.localStorage.setItem('poker.reactions', 'off');
+    const { state, last } = renderGame(1);
+    state(serverView(startGame(), 1));
+    expect(screen.queryByRole('button', { name: 'Reaktion senden' })).toBeNull();
+    act(() => {
+      last().receive({ type: 'table.reaction', tableId: 42, seat: 1, userId: 2, reaction: 'laugh' });
+    });
+    expect(screen.queryByTestId('reaction')).toBeNull();
+  });
+});

@@ -1,0 +1,49 @@
+/* Avatar-Auswahl (WP-032): Raster aus runden Motiven, die Auswahl bekommt einen Akzentring. */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
+  gap: var(--space-2);
+}
+
+.choice {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 52px;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+/* Radio bleibt für Tastatur und Screenreader bedienbar, ist aber unsichtbar über dem Motiv. */
+.input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.avatar {
+  width: 44px;
+  height: 44px;
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+}
+
+.choice:has(.input:checked) .avatar {
+  outline-color: var(--color-accent);
+}
+
+.choice:has(.input:focus-visible) .avatar {
+  outline-color: var(--color-text);
+  outline-style: dashed;
+}
+
+.choice:has(.input:disabled) {
+  cursor: progress;
+}
+
+.error {
+  color: var(--color-danger);
+}

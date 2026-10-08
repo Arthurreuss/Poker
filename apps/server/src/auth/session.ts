@@ -1,5 +1,7 @@
 // Login-Sessions: zufälliges Token im httpOnly-Cookie, in der DB nur dessen SHA-256 (Tabelle `sessions`).
 import { createHash, randomBytes } from 'node:crypto';
+import type { AvatarId } from '@poker/engine/protocol';
+import { toAvatarId } from '../avatar/avatar';
 import type { Queryable } from '../db';
 
 export const SESSION_COOKIE = 'poker_session';
@@ -12,6 +14,8 @@ export interface AuthUser {
   id: number;
   username: string;
   isAdmin: boolean;
+  /** Gewählter Avatar (WP-032); `null` = keiner. */
+  avatar: AvatarId | null;
 }
 
 export function generateSessionToken(): string {
@@ -56,14 +60,16 @@ export async function deleteExpiredSessions(db: Queryable, userId: number): Prom
 /** User zu einem Session-Token; `null`, wenn unbekannt, abgelaufen oder der Account gelöscht oder gesperrt ist. */
 export async function getUserFromSessionToken(db: Queryable, token: string): Promise<AuthUser | null> {
   if (!isWellFormedToken(token)) return null;
-  const { rows } = await db.query<{ id: number; username: string; is_admin: boolean }>(
-    `SELECT u.id, u.username, u.is_admin
+  const { rows } = await db.query<{ id: number; username: string; is_admin: boolean; avatar: string | null }>(
+    `SELECT u.id, u.username, u.is_admin, u.avatar
        FROM sessions s JOIN users u ON u.id = s.user_id
       WHERE s.token_hash = $1 AND s.expires_at > now() AND u.deleted_at IS NULL AND u.banned_at IS NULL`,
     [hashSessionToken(token)],
   );
   const row = rows[0];
-  return row === undefined ? null : { id: row.id, username: row.username, isAdmin: row.is_admin };
+  return row === undefined
+    ? null
+    : { id: row.id, username: row.username, isAdmin: row.is_admin, avatar: toAvatarId(row.avatar) };
 }
 
 /**

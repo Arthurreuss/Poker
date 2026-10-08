@@ -2,15 +2,18 @@
 // Aktionsleiste, Showdown, Rundenende und Verbindungshinweis. Layout (Hoch/Quer) macht `TableScreen`.
 import { useCallback, useMemo } from 'react';
 import { Link } from 'react-router';
+import type { ReactionId } from '@poker/engine/protocol';
 import { useFeedbackDialog } from '../feedback';
 import { DATENSCHUTZ_PATH, IMPRESSUM_PATH } from '../legal/LegalFooter';
 import { invitePath, tablePath } from '../lobby/invite';
 import { InviteShare } from '../lobby/InviteShare';
+import { ReactionPicker } from '../reactions/ReactionPicker';
 import { useAnimationsPreference } from '../settings/animations';
+import { useReactionsPreference } from '../settings/reactions';
 import { cx } from '../styles/cx';
 import type { CardReveal } from '../table/RevealableCards';
 import { TableScreen } from '../table/TableScreen';
-import { toTableView } from './adapter';
+import { toReactionViews, toTableView } from './adapter';
 import { ConnectionBanner, ErrorToast, GameActionArea, RoundResultDialog, TableClosedNotice } from './GamePanels';
 import { useNow } from './hooks';
 import type { TableGameSnapshot, TableGameStore } from './tableGame';
@@ -26,6 +29,7 @@ export interface GameTableProps {
 
 export function GameTable({ snapshot, store, onLeave }: GameTableProps) {
   const [animations] = useAnimationsPreference();
+  const [reactionsOn] = useReactionsPreference();
   const table = snapshot.table;
   const turnClock = table === null ? null : readTurnClock(table, snapshot.receivedAtMs);
   const now = useNow(turnClock !== null, 200);
@@ -41,7 +45,15 @@ export function GameTable({ snapshot, store, onLeave }: GameTableProps) {
   const rematch = useCallback(() => {
     store.rematch();
   }, [store]);
+  const react = useCallback((reaction: ReactionId) => store.react(reaction), [store]);
   const feedback = useFeedbackDialog({ tableId: store.tableId });
+  const baseView = table === null ? null : toTableView(table, { turnClock, nowMs: now });
+  // Reaktionen nur, wenn eingeschaltet (WP-032); senden dürfen nur Spieler mit Platz.
+  const view =
+    baseView === null || !reactionsOn
+      ? baseView
+      : { ...baseView, reactions: toReactionViews(snapshot.reactions, baseView) };
+  const canReact = reactionsOn && table !== null && table.you.seat !== null;
   // Admin am Tisch (WP-033, D-027): verdeckte Karten der Mitspieler per Tipp umdrehen.
   const adminSeated = snapshot.isAdmin && table !== null && table.you.seat !== null;
   const { reveal: revealState } = snapshot;
@@ -64,7 +76,7 @@ export function GameTable({ snapshot, store, onLeave }: GameTableProps) {
       <ConnectionBanner status={snapshot.connection} hasState={table !== null} onReconnect={reconnect} />
       {snapshot.closed !== null ? (
         <TableClosedNotice reason={snapshot.closed} onBack={onLeave} />
-      ) : table === null ? (
+      ) : table === null || view === null ? (
         <div className="gp-center">
           {snapshot.notFound ? (
             <>
@@ -78,7 +90,8 @@ export function GameTable({ snapshot, store, onLeave }: GameTableProps) {
       ) : (
         <div className="gp-table">
           <TableScreen
-            view={toTableView(table, { turnClock, nowMs: now })}
+            view={view}
+            reactionPicker={canReact ? <ReactionPicker onReact={react} /> : undefined}
             actionBar={<GameActionArea snapshot={snapshot} store={store} />}
             reveal={reveal}
             menuItems={

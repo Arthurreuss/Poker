@@ -4,6 +4,7 @@ import { recordCardReveal } from './admin/reveal';
 import { adminRoutes } from './admin/routes';
 import { loadAuthConfig, type AuthConfig } from './auth/config';
 import { authRoutes } from './auth/routes';
+import { avatarRoutes } from './avatar/routes';
 import { getUserFromCookieHeader } from './auth/session';
 import type { Database } from './db';
 import { loadFeedbackConfig, type FeedbackConfig } from './feedback/config';
@@ -135,6 +136,13 @@ export function buildApp({
     // wird automatisch gecheckt/gefoldet (D-022); die laufende Runde läuft für die anderen weiter.
     onAccountDeleted: (userId) => {
       webSocket.closeUserConnections(userId, CLOSE_ACCOUNT_DELETED, 'account deleted');
+    },
+  });
+  // Avatar geändert (WP-032): Sitze an laufenden Tischen sofort aktualisieren.
+  void app.register(avatarRoutes, {
+    db,
+    onAvatarChanged: (userId, avatar) => {
+      game.setAvatar(userId, avatar);
     },
   });
   void app.register(feedbackRoutes, { db, config: feedback });

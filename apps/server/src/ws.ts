@@ -95,7 +95,7 @@ export function registerWebSocket(app: FastifyInstance, options: WebSocketOption
     ws.on('pong', () => alive.set(ws, true));
 
     const client = game.connect(
-      { id: user.id, username: user.username },
+      { id: user.id, username: user.username, avatar: user.avatar },
       {
         send(message: ServerMessage) {
           if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(message));
