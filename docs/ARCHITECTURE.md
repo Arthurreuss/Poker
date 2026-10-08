@@ -372,6 +372,27 @@ Gemeinsamer Vertrag für alle Frontend-WPs (D-008: Anmutung PokerStars, eigene W
 | `--font-sans`, `--font-size-sm`, `--font-size-md`, `--font-size-lg` | Typografie |
 | `--shadow-md` | Schatten für Plaketten/Karten |
 
+## Frontend: Tischansicht (Layout-Schicht)
+Code unter `apps/web/src/table/` (WP-016, Hochformat). Die Tischansicht ist eine **reine Funktion** eines bereits gefilterten Tischzustands (D-003, D-009): keine eigene Spiellogik, kein Netzwerk, kein Zustand außer Darstellung. Querformat (WP-017) nutzt dieselben Komponenten mit anderen Positionen.
+
+**View-Model `TableView`** (`types.ts`) – darstellungsorientiert, ohne Server-/Protokolltypen (nur der Typ `Card` kommt aus `@poker/engine`); das Mapping Protokoll → `TableView` folgt in WP-018.
+- `seats`: genau 9 Einträge (D-007), Index = Sitznummer; `{ kind: 'empty' }` oder Spieler mit `name`, `stack`, `bet` (Einsatz der laufenden Straße), `status` (`active` | `folded` | `allIn` | `eliminated`), `connected` und `holeCards` (`none` | `hidden` | `visible` = eigene | `shown` = im Showdown aufgedeckt).
+- `heroSeat` (eigener Sitz, `null` = Zuschauer), `buttonSeat`, `smallBlindSeat`, `bigBlindSeat`, `toActSeat`, optional `timeRemaining` (0–1, Timer läuft auf dem Server, D-013).
+- `board` (0–5 Karten), `pots` (Main Pot zuerst, dann Side Pots), `blinds` (`small`, `big`, optional `level`, `ante`).
+
+**Layout** (`layout.ts`, rein und unit-getestet): `placeSeats(view)` zeichnet nur belegte Sitze. Der eigene Sitz steht immer unten mittig (Position `B`), die übrigen folgen im Uhrzeigersinn in Sitzreihenfolge; ohne eigenen Sitz steht der niedrigste belegte Sitz unten. `SLOTS_BY_COUNT` wählt je Spielerzahl (1–9) Positionen aus `PORTRAIT_SLOTS`, sodass die Spieler gleichmäßig verteilt sind. Jede Position hat Plaketten-Mittelpunkt und Einsatz-Anker in % der Tischfläche sowie die Seite für Dealer-Button/Blind-Marker. Seitliche Sitze liegen in zwei Reihen (L2/R2 oben, L1/R1 unten), dazwischen bleibt ein Band für Pots und Board.
+
+**Komponenten:** `PokerTable` (Kopfzeile mit Level/Blinds, ovaler Filz, Sitze, Einsätze, Pots + Board in der Mitte, unten der freie Bereich `actionBar` für die Aktionsleiste aus WP-018), `SeatPlate` (Name, Stack bzw. „All-in“/„Ausgeschieden“, Etikett „Fold“/„Getrennt“, Symbol bei getrennter Verbindung, Leuchtrand am Zug, Restzeit-Balken als Platzhalter für den Timer-Ring aus WP-018), `Card` (Vorder-/Rückseite, Größen `seat`/`board`/`hero`, optional Vier-Farben-Deck), `BetChips`, `DealerButton` (auch SB/BB-Marker), `Board` (freie Plätze bleiben reserviert), `PotDisplay` („Pot“ bzw. „Main Pot“/„Side Pot n“). Öffentliche API: `src/table/index.ts`.
+
+**Skalierung:** `.pt-host` und `.pt-root` sind Size-Container; `.pt-root` ist höchstens `60cqh` breit (bleibt Hochformat). Alle Größen sind `cqw`-Werte, Positionen Prozent der Tischfläche – kein festes Pixel-Layout. Schriften haben eine Untergrenze von 11 px. Farben nur über die Design-Tokens oben; `table.css` mappt sie einmal auf lokale Aliase mit Fallback (`--pt-felt: var(--color-felt, …)`), damit die Ansicht auch ohne `tokens.css` funktioniert. Einzige tischlokale Farben: Karo/Kreuz im Vier-Farben-Deck.
+
+**Assets:** Karten, Kartenrücken, Chip, Dealer-Button und Symbole sind selbst gezeichnete React-SVG-Komponenten (D-008), Herkunft in `apps/web/src/table/ASSETS.md`.
+
+**Testseite und Tests:**
+- `dev/TableDevPage.tsx` mit Mock-Zuständen (`dev/mocks.ts`: 2/6/9 Spieler, Preflop, Flop mit Einsätzen, All-in mit Side Pots, Showdown, getrennt/ausgeschieden, dazu 3/4/5/7/8 Spieler) und Umschalter; URL-Parameter `state=<id>`, `four=1`, `bare=1` (ohne Umschalter). Eigene Vite-Entry `apps/web/table-dev.html` → `src/table/dev/main.tsx` (im Dev-Server unter `/table-dev.html`, für Playwright); zusätzlich im App-Router unter `/dev/table`, nur wenn `import.meta.env.DEV` (nicht im Prod-Build).
+- Komponenten-Tests (Vitest + Testing Library, `// @vitest-environment jsdom` pro Datei): `layout.test.ts`, `PokerTable.test.tsx`.
+- Screenshot-Tests (Playwright, `apps/web/e2e-visual/`, Dateien `*.pw.ts` – Vitest sammelt sie nicht ein): je Mock-Zustand auf 360×740 und 430×932 Bounding-Box-Prüfungen (keine Überlappung zwischen Sitzen, Einsätzen, Pots, Board; alles im Viewport und oberhalb der Aktionsleisten-Fläche; kein abgeschnittener Text, Schrift ≥ 11 px) plus Screenshot-Vergleich für 2/6/9 Spieler. Baselines in `e2e-visual/__screenshots__/` mit Plattform-Suffix (`-darwin`). Ausführen: `npm run test:visual -w @poker/web` (startet Vite auf Port 4316, D-006; Chromium einmalig per `npx playwright install chromium` im Workspace). Baselines aktualisieren: `npm run test:visual -w @poker/web -- --update-snapshots=all`. Nicht Teil von `npm run check` (langsam, plattformabhängig).
+
 ## Datenfluss
 prod: Browser → `https://poker.arthur-reuss.de` → Cloudflare-Tunnel → `web:8080` (nginx) → statische Dateien bzw. `/api/*`, `/ws` an `server:4321` → `db:5432` (siehe [Prod-Umgebung](#prod-umgebung)). Lokal ohne Tunnel: `http://localhost:4320`.
 

@@ -127,3 +127,9 @@ Format: Kontext → Entscheidung → Konsequenzen. Status: `akzeptiert`, `offen`
 - **Kontext:** Das Release-Skript hat main im Arbeitsordner ausgecheckt; dev (Bind-Mount) sah dabei kurz den main-Stand.
 - **Entscheidung:** main liegt dauerhaft in einem eigenen Git-Worktree (Standard `~/code/Arthurreuss/poker-prod`, `POKER_PROD_DIR`). Prod wird nur von dort gebaut und betrieben, `.env.prod` liegt dort. Der Arbeitsordner bleibt immer auf dev. Einrichtung einmalig per `npm run prod:setup`.
 - **Konsequenzen:** `release` mergt dev → main im Prod-Worktree, pusht und startet prod von dort. Umsetzung in WP-021.
+
+## D-018: Geteilte Platzierungen bei gleichzeitigem Ausscheiden
+- **Status:** akzeptiert
+- **Kontext:** Scheiden mehrere Spieler in derselben Hand aus, ist ihre Reihenfolge nicht eindeutig. Das Schema aus WP-009 erzwang `UNIQUE (round_id, placement)`.
+- **Entscheidung:** Gleichzeitig Ausgeschiedene teilen sich die Platzierung. Ihre Punkte sind der gerundete Durchschnitt der Punkte der belegten Plätze. Beispiel: Zwei Spieler teilen sich die Plätze 3 und 4 und bekommen beide die gerundeten Punkte für Platz 3,5. Die Unique-Bedingung auf die Platzierung entfällt (neue Migration, D-015).
+- **Konsequenzen:** Rangliste und Statistiken (WP-019) müssen geteilte Plätze darstellen können.

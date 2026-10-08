@@ -1,4 +1,5 @@
 // Routen der App (WP-014). Übersicht: docs/ARCHITECTURE.md, Abschnitt „Frontend“.
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Route, Routes } from 'react-router';
 import { AuthProvider } from './auth/AuthContext';
 import { RedirectIfAuthenticated, RequireAdmin, RequireAuth } from './auth/guards';
@@ -11,6 +12,11 @@ import { NotFoundPage } from './pages/NotFoundPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { TablePage } from './pages/TablePage';
+
+// Testseite der Tischansicht (WP-016) – nur im Dev-Build, landet nicht im Prod-Bundle.
+const TableDevPage = import.meta.env.DEV
+  ? lazy(() => import('./table/dev/TableDevPage').then((m) => ({ default: m.TableDevPage })))
+  : null;
 
 /** Alle Routen ohne Router – Tests betten sie in einen `MemoryRouter`. */
 export function AppRoutes() {
@@ -32,6 +38,16 @@ export function AppRoutes() {
           </RedirectIfAuthenticated>
         }
       />
+      {TableDevPage && (
+        <Route
+          path="/dev/table"
+          element={
+            <Suspense fallback={null}>
+              <TableDevPage />
+            </Suspense>
+          }
+        />
+      )}
       {/* Tisch ohne App-Shell: volle Fläche, eigenes Tisch-Menü (WP-016/017/018). */}
       <Route
         path="/table/:id"

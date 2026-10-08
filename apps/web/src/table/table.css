@@ -1,0 +1,490 @@
+/*
+ * Tischansicht Hochformat (WP-016). Farben/Abstände nur über die Design-Tokens aus
+ * ARCHITECTURE.md („Design-Tokens (Web)“, definiert in styles/tokens.css, WP-014).
+ * Die Fallbacks greifen nur, solange tokens.css nicht geladen ist. Alle Größen skalieren mit dem
+ * Container (cqw), Positionen sind Prozentwerte der Tischfläche (layout.ts).
+ */
+
+.pt-host {
+  /* Token-Aliase mit Fallback (einzige Stelle mit Farbwerten in dieser Datei). */
+  --pt-bg: var(--color-bg, #0d1117);
+  --pt-surface: var(--color-surface, #1a2029);
+  --pt-surface-2: var(--color-surface-2, #262e3a);
+  --pt-felt: var(--color-felt, #1e7046);
+  --pt-felt-edge: var(--color-felt-edge, #3b2416);
+  --pt-text: var(--color-text, #f2f4f7);
+  --pt-text-muted: var(--color-text-muted, #a3adbb);
+  --pt-accent: var(--color-accent, #e8b931);
+  --pt-fold: var(--color-fold, #c8423b);
+  --pt-danger: var(--color-danger, #e5534b);
+  --pt-card-face: var(--color-card-face, #fbfbf8);
+  --pt-card-red: var(--color-card-red, #c8202f);
+  --pt-card-black: var(--color-card-black, #16181d);
+  /* Vier-Farben-Deck: keine Tokens im Vertrag, daher tischlokal (siehe ASSETS.md / offene Frage). */
+  --pt-card-blue: #1f5fc4;
+  --pt-card-green: #18803c;
+  --pt-radius-sm: var(--radius-sm, 4px);
+  --pt-radius-md: var(--radius-md, 8px);
+  --pt-radius-pill: var(--radius-pill, 999px);
+  --pt-font: var(--font-sans, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif);
+  --pt-shadow: var(--shadow-md, 0 2px 6px rgb(0 0 0 / 0.45));
+
+  container-type: size;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  overflow: hidden;
+  background: var(--pt-bg);
+  color: var(--pt-text);
+  font-family: var(--pt-font);
+}
+
+.pt-root {
+  /* Hochformat: Breite durch die Höhe begrenzt, damit der Tisch auch auf breiten Fenstern hoch bleibt. */
+  container-type: size;
+  position: relative;
+  width: min(100cqw, 60cqh);
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) var(--pt-action-h);
+  --pt-action-h: clamp(96px, 30cqw, 168px);
+  --pt-plate-w: 27cqw;
+  --pt-plate-h: 12.5cqw;
+  --pt-hero-plate-w: 32cqw;
+  --pt-hero-plate-h: 13.5cqw;
+  --pt-card-seat-w: 9.5cqw;
+  --pt-card-board-w: 11cqw;
+  --pt-card-hero-w: 18.5cqw;
+  --pt-marker: 6.6cqw;
+  --pt-fs-sm: max(11px, 3.1cqw);
+  --pt-fs-md: max(12px, 3.6cqw);
+  --pt-fs-lg: max(13px, 4cqw);
+}
+
+.pt-text {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* ---------- Kopfzeile ---------- */
+.pt-info {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.2cqw 3cqw;
+  font-size: var(--pt-fs-sm);
+  color: var(--pt-text-muted);
+  min-width: 0;
+}
+
+/* ---------- Tischfläche ---------- */
+.pt-area {
+  position: relative;
+  min-height: 0;
+}
+
+.pt-felt {
+  position: absolute;
+  left: 9%;
+  right: 9%;
+  top: 7%;
+  bottom: 11%;
+  border-radius: 9999px;
+  border: 2.6cqw solid var(--pt-felt-edge);
+  background:
+    radial-gradient(ellipse at 50% 42%, rgb(255 255 255 / 0.13), transparent 62%),
+    radial-gradient(ellipse at 50% 50%, transparent 70%, rgb(0 0 0 / 0.28)), var(--pt-felt);
+  box-shadow:
+    0 0 0 0.6cqw rgb(0 0 0 / 0.35),
+    inset 0 0 3cqw rgb(0 0 0 / 0.45),
+    var(--pt-shadow);
+}
+
+.pt-felt::after {
+  /* dezente innere Linie auf dem Filz */
+  content: '';
+  position: absolute;
+  inset: 4cqw;
+  border-radius: inherit;
+  border: 0.35cqw solid rgb(255 255 255 / 0.08);
+}
+
+.pt-center {
+  position: absolute;
+  left: 50%;
+  top: 44%;
+  transform: translate(-50%, -50%);
+}
+
+/* ---------- Karten ---------- */
+.pt-card {
+  position: relative;
+  aspect-ratio: 5 / 7;
+  flex: none;
+  filter: drop-shadow(0 0.4cqw 0.6cqw rgb(0 0 0 / 0.45));
+}
+.pt-card--seat {
+  width: var(--pt-card-seat-w);
+}
+.pt-card--board {
+  width: var(--pt-card-board-w);
+}
+.pt-card--hero {
+  width: var(--pt-card-hero-w);
+}
+.pt-card--slot {
+  /* reservierter Platz für noch nicht gegebene Boardkarten */
+  visibility: hidden;
+}
+.pt-card-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.pt-card-face-bg {
+  fill: var(--pt-card-face);
+  stroke: rgb(0 0 0 / 0.25);
+  stroke-width: 0.6;
+}
+.pt-card-rank {
+  font-family: var(--pt-font);
+  font-weight: 800;
+}
+.pt-ink-red {
+  fill: var(--pt-card-red);
+}
+.pt-ink-black {
+  fill: var(--pt-card-black);
+}
+.pt-ink-blue {
+  fill: var(--pt-card-blue);
+}
+.pt-ink-green {
+  fill: var(--pt-card-green);
+}
+.pt-back-frame {
+  fill: var(--pt-card-face);
+  stroke: rgb(0 0 0 / 0.25);
+  stroke-width: 0.6;
+}
+.pt-back-fill {
+  fill: var(--pt-surface-2);
+}
+.pt-back-line {
+  stroke: var(--pt-accent);
+  stroke-opacity: 0.55;
+}
+.pt-back-dot {
+  fill: var(--pt-accent);
+}
+
+/* ---------- Board und Pots ---------- */
+.pt-board {
+  display: flex;
+  gap: 1.2cqw;
+}
+
+.pt-pots {
+  position: absolute;
+  bottom: calc(100% + 1.6cqw);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-wrap: wrap-reverse;
+  justify-content: center;
+  gap: 1cqw;
+  width: 70cqw;
+}
+
+.pt-pot {
+  display: inline-flex;
+  align-items: center;
+  gap: 1cqw;
+  padding: 0.5cqw 2cqw 0.5cqw 0.8cqw;
+  border-radius: var(--pt-radius-pill);
+  background: rgb(0 0 0 / 0.45);
+  font-size: var(--pt-fs-sm);
+  white-space: nowrap;
+}
+.pt-pot--main {
+  font-size: var(--pt-fs-md);
+}
+.pt-pot .pt-chip-svg {
+  width: 4.4cqw;
+  height: 4.4cqw;
+}
+.pt-pot-label {
+  color: var(--pt-text-muted);
+}
+.pt-pot-amount {
+  font-weight: 700;
+}
+
+/* ---------- Chips / Einsätze ---------- */
+.pt-chip-svg {
+  display: block;
+  flex: none;
+}
+.pt-chip-base {
+  fill: var(--pt-accent);
+}
+.pt-chip-mark {
+  fill: var(--pt-card-face);
+}
+.pt-chip-inner {
+  fill: var(--pt-card-face);
+}
+
+.pt-bet {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.8cqw;
+  padding: 0.4cqw 1.8cqw 0.4cqw 0.6cqw;
+  border-radius: var(--pt-radius-pill);
+  background: rgb(0 0 0 / 0.5);
+  font-size: var(--pt-fs-md);
+  font-weight: 700;
+  white-space: nowrap;
+}
+.pt-bet .pt-chip-svg {
+  width: 4.6cqw;
+  height: 4.6cqw;
+}
+.pt-bet--center {
+  transform: translate(-50%, -50%);
+}
+.pt-bet--start {
+  transform: translate(0, -50%);
+}
+.pt-bet--end {
+  transform: translate(-100%, -50%);
+}
+
+/* ---------- Sitze ---------- */
+.pt-seat {
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+
+.pt-plate {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 2;
+  width: var(--pt-plate-w);
+  height: var(--pt-plate-h);
+  transform: translate(-50%, -50%);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: stretch;
+  padding: 0 1.4cqw;
+  border-radius: var(--pt-radius-md);
+  background: linear-gradient(180deg, var(--pt-surface-2), var(--pt-surface));
+  border: 0.5cqw solid rgb(255 255 255 / 0.12);
+  box-shadow: var(--pt-shadow);
+  text-align: center;
+  line-height: 1.2;
+}
+.pt-plate--hero {
+  width: var(--pt-hero-plate-w);
+  height: var(--pt-hero-plate-h);
+}
+.pt-plate-name {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.8cqw;
+  min-width: 0;
+  font-size: var(--pt-fs-md);
+  color: var(--pt-text);
+}
+.pt-plate-stack {
+  min-width: 0;
+  font-size: var(--pt-fs-lg);
+  font-weight: 700;
+  color: var(--pt-accent);
+}
+.pt-plate-icon {
+  flex: none;
+  width: 3.6cqw;
+  height: 3.6cqw;
+  color: var(--pt-danger);
+}
+.pt-icon-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.pt-plate--to-act {
+  border-color: var(--pt-accent);
+  box-shadow:
+    0 0 0 0.5cqw var(--pt-accent),
+    0 0 3cqw var(--pt-accent);
+}
+.pt-plate--folded,
+.pt-plate--eliminated {
+  opacity: 0.6;
+}
+.pt-plate--eliminated .pt-plate-stack {
+  font-size: var(--pt-fs-sm);
+  font-weight: 400;
+  color: var(--pt-text-muted);
+}
+.pt-plate--allIn .pt-plate-stack {
+  color: var(--pt-danger);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.pt-plate--disconnected {
+  border-style: dashed;
+  border-color: var(--pt-text-muted);
+}
+
+/* Etikett über der Plakette („Fold“, „Getrennt“) */
+.pt-pill {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  transform: translate(-50%, -60%);
+  padding: 0.2cqw 2cqw;
+  border-radius: var(--pt-radius-pill);
+  font-size: var(--pt-fs-sm);
+  font-weight: 700;
+  line-height: 1.25;
+  white-space: nowrap;
+  background: var(--pt-surface);
+  color: var(--pt-text);
+  border: 0.3cqw solid rgb(255 255 255 / 0.18);
+}
+.pt-pill--folded {
+  background: var(--pt-fold);
+}
+.pt-pill--disconnected {
+  background: var(--pt-surface-2);
+  color: var(--pt-text-muted);
+}
+
+/* Timer-Platzhalter: Balken am unteren Rand (Ring folgt in WP-018). */
+.pt-timer {
+  position: absolute;
+  left: 6%;
+  right: 6%;
+  bottom: 0.8cqw;
+  height: 0.9cqw;
+  border-radius: var(--pt-radius-pill);
+  background: rgb(255 255 255 / 0.15);
+  overflow: hidden;
+}
+.pt-timer-fill {
+  height: 100%;
+  background: var(--pt-accent);
+}
+
+/* Hole Cards über der Plakette */
+.pt-seat-cards {
+  position: absolute;
+  left: 0;
+  z-index: 1;
+  display: flex;
+  transform: translateX(-50%);
+  /* Karten ragen von oben in die Plakette hinein. */
+  bottom: calc(var(--pt-plate-h) / 2 - 3.5cqw);
+}
+.pt-seat-cards > .pt-card + .pt-card {
+  margin-left: calc(var(--pt-card-seat-w) * -0.42);
+}
+.pt-seat-cards--hidden > .pt-card:first-child {
+  transform: rotate(-6deg);
+}
+.pt-seat-cards--hidden > .pt-card:last-child {
+  transform: rotate(6deg);
+}
+.pt-seat-cards--shown {
+  bottom: calc(var(--pt-plate-h) / 2 - 1.5cqw);
+}
+.pt-seat-cards--shown > .pt-card + .pt-card {
+  margin-left: calc(var(--pt-card-seat-w) * -0.25);
+}
+.pt-seat-cards--hero {
+  bottom: calc(var(--pt-hero-plate-h) / 2 - 3cqw);
+}
+.pt-seat-cards--hero > .pt-card + .pt-card {
+  margin-left: calc(var(--pt-card-hero-w) * -0.35);
+}
+.pt-seat-cards--hero > .pt-card:first-child {
+  transform: rotate(-4deg) translateY(0.8cqw);
+}
+.pt-seat-cards--hero > .pt-card:last-child {
+  transform: rotate(4deg) translateY(0.8cqw);
+}
+.pt-seat--folded .pt-seat-cards {
+  opacity: 0.45;
+}
+
+/* Dealer-Button / Blind-Marker neben der Plakette, zur Tischmitte hin */
+.pt-seat-marker {
+  position: absolute;
+  z-index: 3;
+  width: var(--pt-marker);
+  height: var(--pt-marker);
+  top: calc(var(--pt-plate-h) / -2 - var(--pt-marker) * 0.15);
+  filter: drop-shadow(0 0.3cqw 0.4cqw rgb(0 0 0 / 0.5));
+}
+.pt-seat-marker--right {
+  left: calc(var(--pt-plate-w) / 2 - var(--pt-marker) * 0.45);
+}
+.pt-seat-marker--left {
+  left: calc(var(--pt-plate-w) / -2 - var(--pt-marker) * 0.55);
+}
+.pt-seat--hero .pt-seat-marker {
+  top: calc(var(--pt-hero-plate-h) / -2 - var(--pt-marker) * 0.15);
+}
+.pt-seat--hero .pt-seat-marker--right {
+  left: calc(var(--pt-hero-plate-w) / 2 - var(--pt-marker) * 0.45);
+}
+.pt-marker-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.pt-marker-disc {
+  fill: var(--pt-card-face);
+}
+.pt-marker-ring {
+  stroke: var(--pt-card-black);
+  stroke-opacity: 0.35;
+}
+.pt-marker-text {
+  font-family: var(--pt-font);
+  font-weight: 800;
+  fill: var(--pt-card-black);
+}
+.pt-marker-blind .pt-marker-disc {
+  fill: var(--pt-surface-2);
+}
+.pt-marker-blind .pt-marker-ring {
+  stroke: var(--pt-text-muted);
+}
+.pt-marker-blind .pt-marker-text {
+  fill: var(--pt-text);
+}
+.pt-marker-dealer .pt-marker-ring {
+  stroke: var(--pt-accent);
+  stroke-opacity: 1;
+}
+
+/* ---------- Platz für die Aktionsleiste (WP-018) ---------- */
+.pt-action-slot {
+  position: relative;
+  min-height: 0;
+}

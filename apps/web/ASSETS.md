@@ -13,4 +13,6 @@ Schriften: keine eigenen – `--font-sans` nutzt die Systemschrift des Geräts.
 
 Werkzeug: `@resvg/resvg-js` (MPL-2.0) wird nur als Entwicklungswerkzeug zum Rendern genutzt und nicht ausgeliefert.
 
-Neue Assets (z. B. Karten und Chips aus WP-016) hier mit Herkunft und Lizenz ergänzen.
+Karten, Chips und Marker der Tischansicht (WP-016): siehe [src/table/ASSETS.md](src/table/ASSETS.md).
+
+Neue Assets hier mit Herkunft und Lizenz ergänzen.
