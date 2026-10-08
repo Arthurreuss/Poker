@@ -34,6 +34,10 @@
 | M6 | [WP-027](work-packages/WP-027.md) | Gemeinsame WebSocket-Verbindung für die ganze App | todo | WP-026 |
 | M6 | [WP-028](work-packages/WP-028.md) | Admin-Rolle und Berechtigungen | todo | WP-026 |
 | M6 | [WP-029](work-packages/WP-029.md) | Admin-Dashboard | todo | WP-028 |
+| M6 | [WP-030](work-packages/WP-030.md) | Einladungslink teilen mit Vorschau | todo | WP-026 |
+| M6 | [WP-031](work-packages/WP-031.md) | Sounds und Animationen am Tisch | todo | WP-026 |
+| M6 | [WP-032](work-packages/WP-032.md) | Avatare und Emoji-Reaktionen | todo | WP-026 |
+| M6 | [WP-033](work-packages/WP-033.md) | Admin: verdeckte Karten aufdecken | todo | WP-028 |
 <!-- END GENERATED -->
 
 ## Meilensteine
@@ -45,7 +49,7 @@
 | M3 | Server | Accounts, WebSocket-Tische, Timer, Reconnect, Persistenz |
 | M4 | Frontend | Spielbare mobile App (Hoch/Quer), Lobby, Rangliste → **Prototyp** |
 | M5 | Go-Live | E2E, Backups, Rechtliches, öffentlich unter poker.arthur-reuss.de |
-| M6 | Ausbau | Eine Verbindung mit „Du bist dran“, Admin-Rolle, Admin-Dashboard |
+| M6 | Ausbau | Eine Verbindung mit „Du bist dran“, Admin-Rechte und -Dashboard, Teilen, Sounds/Animationen, Avatare/Emojis |
 
 ## Parallelisierung
 - Nach WP-001 können drei Stränge parallel laufen: **Infra** (002 → 003, 009 → 010), **Engine** (004 → 005/006 → 007 → 008), später **Frontend** (014 → 016 → 017).
