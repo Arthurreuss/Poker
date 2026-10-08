@@ -6,6 +6,8 @@ export {
   GameServer,
   DEFAULT_HAND_PAUSE_MS,
   CLOSE_UNSUPPORTED_VERSION,
+  CLOSE_REPLACED,
+  DEFAULT_DISCONNECT_GRACE_MS,
   type Connection,
   type GameClient,
   type GameServerOptions,

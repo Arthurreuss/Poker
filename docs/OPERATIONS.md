@@ -139,7 +139,9 @@ Ein Dienst außerhalb des Macs merkt auch, wenn der Mac selbst aus ist. Zu prüf
 Ziel: Nach einem Neustart oder Stromausfall läuft poker-prod ohne Eingreifen wieder. Docker startet beim Hochfahren alle Container mit `restart: unless-stopped` neu (gilt für alle prod-Dienste, abgesichert durch `scripts/test/compose-prod.test.mjs`) – außer sie wurden vorher mit `prod:down` gestoppt. Dafür muss Docker Desktop laufen, und das setzt eine angemeldete Benutzersitzung voraus.
 
 Einmalig einzurichten (Arthur, macOS-Systemeinstellungen – nicht automatisiert):
-1. **Docker Desktop beim Anmelden starten:** Docker Desktop → Settings → General → „Start Docker Desktop when you sign in to your computer“ aktivieren.
+1. **Docker Desktop beim Anmelden starten:** Docker Desktop → Settings → General → „Start Docker Desktop when you sign in to your computer“ aktivieren. Ist die Option gesperrt („operation is not permitted when registering app service“), Docker stattdessen als klassisches Anmeldeobjekt eintragen (so auf Arthurs Mac eingerichtet):
+   `osascript -e 'tell application "System Events" to make login item at end with properties {path:"/Applications/Docker.app", hidden:true}'`
+   Prüfen: `osascript -e 'tell application "System Events" to get the path of every login item'` bzw. Systemeinstellungen → Allgemein → Anmeldeobjekte → „Beim Anmelden öffnen“.
 2. **Automatische Anmeldung:** Systemeinstellungen → Benutzer:innen & Gruppen → „Automatisch anmelden als“ → eigener Benutzer. Hinweis: Mit aktivem **FileVault** bietet macOS das nicht an – nach einem Neustart muss dann einmal das Passwort eingegeben werden, erst danach starten Docker und poker-prod. Ob FileVault aus bleiben soll, ist Arthurs Abwägung (Sicherheit vs. unbeaufsichtigter Neustart).
 3. **Energie:** Systemeinstellungen → Energie (Mac mini/iMac) bzw. Batterie → Optionen (MacBook):
    - „Automatischen Ruhezustand verhindern, wenn der Bildschirm aus ist“ (bei Netzbetrieb) **an**

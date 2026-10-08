@@ -2,7 +2,7 @@ import type { CSSProperties, ReactNode } from 'react';
 import './table.css';
 import { Card } from './Card';
 import { formatChips } from './format';
-import { placeSeats, seatMarker, type PlacedSeat } from './layout';
+import { placeSeats, seatMarker, type PlacedSeat, type TableLayout } from './layout';
 import { BetChips, Board, DealerButton, PotDisplay } from './parts';
 import { SeatPlate } from './SeatPlate';
 import type { TableView } from './types';
@@ -13,6 +13,10 @@ export interface PokerTableProps {
   readonly fourColor?: boolean;
   /** Inhalt des unteren Bereichs (Aktionsleiste, WP-018). Ohne Inhalt bleibt der Platz frei. */
   readonly actionBar?: ReactNode;
+  /** Hoch- oder Querformat (D-009). Standard: Hochformat. */
+  readonly layout?: TableLayout;
+  /** Tisch-Menü oben links (z. B. `TableMenu`, WP-017). */
+  readonly menu?: ReactNode;
 }
 
 function at(x: number, y: number): CSSProperties {
@@ -79,14 +83,16 @@ function TableSeat({ placed, view, fourColor }: { placed: PlacedSeat; view: Tabl
 }
 
 /**
- * Tischansicht im Hochformat (WP-016): reine Funktion des gefilterten Tischzustands.
- * Eigener Sitz unten mittig, übrige Sitze im Uhrzeigersinn; skaliert mit der Containergröße.
+ * Tischansicht (WP-016 Hochformat, WP-017 Querformat): reine Funktion des gefilterten
+ * Tischzustands. Eigener Sitz unten mittig, übrige Sitze im Uhrzeigersinn; skaliert mit der
+ * Containergröße. Beide Layouts haben denselben Elementbaum – ein Wechsel ändert nur Klassen und
+ * Positionen, nichts wird neu gemountet (Aktionsleiste und Menü behalten ihren Zustand).
  */
-export function PokerTable({ view, fourColor = false, actionBar }: PokerTableProps) {
-  const placed = placeSeats(view);
+export function PokerTable({ view, fourColor = false, actionBar, layout = 'portrait', menu }: PokerTableProps) {
+  const placed = placeSeats(view, layout);
   return (
     <div className="pt-host">
-      <div className="pt-root" data-testid="poker-table">
+      <div className={`pt-root pt-root--${layout}`} data-testid="poker-table" data-layout={layout}>
         <div className="pt-info" data-testid="blinds">
           <span className="pt-text">{blindsText(view)}</span>
         </div>
@@ -112,6 +118,9 @@ export function PokerTable({ view, fourColor = false, actionBar }: PokerTablePro
         </div>
         <div className="pt-action-slot" data-testid="action-slot">
           {actionBar}
+        </div>
+        <div className="pt-menu-slot" data-testid="menu-slot">
+          {menu}
         </div>
       </div>
     </div>

@@ -1,8 +1,9 @@
 /*
- * Tischansicht Hochformat (WP-016). Farben/Abstände nur über die Design-Tokens aus
- * ARCHITECTURE.md („Design-Tokens (Web)“, definiert in styles/tokens.css, WP-014).
- * Die Fallbacks greifen nur, solange tokens.css nicht geladen ist. Alle Größen skalieren mit dem
- * Container (cqw), Positionen sind Prozentwerte der Tischfläche (layout.ts).
+ * Tischansicht Hochformat (WP-016) und Querformat (WP-017). Farben/Abstände nur über die
+ * Design-Tokens aus ARCHITECTURE.md („Design-Tokens (Web)“, definiert in styles/tokens.css, WP-014).
+ * Die Fallbacks greifen nur, solange tokens.css nicht geladen ist. Alle Größen sind Vielfache der
+ * Grundeinheit --u (Hochformat 1cqw, Querformat aus der Höhe), Positionen sind Prozentwerte der
+ * Tischfläche (layout.ts).
  */
 
 .pt-host {
@@ -20,12 +21,13 @@
   --pt-card-face: var(--color-card-face, #fbfbf8);
   --pt-card-red: var(--color-card-red, #c8202f);
   --pt-card-black: var(--color-card-black, #16181d);
-  /* Vier-Farben-Deck: keine Tokens im Vertrag, daher tischlokal (siehe ASSETS.md / offene Frage). */
-  --pt-card-blue: #1f5fc4;
-  --pt-card-green: #18803c;
+  --pt-card-blue: var(--color-card-blue, #1f5fc4);
+  --pt-card-green: var(--color-card-green, #18803c);
   --pt-radius-sm: var(--radius-sm, 4px);
   --pt-radius-md: var(--radius-md, 8px);
   --pt-radius-pill: var(--radius-pill, 999px);
+  --pt-space-1: var(--space-1, 4px);
+  --pt-space-2: var(--space-2, 8px);
   --pt-font: var(--font-sans, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif);
   --pt-shadow: var(--shadow-md, 0 2px 6px rgb(0 0 0 / 0.45));
 
@@ -49,18 +51,21 @@
   height: 100%;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) var(--pt-action-h);
+  /* Grundeinheit aller Größen: Hochformat 1 % der Tischbreite, Querformat siehe unten. */
+  --u: 1cqw;
   --pt-action-h: clamp(96px, 30cqw, 168px);
-  --pt-plate-w: 27cqw;
-  --pt-plate-h: 12.5cqw;
-  --pt-hero-plate-w: 32cqw;
-  --pt-hero-plate-h: 13.5cqw;
-  --pt-card-seat-w: 9.5cqw;
-  --pt-card-board-w: 11cqw;
-  --pt-card-hero-w: 18.5cqw;
-  --pt-marker: 6.6cqw;
-  --pt-fs-sm: max(11px, 3.1cqw);
-  --pt-fs-md: max(12px, 3.6cqw);
-  --pt-fs-lg: max(13px, 4cqw);
+  --pt-plate-w: calc(27 * var(--u));
+  --pt-plate-h: calc(12.5 * var(--u));
+  --pt-hero-plate-w: calc(32 * var(--u));
+  --pt-hero-plate-h: calc(13.5 * var(--u));
+  --pt-card-seat-w: calc(9.5 * var(--u));
+  --pt-card-board-w: calc(11 * var(--u));
+  --pt-card-hero-w: calc(18.5 * var(--u));
+  --pt-marker: calc(6.6 * var(--u));
+  --pt-fs-sm: max(11px, calc(3.1 * var(--u)));
+  --pt-fs-md: max(12px, calc(3.6 * var(--u)));
+  --pt-fs-lg: max(13px, calc(4 * var(--u)));
+  --pt-menu-size: clamp(28px, calc(8 * var(--u)), 44px);
 }
 
 .pt-text {
@@ -76,7 +81,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1.2cqw 3cqw;
+  padding: calc(1.2 * var(--u)) calc(3 * var(--u));
   font-size: var(--pt-fs-sm);
   color: var(--pt-text-muted);
   min-width: 0;
@@ -95,13 +100,13 @@
   top: 7%;
   bottom: 11%;
   border-radius: 9999px;
-  border: 2.6cqw solid var(--pt-felt-edge);
+  border: calc(2.6 * var(--u)) solid var(--pt-felt-edge);
   background:
     radial-gradient(ellipse at 50% 42%, rgb(255 255 255 / 0.13), transparent 62%),
     radial-gradient(ellipse at 50% 50%, transparent 70%, rgb(0 0 0 / 0.28)), var(--pt-felt);
   box-shadow:
-    0 0 0 0.6cqw rgb(0 0 0 / 0.35),
-    inset 0 0 3cqw rgb(0 0 0 / 0.45),
+    0 0 0 calc(0.6 * var(--u)) rgb(0 0 0 / 0.35),
+    inset 0 0 calc(3 * var(--u)) rgb(0 0 0 / 0.45),
     var(--pt-shadow);
 }
 
@@ -109,9 +114,9 @@
   /* dezente innere Linie auf dem Filz */
   content: '';
   position: absolute;
-  inset: 4cqw;
+  inset: calc(4 * var(--u));
   border-radius: inherit;
-  border: 0.35cqw solid rgb(255 255 255 / 0.08);
+  border: calc(0.35 * var(--u)) solid rgb(255 255 255 / 0.08);
 }
 
 .pt-center {
@@ -126,7 +131,7 @@
   position: relative;
   aspect-ratio: 5 / 7;
   flex: none;
-  filter: drop-shadow(0 0.4cqw 0.6cqw rgb(0 0 0 / 0.45));
+  filter: drop-shadow(0 calc(0.4 * var(--u)) calc(0.6 * var(--u)) rgb(0 0 0 / 0.45));
 }
 .pt-card--seat {
   width: var(--pt-card-seat-w);
@@ -186,26 +191,26 @@
 /* ---------- Board und Pots ---------- */
 .pt-board {
   display: flex;
-  gap: 1.2cqw;
+  gap: calc(1.2 * var(--u));
 }
 
 .pt-pots {
   position: absolute;
-  bottom: calc(100% + 1.6cqw);
+  bottom: calc(100% + calc(1.6 * var(--u)));
   left: 50%;
   transform: translateX(-50%);
   display: flex;
   flex-wrap: wrap-reverse;
   justify-content: center;
-  gap: 1cqw;
-  width: 70cqw;
+  gap: calc(1 * var(--u));
+  width: calc(70 * var(--u));
 }
 
 .pt-pot {
   display: inline-flex;
   align-items: center;
-  gap: 1cqw;
-  padding: 0.5cqw 2cqw 0.5cqw 0.8cqw;
+  gap: calc(1 * var(--u));
+  padding: calc(0.5 * var(--u)) calc(2 * var(--u)) calc(0.5 * var(--u)) calc(0.8 * var(--u));
   border-radius: var(--pt-radius-pill);
   background: rgb(0 0 0 / 0.45);
   font-size: var(--pt-fs-sm);
@@ -215,8 +220,8 @@
   font-size: var(--pt-fs-md);
 }
 .pt-pot .pt-chip-svg {
-  width: 4.4cqw;
-  height: 4.4cqw;
+  width: calc(4.4 * var(--u));
+  height: calc(4.4 * var(--u));
 }
 .pt-pot-label {
   color: var(--pt-text-muted);
@@ -244,8 +249,8 @@
   position: absolute;
   display: inline-flex;
   align-items: center;
-  gap: 0.8cqw;
-  padding: 0.4cqw 1.8cqw 0.4cqw 0.6cqw;
+  gap: calc(0.8 * var(--u));
+  padding: calc(0.4 * var(--u)) calc(1.8 * var(--u)) calc(0.4 * var(--u)) calc(0.6 * var(--u));
   border-radius: var(--pt-radius-pill);
   background: rgb(0 0 0 / 0.5);
   font-size: var(--pt-fs-md);
@@ -253,8 +258,8 @@
   white-space: nowrap;
 }
 .pt-bet .pt-chip-svg {
-  width: 4.6cqw;
-  height: 4.6cqw;
+  width: calc(4.6 * var(--u));
+  height: calc(4.6 * var(--u));
 }
 .pt-bet--center {
   transform: translate(-50%, -50%);
@@ -286,10 +291,10 @@
   flex-direction: column;
   justify-content: center;
   align-items: stretch;
-  padding: 0 1.4cqw;
+  padding: 0 calc(1.4 * var(--u));
   border-radius: var(--pt-radius-md);
   background: linear-gradient(180deg, var(--pt-surface-2), var(--pt-surface));
-  border: 0.5cqw solid rgb(255 255 255 / 0.12);
+  border: calc(0.5 * var(--u)) solid rgb(255 255 255 / 0.12);
   box-shadow: var(--pt-shadow);
   text-align: center;
   line-height: 1.2;
@@ -302,7 +307,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.8cqw;
+  gap: calc(0.8 * var(--u));
   min-width: 0;
   font-size: var(--pt-fs-md);
   color: var(--pt-text);
@@ -315,8 +320,8 @@
 }
 .pt-plate-icon {
   flex: none;
-  width: 3.6cqw;
-  height: 3.6cqw;
+  width: calc(3.6 * var(--u));
+  height: calc(3.6 * var(--u));
   color: var(--pt-danger);
 }
 .pt-icon-svg {
@@ -328,8 +333,8 @@
 .pt-plate--to-act {
   border-color: var(--pt-accent);
   box-shadow:
-    0 0 0 0.5cqw var(--pt-accent),
-    0 0 3cqw var(--pt-accent);
+    0 0 0 calc(0.5 * var(--u)) var(--pt-accent),
+    0 0 calc(3 * var(--u)) var(--pt-accent);
 }
 .pt-plate--folded,
 .pt-plate--eliminated {
@@ -356,7 +361,7 @@
   left: 50%;
   top: 0;
   transform: translate(-50%, -60%);
-  padding: 0.2cqw 2cqw;
+  padding: calc(0.2 * var(--u)) calc(2 * var(--u));
   border-radius: var(--pt-radius-pill);
   font-size: var(--pt-fs-sm);
   font-weight: 700;
@@ -364,7 +369,7 @@
   white-space: nowrap;
   background: var(--pt-surface);
   color: var(--pt-text);
-  border: 0.3cqw solid rgb(255 255 255 / 0.18);
+  border: calc(0.3 * var(--u)) solid rgb(255 255 255 / 0.18);
 }
 .pt-pill--folded {
   background: var(--pt-fold);
@@ -379,8 +384,8 @@
   position: absolute;
   left: 6%;
   right: 6%;
-  bottom: 0.8cqw;
-  height: 0.9cqw;
+  bottom: calc(0.8 * var(--u));
+  height: calc(0.9 * var(--u));
   border-radius: var(--pt-radius-pill);
   background: rgb(255 255 255 / 0.15);
   overflow: hidden;
@@ -398,7 +403,7 @@
   display: flex;
   transform: translateX(-50%);
   /* Karten ragen von oben in die Plakette hinein. */
-  bottom: calc(var(--pt-plate-h) / 2 - 3.5cqw);
+  bottom: calc(var(--pt-plate-h) / 2 - calc(3.5 * var(--u)));
 }
 .pt-seat-cards > .pt-card + .pt-card {
   margin-left: calc(var(--pt-card-seat-w) * -0.42);
@@ -410,22 +415,22 @@
   transform: rotate(6deg);
 }
 .pt-seat-cards--shown {
-  bottom: calc(var(--pt-plate-h) / 2 - 1.5cqw);
+  bottom: calc(var(--pt-plate-h) / 2 - calc(1.5 * var(--u)));
 }
 .pt-seat-cards--shown > .pt-card + .pt-card {
   margin-left: calc(var(--pt-card-seat-w) * -0.25);
 }
 .pt-seat-cards--hero {
-  bottom: calc(var(--pt-hero-plate-h) / 2 - 3cqw);
+  bottom: calc(var(--pt-hero-plate-h) / 2 - calc(3 * var(--u)));
 }
 .pt-seat-cards--hero > .pt-card + .pt-card {
   margin-left: calc(var(--pt-card-hero-w) * -0.35);
 }
 .pt-seat-cards--hero > .pt-card:first-child {
-  transform: rotate(-4deg) translateY(0.8cqw);
+  transform: rotate(-4deg) translateY(calc(0.8 * var(--u)));
 }
 .pt-seat-cards--hero > .pt-card:last-child {
-  transform: rotate(4deg) translateY(0.8cqw);
+  transform: rotate(4deg) translateY(calc(0.8 * var(--u)));
 }
 .pt-seat--folded .pt-seat-cards {
   opacity: 0.45;
@@ -438,7 +443,7 @@
   width: var(--pt-marker);
   height: var(--pt-marker);
   top: calc(var(--pt-plate-h) / -2 - var(--pt-marker) * 0.15);
-  filter: drop-shadow(0 0.3cqw 0.4cqw rgb(0 0 0 / 0.5));
+  filter: drop-shadow(0 calc(0.3 * var(--u)) calc(0.4 * var(--u)) rgb(0 0 0 / 0.5));
 }
 .pt-seat-marker--right {
   left: calc(var(--pt-plate-w) / 2 - var(--pt-marker) * 0.45);
@@ -487,4 +492,119 @@
 .pt-action-slot {
   position: relative;
   min-height: 0;
+}
+
+/* ---------- Tisch-Menü (WP-017) ---------- */
+.pt-menu-slot {
+  /* liegt über der Kopfzeile in der Ecke oben links, nimmt keinen Platz im Raster */
+  position: absolute;
+  left: calc(1.5 * var(--u));
+  top: calc(1 * var(--u));
+  z-index: 10;
+}
+.pt-menu {
+  position: relative;
+}
+.pt-menu-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--pt-menu-size);
+  height: var(--pt-menu-size);
+  padding: calc(var(--pt-menu-size) * 0.18);
+  border: 1px solid rgb(255 255 255 / 0.15);
+  border-radius: var(--pt-radius-md);
+  background: var(--pt-surface);
+  color: var(--pt-text);
+  box-shadow: var(--pt-shadow);
+  cursor: pointer;
+}
+.pt-menu-button[aria-expanded='true'] {
+  border-color: var(--pt-accent);
+}
+.pt-menu-panel {
+  position: absolute;
+  left: 0;
+  top: calc(100% + var(--pt-space-1));
+  min-width: 190px;
+  box-sizing: border-box;
+  padding: var(--pt-space-2);
+  border-radius: var(--pt-radius-md);
+  border: 1px solid rgb(255 255 255 / 0.15);
+  background: var(--pt-surface);
+  color: var(--pt-text);
+  box-shadow: var(--pt-shadow);
+  font-size: max(13px, var(--pt-fs-md));
+}
+.pt-menu-group {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--pt-space-1);
+}
+.pt-menu-legend {
+  padding: 0 0 var(--pt-space-1);
+  font-size: max(12px, var(--pt-fs-sm));
+  color: var(--pt-text-muted);
+}
+.pt-menu-option {
+  display: flex;
+  align-items: center;
+  gap: var(--pt-space-2);
+  min-height: 36px;
+  padding: 0 var(--pt-space-2);
+  border-radius: var(--pt-radius-sm);
+  background: var(--pt-surface-2);
+  cursor: pointer;
+}
+.pt-menu-option:has(input:checked) {
+  outline: 1px solid var(--pt-accent);
+}
+.pt-menu-option input {
+  margin: 0;
+  accent-color: var(--pt-accent);
+}
+
+/* ---------- Querformat (WP-017) ---------- */
+/*
+ * Gleicher Elementbaum wie im Hochformat, nur andere Maße: Grundeinheit aus der Höhe (der Tisch ist
+ * breit und flach), die Aktionsleiste liegt als Fläche unten rechts über der Tischecke statt als
+ * eigene Zeile. Sitzpositionen: LANDSCAPE_SLOTS in layout.ts.
+ */
+.pt-root--landscape {
+  /* Höchstens ca. 1,8:1; ist der Viewport hochkant (Quer erzwungen), wird der Tisch letterboxed. */
+  width: min(100cqw, 240cqh);
+  height: min(100%, 56cqw);
+  align-self: center;
+  grid-template-rows: auto minmax(0, 1fr);
+  --u: min(0.95cqh, 0.48cqw);
+  --pt-card-hero-w: calc(14 * var(--u));
+  --pt-action-w: clamp(200px, calc(58 * var(--u)), 340px);
+  --pt-action-h: clamp(72px, calc(22 * var(--u)), 120px);
+}
+.pt-root--landscape .pt-info {
+  padding: calc(0.8 * var(--u)) calc(12 * var(--u));
+}
+.pt-root--landscape .pt-felt {
+  left: 6%;
+  right: 6%;
+  top: 9%;
+  bottom: 10%;
+  border-width: calc(2.2 * var(--u));
+}
+.pt-root--landscape .pt-center {
+  top: 53%;
+}
+.pt-root--landscape .pt-pots {
+  /* Side Pots möglichst in einer Zeile, damit die Einsätze der oberen Sitze Platz haben */
+  width: calc(120 * var(--u));
+}
+.pt-root--landscape .pt-action-slot {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: var(--pt-action-w);
+  height: var(--pt-action-h);
 }

@@ -63,3 +63,14 @@ export function DisconnectedSvg() {
     </svg>
   );
 }
+
+/** Menü-Symbol des Tisch-Menüs: drei abgerundete Balken (WP-017). */
+export function MenuSvg() {
+  return (
+    <svg viewBox="0 0 24 24" className="pt-icon-svg" aria-hidden="true" focusable="false">
+      {[6, 12, 18].map((y) => (
+        <rect key={y} x="4" y={y - 1.2} width="16" height="2.4" rx="1.2" fill="currentColor" />
+      ))}
+    </svg>
+  );
+}

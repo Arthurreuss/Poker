@@ -133,3 +133,21 @@ Format: Kontext → Entscheidung → Konsequenzen. Status: `akzeptiert`, `offen`
 - **Kontext:** Scheiden mehrere Spieler in derselben Hand aus, ist ihre Reihenfolge nicht eindeutig. Das Schema aus WP-009 erzwang `UNIQUE (round_id, placement)`.
 - **Entscheidung:** Gleichzeitig Ausgeschiedene teilen sich die Platzierung. Ihre Punkte sind der gerundete Durchschnitt der Punkte der belegten Plätze. Beispiel: Zwei Spieler teilen sich die Plätze 3 und 4 und bekommen beide die gerundeten Punkte für Platz 3,5. Die Unique-Bedingung auf die Platzierung entfällt (neue Migration, D-015).
 - **Konsequenzen:** Rangliste und Statistiken (WP-019) müssen geteilte Plätze darstellen können.
+
+## D-019: Server-Neustart bricht laufende Runden ohne Punkte ab
+- **Status:** akzeptiert
+- **Kontext:** Tische und Runden leben im Speicher des Servers (WP-011). Nach einem Neustart oder Absturz lässt sich eine laufende Runde nicht fortsetzen.
+- **Entscheidung:** Beim Start werden laufende Runden `aborted` und offene oder laufende Tische `closed`. Für abgebrochene Runden gibt es keine Punkte. Bereits gespeicherte Hände bleiben in der Historie.
+- **Konsequenzen:** Releases während laufender Runden kosten diese Runde. Releases deshalb möglichst dann machen, wenn niemand spielt.
+
+## D-020: Tisch-Defaults, Grenzen und „Nochmal“
+- **Status:** akzeptiert
+- **Kontext:** D-012/D-013 legen Rundenmodell und Zeiten fest, aber keinen Startstack und keine Grenzen für die Tisch-Einstellungen. Nach WP-011 wird ein Tisch nach einer Runde geschlossen.
+- **Entscheidung:** Startstack-Default 1.500 Chips. Zugzeit einstellbar 10–120 s, Zeitbank 0–300 s (Defaults 20 s/60 s nach D-013). Nach Rundenende kann der Ersteller mit „Nochmal“ eine neue Runde am selben Tisch mit derselben Besetzung starten.
+- **Konsequenzen:** Umsetzung in WP-015 (Formular, Server-Validierung, „Nochmal“).
+
+## D-021: Erzwungenes Layout wird eingepasst, nicht gedreht
+- **Status:** akzeptiert
+- **Kontext:** WP-017: Wählt man „Quer“, während das Gerät hochkant steht (oder umgekehrt), passt nicht alles in den Bildschirm.
+- **Entscheidung:** Der Tisch wird im gewählten Layout verkleinert eingepasst und nicht per CSS um 90° gedreht. Standard ist „Auto“ (D-009).
+- **Konsequenzen:** Keine Sonderfälle für Drehrichtung oder Desktop. Bei erzwungenem Layout gegen die Gerätelage wird es eng.
