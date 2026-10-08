@@ -63,3 +63,38 @@ export type {
 export { calculatePots } from './showdown';
 export type { PotContributor } from './showdown';
 export type { Pot, PotAward, PotBreakdown, ShowdownHand, ShowdownReveal, ShowdownSummary } from './hand-state';
+
+// --- Runde (WP-008) ---
+export {
+  DEFAULT_TIME_BANK_SECONDS,
+  DEFAULT_TURN_TIME_SECONDS,
+  applyRoundAction,
+  roundBlindLevel,
+  startNextHand,
+  startRound,
+  validateRoundConfig,
+} from './round';
+export type {
+  RoundBlindLevel,
+  RoundConfig,
+  RoundError,
+  RoundErrorCode,
+  RoundPhase,
+  RoundPlayer,
+  RoundSeat,
+  RoundStanding,
+  RoundState,
+  RoundUpdate,
+  StartRoundOptions,
+} from './round';
+export {
+  DEFAULT_BLIND_LEVELS,
+  DEFAULT_BLIND_STRUCTURE,
+  DEFAULT_LEVEL_MINUTES,
+  blindLevelIndexAt,
+  blindLevels,
+} from './blind-structure';
+export type { BlindLevel, BlindStructure } from './blind-structure';
+export { firstHandPositions, nextHandPositions } from './button';
+export type { HandPositions } from './button';
+export { WINNER_BONUS_POINTS, placementPoints } from './points';
