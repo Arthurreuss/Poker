@@ -8,9 +8,9 @@
 | M1 | [WP-001](work-packages/WP-001.md) | Monorepo-Grundgerüst und Tooling | done | WP-000 |
 | M1 | [WP-002](work-packages/WP-002.md) | Docker-Entwicklungsumgebung (dev, localhost) | in-progress | WP-001 |
 | M1 | [WP-003](work-packages/WP-003.md) | Prod-Setup und Cloudflare-Tunnel vorbereiten | todo | WP-002 |
-| M2 | [WP-004](work-packages/WP-004.md) | Engine: Karten, Deck, Mischen | in-progress | WP-001 |
-| M2 | [WP-005](work-packages/WP-005.md) | Engine: Handbewertung | todo | WP-004 |
-| M2 | [WP-006](work-packages/WP-006.md) | Engine: Setzrunden | todo | WP-004 |
+| M2 | [WP-004](work-packages/WP-004.md) | Engine: Karten, Deck, Mischen | done | WP-001 |
+| M2 | [WP-005](work-packages/WP-005.md) | Engine: Handbewertung | in-progress | WP-004 |
+| M2 | [WP-006](work-packages/WP-006.md) | Engine: Setzrunden | in-progress | WP-004 |
 | M2 | [WP-007](work-packages/WP-007.md) | Engine: Side Pots und Showdown | todo | WP-005, WP-006 |
 | M2 | [WP-008](work-packages/WP-008.md) | Engine: Freezeout-Runde mit Blind-Leveln und Punkten | todo | WP-007 |
 | M3 | [WP-009](work-packages/WP-009.md) | Datenbankschema und Migrationen | todo | WP-002 |
@@ -45,11 +45,12 @@
 - Strang-Zusammenführung bei WP-011 (Engine + Accounts) und WP-018 (Server + UI).
 
 ## Nächster Schritt
-WP-002 (Docker dev) und WP-004 (Karten/Deck) laufen parallel; danach WP-003, WP-005/006, WP-009.
+Parallel in Arbeit: WP-002 (Docker dev), WP-005 (Handbewertung), WP-006 (Setzrunden). Danach WP-003, WP-007, WP-009.
 
 ## Log
 Neueste Einträge oben. Pro Session 1–3 Zeilen.
 
+- 2026-10-08: WP-004 done (Karten als Strings `"As"`, Fisher-Yates, seeded RNG für Tests, `@poker/engine/crypto-rng` für Prod). WP-005 und WP-006 gestartet.
 - 2026-10-08: WP-001 done (Monorepo, TS, ESLint, Prettier, Vitest; `format:check` in `check` aufgenommen). WP-002 und WP-004 gestartet.
 - 2026-10-08: Alle Entscheidungen D-004–D-014 getroffen, 23 Arbeitspakete (WP-001–WP-023) angelegt.
 - 2026-10-08: WP-000 – Arbeitsweise, Doku-System und Drift-Check aufgesetzt.
