@@ -346,9 +346,20 @@ export class Table {
     });
   }
 
-  /** Runde ohne Punkte abbrechen (DB: `aborted`, Tisch `closed`), Tisch schließen. Gespeicherte Hände bleiben. */
+  /** Verwaiste Runde (D-022) abbrechen und melden. */
   private abortOrphaned(): void {
     if (this.status !== 'running' || this.closed || this.hasConnectedPlayer()) return;
+    this.terminate();
+    this.deps.onAborted(this);
+  }
+
+  /**
+   * Tisch sofort beenden (verwaiste Runde oder Admin, WP-028): Timer stoppen, eine laufende Runde ohne Punkte
+   * abbrechen (DB: `aborted`, wie D-019) und den Tisch in der DB schließen. Gespeicherte Hände bleiben; eine
+   * beendete Runde bleibt `finished` (`abortRound` ändert nur laufende Runden). Benachrichtigen muss der Aufrufer.
+   */
+  terminate(): void {
+    if (this.closed) return;
     const roundId = this.roundId;
     this.close();
     if (roundId !== null) {
@@ -356,7 +367,6 @@ export class Table {
     } else {
       this.enqueue('closeTable', () => this.deps.repository.closeTable(this.id));
     }
-    this.deps.onAborted(this);
   }
 
   // -------------------------------------------------------------------------

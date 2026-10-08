@@ -2,7 +2,8 @@
 // impressum.tsx (PROVIDER), Domains aus DOMAINS (D-023). Beschreibt die tatsächliche Datenverarbeitung der App.
 // Ändert sich die Datenverarbeitung (neue Daten, neue Dienste, andere Speicherdauer), muss dieser Text im selben
 // Commit angepasst werden – inkl. „Stand“. Keine Platzhalter (Test in legal.test.tsx).
-// Technische Umsetzung der Fristen: Logs → docker/logrotate/rotate.sh, Feedback → apps/server/src/feedback/retention.ts.
+// Technische Umsetzung der Fristen: Logs → docker/logrotate/rotate.sh, Feedback → apps/server/src/feedback/retention.ts,
+// Admin-Protokoll → apps/server/src/admin/audit.ts.
 import { Link } from 'react-router';
 import { IMPRESSUM_PATH } from '../LegalFooter';
 import { DOMAINS, PROVIDER } from './impressum';
@@ -73,6 +74,14 @@ export function DatenschutzContent() {
         Rechtsgrundlage ist die Bereitstellung des Spiels, das du mit der Registrierung nutzen möchtest (Art. 6 Abs. 1
         lit. b DSGVO). Die Daten bleiben gespeichert, bis du dein Konto löschst (Abschnitt 10).
       </p>
+      <p>
+        Bei Verstößen gegen die Spielregeln kann der Administrator ein Konto sperren; gespeichert wird dann der
+        Zeitpunkt der Sperre. Alle Aktionen der Administratoren (z. B. Sperren, Passwort zurücksetzen, Tisch schließen,
+        Abmelden erzwingen) werden in einem Admin-Protokoll festgehalten: welcher Administrator, welche Aktion, welches
+        Konto bzw. welcher Tisch, wann und gegebenenfalls eine Begründung. Das dient der Nachvollziehbarkeit und der
+        Abwehr von Missbrauch (Art. 6 Abs. 1 lit. f DSGVO). Einträge im Admin-Protokoll werden 1 Jahr nach dem Anlegen
+        automatisch gelöscht.
+      </p>
 
       <h2>6. Cookies und lokale Speicherung</h2>
       <p>
@@ -122,9 +131,10 @@ export function DatenschutzContent() {
       <h2>10. Konto löschen</h2>
       <p>
         Du kannst dein Konto jederzeit selbst löschen: Einstellungen → „Konto löschen“, Bestätigung mit deinem Passwort.
-        Dabei werden Benutzername und Passwort-Hash entfernt, alle Anmeldungen beendet und dein Feedback vom Konto
-        getrennt. Deine bisherigen Runden und Hände bleiben für die anderen Spieler erhalten, erscheinen aber nur noch
-        als „Gelöschter Spieler“ und lassen sich keinem Namen mehr zuordnen. Der Benutzername wird wieder frei.
+        Dabei werden Benutzername und Passwort-Hash entfernt, alle Anmeldungen beendet und dein Feedback sowie Einträge
+        im Admin-Protokoll vom Konto getrennt (eine Begründung zu deinem Konto wird gelöscht). Deine bisherigen Runden
+        und Hände bleiben für die anderen Spieler erhalten, erscheinen aber nur noch als „Gelöschter Spieler“ und lassen
+        sich keinem Namen mehr zuordnen. Der Benutzername wird wieder frei.
       </p>
 
       <h2>11. Empfänger</h2>

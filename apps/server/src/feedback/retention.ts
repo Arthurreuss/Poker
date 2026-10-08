@@ -2,6 +2,7 @@
 // spätestens 1 Jahr nach dem Absenden. Läuft im Server beim Start und danach täglich (main.ts).
 import type { FastifyBaseLogger } from 'fastify';
 import type { Queryable } from '../db';
+import { startPeriodicJob, type PeriodicJob } from '../periodic-job';
 
 const DAY_MS = 86_400_000;
 
@@ -45,11 +46,8 @@ export interface FeedbackPurgeJobOptions {
   retention?: FeedbackRetention;
 }
 
-export interface FeedbackPurgeJob {
-  /** Erster Lauf (sofort beim Start) – Tests warten darauf. */
-  readonly firstRun: Promise<void>;
-  stop(): void;
-}
+/** Siehe `PeriodicJob` (erster Lauf, `stop`). */
+export type FeedbackPurgeJob = PeriodicJob;
 
 /**
  * Startet den Löschjob: sofort ein Lauf, danach alle `intervalMs`. Fehler (z. B. DB kurz weg) werden geloggt, der
@@ -62,28 +60,14 @@ export function startFeedbackPurgeJob({
   intervalMs = FEEDBACK_PURGE_INTERVAL_MS,
   retention = FEEDBACK_RETENTION,
 }: FeedbackPurgeJobOptions): FeedbackPurgeJob {
-  let running: Promise<void> | null = null;
-  const run = (): Promise<void> => {
-    // Läuft ein Durchgang noch (sehr kurzes Intervall in Tests), wird kein zweiter gestartet.
-    running ??= purgeExpiredFeedback(db, now(), retention)
-      .then((deleted) => {
-        if (deleted > 0) log.info({ deleted }, 'Feedback: abgelaufene Einträge gelöscht (D-025)');
-      })
-      .catch((err: unknown) => {
-        log.error({ err }, 'Feedback: Löschen abgelaufener Einträge fehlgeschlagen');
-      })
-      .finally(() => {
-        running = null;
-      });
-    return running;
-  };
-  const firstRun = run();
-  const timer = setInterval(() => void run(), intervalMs);
-  timer.unref();
-  return {
-    firstRun,
-    stop: () => {
-      clearInterval(timer);
+  return startPeriodicJob({
+    intervalMs,
+    run: async () => {
+      const deleted = await purgeExpiredFeedback(db, now(), retention);
+      if (deleted > 0) log.info({ deleted }, 'Feedback: abgelaufene Einträge gelöscht (D-025)');
     },
-  };
+    onError: (err) => {
+      log.error({ err }, 'Feedback: Löschen abgelaufener Einträge fehlgeschlagen');
+    },
+  });
 }

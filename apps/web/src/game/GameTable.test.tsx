@@ -175,6 +175,17 @@ describe('GameTable', () => {
     expect(onLeave).toHaveBeenCalled();
   });
 
+  it('table.closed durch Admin (WP-028): eigener Hinweis', () => {
+    const { state, last } = renderGame(1);
+    state(serverView(startGame(), 1));
+    act(() => {
+      last().receive({ type: 'table.closed', tableId: 42, reason: 'admin' });
+    });
+    expect(screen.getByTestId('table-closed')).toHaveTextContent(
+      'Ein Admin hat den Tisch geschlossen – die Runde zählt nicht.',
+    );
+  });
+
   it('Tisch-Menü: Feedback, Impressum, Datenschutz; Einladen mit Tisch- bzw. Einladungslink', async () => {
     const user = userEvent.setup();
     const { state } = renderGame(1);

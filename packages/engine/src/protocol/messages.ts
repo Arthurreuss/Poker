@@ -35,6 +35,11 @@ export const MAX_REQUEST_ID_LENGTH = 64;
 export const CLOSE_UNSUPPORTED_VERSION = 4000;
 /** Eine neuere Verbindung desselben Users hat `hello` gesendet und übernimmt (anderer Tab/Gerät). */
 export const CLOSE_REPLACED = 4001;
+/**
+ * Ein Admin hat das Konto gesperrt (WP-028). Ein Reconnect scheitert mit 401 (Sessions sind gelöscht); der Client
+ * sollte nicht erneut verbinden, sondern zur Anmeldung führen (Login meldet dann die Sperre).
+ */
+export const CLOSE_ACCOUNT_BANNED = 4002;
 
 // ---------------------------------------------------------------------------
 // Tisch-Einstellungen
@@ -391,13 +396,14 @@ export interface RoundFinishedMessage {
 
 /**
  * Der Tisch existiert nicht mehr (WP-015): `abandoned` = verwaiste Runde, 10 Minuten lang kein Spieler
- * verbunden → Runde ohne Punkte abgebrochen (D-022). Geht an alle, die den Tisch noch beobachten; danach
+ * verbunden → Runde ohne Punkte abgebrochen (D-022); `admin` = ein Admin hat den Tisch geschlossen, eine laufende
+ * Runde wurde ohne Punkte abgebrochen (WP-028). Geht an alle, die den Tisch noch beobachten; danach
  * liefert `table.join` für diesen Tisch `TABLE_NOT_FOUND`.
  */
 export interface TableClosedMessage {
   type: 'table.closed';
   tableId: number;
-  reason: 'abandoned';
+  reason: 'abandoned' | 'admin';
 }
 
 export type ServerMessage =

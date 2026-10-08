@@ -7,6 +7,7 @@ import type {
   PublicUser,
   ServerMessage,
   StandingView,
+  TableClosedMessage,
   TableView as ServerTableView,
 } from '@poker/engine/protocol';
 import { preActionValid, resolvePreAction, type PreAction, type PreActionKind } from '../table/actions/logic';
@@ -32,8 +33,8 @@ export interface TableGameSnapshot {
   readonly error: GameError | null;
   /** Server kennt den Tisch nicht (mehr) bzw. er ist privat. */
   readonly notFound: boolean;
-  /** Server hat den Tisch geschlossen (`table.closed`, z. B. verwaiste Runde abgebrochen, D-022). */
-  readonly closed: 'abandoned' | null;
+  /** Server hat den Tisch geschlossen (`table.closed`: verwaiste Runde abgebrochen, D-022, oder Admin, WP-028). */
+  readonly closed: TableClosedMessage['reason'] | null;
   /** Eine Aktion für diesen Stand (`handNumber/actionSeq`) ist unterwegs. */
   readonly pendingAction: boolean;
   /** Gewählte Vorab-Aktion (gilt für Hand und Straße der Wahl, verfällt bei Änderungen). */

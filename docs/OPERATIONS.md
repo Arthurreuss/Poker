@@ -224,6 +224,13 @@ Spieler schicken Feedback über den Knopf „Feedback“ in der App (Bug, Idee, 
 - Wird ein Account gelöscht, bleibt sein Feedback ohne Absender und ohne User-Agent erhalten.
 - **Automatisches Löschen (D-025, so in der Datenschutzerklärung):** Erledigtes Feedback wird **30 Tage nach dem Erledigen** gelöscht, jedes Feedback **spätestens 1 Jahr nach dem Absenden** – auch ungelesenes. Der Server prüft beim Start und danach täglich (`feedback/retention.ts`, Log „Feedback: abgelaufene Einträge gelöscht“). Wird ein erledigter Eintrag wieder auf Neu/Gelesen gesetzt, beginnt die 30-Tage-Frist beim nächsten „Erledigt“ neu. Was aufgehoben werden soll, vorher selbst notieren (z. B. als Issue).
 
+## Admin anlegen und Admin-Aktionen
+Admin wird man nur per CLI (D-029): `admin:make-admin <benutzername>` (prod: `docker compose -p poker-prod exec server node cli/make-admin.mjs <benutzername>`, mit `--revoke` entziehen; Aufrufe: README, Abschnitt „Admin“). Danach im Browser neu laden – das Flag kommt aus `/api/me`. Admin-Rechte nur an Vertrauenspersonen (D-027: Admins können am Tisch verdeckte Karten sehen).
+
+- **Aktionen** (vorerst nur per API, Oberfläche folgt mit WP-029; Endpunkte: [ARCHITECTURE.md](ARCHITECTURE.md), „Auth“ → „Admin (WP-028)“): Spieler sperren/entsperren, alle Sessions eines Spielers beenden, Passwort zurücksetzen (neues Zufallspasswort steht einmalig in der Antwort), Tisch schließen (laufende Runde wird ohne Punkte abgebrochen).
+- **Sperre:** beendet sofort alle Anmeldungen und Verbindungen des Spielers; am Tisch wird er automatisch gecheckt/gefoldet. Beim Login sieht er „Dein Konto ist gesperrt“. Admins lassen sich nicht sperren – erst `--revoke`.
+- **Admin-Protokoll:** jede Aktion (auch die CLI-Befehle `make-admin` und `reset-password`) steht in der Tabelle `admin_audit_log`; lesen per `GET /api/admin/audit` oder SQL: `SELECT * FROM admin_audit_log ORDER BY id DESC LIMIT 50;`. Einträge werden nach **1 Jahr** automatisch gelöscht (D-025, Log „Admin-Protokoll: abgelaufene Einträge gelöscht“).
+
 ## Security-Checkliste
 Grundschutz der öffentlichen Seite (WP-022). Vor jedem Release mit Änderungen an nginx, Abhängigkeiten oder Datenverarbeitung durchgehen.
 
