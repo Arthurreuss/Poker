@@ -24,12 +24,13 @@
 | M4 | [WP-017](work-packages/WP-017.md) | Tischansicht Querformat und Umschalter | done | WP-016 |
 | M4 | [WP-018](work-packages/WP-018.md) | Spielablauf im UI: Aktionen, Timer, Showdown | done | WP-011, WP-016 |
 | M4 | [WP-019](work-packages/WP-019.md) | Rangliste und Statistiken | done | WP-013, WP-014 |
-| M5 | [WP-020](work-packages/WP-020.md) | E2E-Smoke-Test | todo | WP-015, WP-018 |
+| M5 | [WP-020](work-packages/WP-020.md) | E2E-Smoke-Test | in-progress | WP-015, WP-018 |
 | M5 | [WP-021](work-packages/WP-021.md) | Backups und Betrieb | done | WP-003, WP-009 |
-| M5 | [WP-022](work-packages/WP-022.md) | Rechtliches und Security-Check | review | WP-014 |
+| M5 | [WP-022](work-packages/WP-022.md) | Rechtliches und Security-Check | in-progress | WP-014 |
 | M5 | [WP-023](work-packages/WP-023.md) | Go-Live: main auf poker.arthur-reuss.de | todo | WP-003, WP-012, WP-020, WP-021, WP-022, WP-024 |
 | M4 | [WP-024](work-packages/WP-024.md) | Feedback-Button | done | WP-010, WP-014 |
 | M5 | [WP-025](work-packages/WP-025.md) | Zweite Domain poker.deinemudda.win | done | WP-003 |
+| M5 | [WP-026](work-packages/WP-026.md) | Nacharbeiten aus der Abnahme (Tische, Zugang, Rangliste) | in-progress | WP-015, WP-019 |
 <!-- END GENERATED -->
 
 ## Meilensteine

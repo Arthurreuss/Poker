@@ -166,3 +166,21 @@ Format: Kontext → Entscheidung → Konsequenzen. Status: `akzeptiert`, `offen`
 - **Kontext:** Arthur hat eine zweite Domain gekauft. Wer sie eingibt, soll sie auch in der Adresszeile sehen, also keine Weiterleitung.
 - **Entscheidung:** Beide Domains liefern die App über denselben Tunnel aus (zweiter Public Hostname → `web:8080`). `PUBLIC_ORIGIN` darf mehrere, kommagetrennte Origins enthalten. Der WebSocket-Origin-Check (D-014) akzeptiert jede davon. Die erste ist die Hauptadresse (Smoke-Test, Status). Alles andere bleibt relativ (eine Origin pro Aufruf).
 - **Konsequenzen:** Login, PWA-Installation und lokale Einstellungen gelten pro Domain getrennt; Accounts und Punkte sind gemeinsam. Impressum und Datenschutz gelten für beide Domains. HSTS muss pro Domain in Cloudflare eingeschaltet werden.
+
+## D-024: Tisch-, Zugangs- und Statistikregeln (Abnahme WP-015/WP-019)
+- **Status:** akzeptiert
+- **Kontext:** Offene Detailfragen aus WP-015 (Lobby) und WP-019 (Statistiken).
+- **Entscheidung:**
+  - Ein Tisch ohne Spieler und Beobachter wird nach 10 Minuten geschlossen.
+  - „Nochmal“: Es spielen nur Spieler mit, die gerade verbunden sind; getrennte Spieler stehen automatisch auf.
+  - Wer einmal per Einladungscode an einem privaten Tisch war, darf ihn danach per Tisch-ID wieder betreten (Server merkt sich das im Speicher).
+  - Ergebnisse und Hände privater Tische sehen nur deren Teilnehmer; bei öffentlichen Tischen sieht jeder Eingeloggte das Ergebnis, Hände nur die Teilnehmer.
+  - Hände, in denen ein Spieler abwesend war (erste eigene Aktion automatisch), zählen nicht in seine Quoten (VPIP, PFR, WTSD, W$SD).
+  - Die Rangliste zeigt nur Spieler mit mindestens einer beendeten Runde; Punktgleichheit ergibt denselben Platz.
+- **Konsequenzen:** Umsetzung der Abweichungen vom Ist-Stand in WP-026.
+
+## D-025: Speicherdauern (Datenschutz)
+- **Status:** akzeptiert
+- **Kontext:** Die Datenschutzerklärung (WP-022) braucht feste Speicherdauern.
+- **Entscheidung:** Server-Logs (enthalten IP-Adressen) werden höchstens 14 Tage aufbewahrt. Feedback wird gelöscht, sobald es erledigt ist, spätestens nach 1 Jahr. Backups liegen nur lokal auf dem Mac (Aufbewahrung 7/4/6). Cloudflare ist Auftragsverarbeiter (DPA im Dashboard akzeptiert).
+- **Konsequenzen:** Technische Durchsetzung (Log-Rotation, automatisches Löschen von Feedback) in WP-022.
