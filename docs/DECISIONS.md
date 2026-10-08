@@ -184,3 +184,13 @@ Format: Kontext → Entscheidung → Konsequenzen. Status: `akzeptiert`, `offen`
 - **Kontext:** Die Datenschutzerklärung (WP-022) braucht feste Speicherdauern.
 - **Entscheidung:** Server-Logs (enthalten IP-Adressen) werden höchstens 14 Tage aufbewahrt. Feedback wird gelöscht, sobald es erledigt ist, spätestens nach 1 Jahr. Backups liegen nur lokal auf dem Mac (Aufbewahrung 7/4/6). Cloudflare ist Auftragsverarbeiter (DPA im Dashboard akzeptiert).
 - **Konsequenzen:** Technische Durchsetzung (Log-Rotation, automatisches Löschen von Feedback) in WP-022.
+
+## D-026: Spiel-UI-Details (Abnahme WP-018)
+- **Status:** akzeptiert
+- **Kontext:** Offene Fragen aus WP-018.
+- **Entscheidung:**
+  - „Platz nehmen“, „Aufstehen“ und „Runde starten“ liegen vor dem Start in der Aktionsleiste.
+  - Der Client berechnet die Pots der laufenden Hand selbst mit `calculatePots` aus der Engine (Engine im Web-Bundle ist ok).
+  - Lobby und Tisch haben vorerst je eine eigene WebSocket-Verbindung; eine gemeinsame Verbindung für die ganze App ist eine spätere Verbesserung.
+  - Die Server-Uhrzeit für den Timer-Abgleich kommt nur aus `table.state` (`serverNowMs`).
+- **Konsequenzen:** Beim Wechsel Lobby → Tisch baut der Browser eine neue Verbindung auf (ca. 100–300 ms).
