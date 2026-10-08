@@ -109,3 +109,9 @@ Format: Kontext → Entscheidung → Konsequenzen. Status: `akzeptiert`, `offen`
   - WebSocket-Heartbeat alle 30 s (Cloudflare trennt idle Verbindungen nach 100 s); Client reconnectet automatisch.
   - `GET /api/health` für Healthchecks.
   - WebSocket-Upgrade prüft den `Origin`-Header gegen `PUBLIC_ORIGIN`.
+
+## D-015: Eigener SQL-Migrations-Runner, `integer` für Chips und Punkte
+- **Status:** akzeptiert
+- **Kontext:** WP-009 brauchte ein Migrationswerkzeug und Zahlentypen für Chips/Punkte.
+- **Entscheidung:** Kleiner eigener Runner (`apps/server/src/db/migrate.ts`): reine SQL-Dateien `NNNN_name.sql`, Tabelle `schema_migrations` mit SHA-256-Checksumme, `pg_advisory_lock` gegen parallele Starts, eine Transaktion pro Migration, Abbruch bei geänderter oder fehlender Migration. Angewendete Migrationen werden nie geändert, nur durch neue ergänzt. IDs, Chips und Punkte sind `integer` (pg liefert sie als JS-Zahl), Startstack ist auf 10⁸ begrenzt.
+- **Konsequenzen:** Keine ORM-/Migrations-Abhängigkeit. Das Prod-Image muss `apps/server/migrations/` enthalten.
