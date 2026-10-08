@@ -153,6 +153,22 @@ Einmalig einzurichten (Arthur, macOS-Systemeinstellungen – nicht automatisiert
 
 **Prüfen (Arthur):** Mac neu starten, (ggf. anmelden,) ca. 2 min warten, dann `npm run prod:status` – alle Container `running, healthy`, Health ok. Wer ganz sicher gehen will, testet auch „Stromkabel ziehen“ (Desktop-Mac).
 
+## Feedback lesen
+Spieler schicken Feedback über den Knopf „Feedback“ in der App (Bug, Idee, Sonstiges; WP-024). Es landet in der Tabelle `feedback` (Aufbau: [ARCHITECTURE.md](ARCHITECTURE.md), „Datenmodell“ → „Feedback“).
+
+- **Im Browser:** als Admin unter `/admin/feedback` (Menü „Admin“ → „Feedback“), z. B. https://poker.arthur-reuss.de/admin/feedback. Filter Neu/Gelesen/Erledigt/Alle; den Status je Eintrag über die Auswahl „Status“ ändern. Admin-Flag setzen: README, Abschnitt „Admin“.
+- **Im Terminal (prod):** die CLI ist im Server-Image gebündelt:
+  ```sh
+  docker compose -p poker-prod exec server node cli/feedback.mjs                 # die 20 neuesten, alle Status
+  docker compose -p poker-prod exec server node cli/feedback.mjs --status new    # nur neue
+  docker compose -p poker-prod exec server node cli/feedback.mjs --status done --limit 50
+  ```
+  dev: `DATABASE_URL=postgres://poker:poker@localhost:4312/poker npm run admin:feedback -w @poker/server -- --status new`.
+- Jeder Eintrag zeigt Nummer, Zeit, Status, Kategorie, Absender (bei gelöschtem Account „gelöschter Account“), den Text und den Kontext: Seite, Tisch, App-Version (Commit, auf dem der Spieler war), Ausrichtung und User-Agent.
+- Den Status setzt nur die Admin-Ansicht; die CLI liest nur.
+- Rate-Limit: 5 Feedbacks pro Stunde und Spieler (`FEEDBACK_RATE_LIMIT_MAX`, `FEEDBACK_RATE_LIMIT_WINDOW_SECONDS` in der Server-Umgebung).
+- Wird ein Account gelöscht, bleibt sein Feedback ohne Absender und ohne User-Agent erhalten.
+
 ## Fehlersuche
 - `npm run prod:logs` bzw. `docker compose -p poker-prod ps` (Status inkl. Healthchecks).
 - Server direkt: `curl http://localhost:4321/api/health`.

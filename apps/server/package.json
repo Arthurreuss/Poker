@@ -21,7 +21,8 @@
     "test": "vitest run",
     "test:db": "TEST_DATABASE_URL=${TEST_DATABASE_URL:-postgres://poker:poker@localhost:4312/poker_test} vitest run",
     "admin:reset-password": "tsx src/cli/reset-password.ts",
-    "admin:make-admin": "tsx src/cli/make-admin.ts"
+    "admin:make-admin": "tsx src/cli/make-admin.ts",
+    "admin:feedback": "tsx src/cli/feedback.ts"
   },
   "devDependencies": {
     "@types/pg": "^8.23.1",
