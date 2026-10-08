@@ -5,7 +5,7 @@ export type MockResponse = { status: number; body?: unknown } | Error;
 export type MockRoutes = Record<string, MockResponse | ((init: RequestInit | undefined) => MockResponse)>;
 
 export const ADMIN = { id: 1, username: 'arthur', isAdmin: true };
-export const PLAYER = { id: 2, username: 'spieler_1', isAdmin: false };
+export const PLAYER = { id: 2, username: 'spieler_1', isAdmin: false, avatar: null };
 
 export function json(status: number, body?: unknown): MockResponse {
   return { status, body };

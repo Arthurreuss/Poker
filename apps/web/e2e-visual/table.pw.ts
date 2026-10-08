@@ -3,7 +3,8 @@
  * Ohne `layout`-Parameter gilt „Auto“: Hochformat-Viewports zeigen das Hochformat-, Querformat-
  * Viewports das Querformat-Layout. Prüft pro Mock-Zustand und Viewport per Bounding-Box:
  * - Teile verschiedener Sitze (Plakette, Karten, Marker, Status-Etikett) überlappen sich nicht,
- * - Einsätze, Pots, Board, Kopfzeile und Menü-Knopf überlappen keine Sitze und einander nicht,
+ * - Einsätze, Pots, Board, Kopfzeile, Menü- und Reaktions-Knopf überlappen keine Sitze und einander nicht
+ *   (Avatar und Emoji-Reaktion zählen zum Sitz, WP-032),
  * - alles liegt im Viewport und außerhalb der freien Fläche für die Aktionsleiste (WP-018),
  * - Texte sind nicht abgeschnitten und mindestens 11 px groß.
  * Ausführen: `npm run test:visual -w @poker/web` (Baselines aktualisieren: `-- --update-snapshots`).
@@ -74,6 +75,8 @@ async function measure(page: Page): Promise<Geometry> {
           ...all('.pt-card', seat).map((el, i) => box(group, `${group} Karte ${String(i + 1)}`, el)),
           ...all('[data-testid="marker"]', seat).map((el) => box(group, `${group} Marker`, el)),
           ...all('[data-testid="status"]', seat).map((el) => box(group, `${group} Status`, el)),
+          ...all('[data-testid="avatar"]', seat).map((el) => box(group, `${group} Avatar`, el)),
+          ...all('[data-testid="reaction"]', seat).map((el) => box(group, `${group} Reaktion`, el)),
         ];
       }),
       ...all('[data-testid="bet"]').map((el, i) => box(`bet ${String(i)}`, `Einsatz ${el.textContent}`, el)),
@@ -81,6 +84,7 @@ async function measure(page: Page): Promise<Geometry> {
       box('board', 'Board', one('[data-testid="board"]')),
       box('blinds', 'Kopfzeile', one('[data-testid="blinds"] .pt-text')),
       box('menu', 'Menü-Knopf', one('[data-testid="table-menu"] button')),
+      ...all('[data-testid="reaction-picker"] button').map((el) => box('react', 'Reaktions-Knopf', el)),
     ];
     const a = one('[data-testid="action-slot"]').getBoundingClientRect();
     const action = { x: a.left, y: a.top, w: a.width, h: a.height };

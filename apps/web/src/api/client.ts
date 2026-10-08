@@ -5,6 +5,7 @@ export type ApiErrorCode =
   | 'invalid_request'
   | 'username_taken'
   | 'invalid_credentials'
+  | 'account_banned'
   | 'unauthorized'
   | 'forbidden'
   | 'not_found'

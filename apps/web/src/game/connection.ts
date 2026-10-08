@@ -134,6 +134,7 @@ export class GameConnection {
   private welcomed = false;
   private statusValue: ConnectionStatus = { kind: 'closed' };
   private userValue: PublicUser | null = null;
+  private isAdminValue = false;
   private running = false;
   private retryTimer: ReturnType<typeof setTimeout> | null = null;
   private idleTimer: ReturnType<typeof setTimeout> | null = null;
@@ -172,6 +173,11 @@ export class GameConnection {
   /** Eingeloggter User laut `welcome` (bleibt nach einem Abbruch erhalten). */
   get user(): PublicUser | null {
     return this.userValue;
+  }
+
+  /** Admin-Flag der Session laut `welcome` (WP-033; fehlt beim Server → `false`). */
+  get isAdmin(): boolean {
+    return this.isAdminValue;
   }
 
   start(): void {
@@ -287,6 +293,7 @@ export class GameConnection {
     this.armIdle();
     if (message.type === 'welcome') {
       this.userValue = { ...message.user };
+      this.isAdminValue = message.isAdmin === true;
       if (!this.welcomed) {
         this.welcomed = true;
         this.failures = 0;

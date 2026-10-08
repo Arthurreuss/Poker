@@ -74,6 +74,7 @@ describe.skipIf(testDatabaseUrl === undefined)('runMigrations (Test-DB)', () => 
 
     expect(result.applied).toEqual(all);
     expect(await tablesIn(s)).toEqual([
+      'admin_audit_log',
       'feedback',
       'hand_actions',
       'hands',

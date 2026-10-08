@@ -17,6 +17,7 @@ import type {
   Street,
 } from '../hand-state';
 import type { RoundPhase, RoundPlayer, RoundStanding } from '../round';
+import type { AvatarId, ReactionId } from './avatars';
 
 /** Version des Protokolls; der Client nennt sie in `hello`, bei Abweichung lehnt der Server ab. */
 export const PROTOCOL_VERSION = 1;
@@ -35,6 +36,11 @@ export const MAX_REQUEST_ID_LENGTH = 64;
 export const CLOSE_UNSUPPORTED_VERSION = 4000;
 /** Eine neuere Verbindung desselben Users hat `hello` gesendet und übernimmt (anderer Tab/Gerät). */
 export const CLOSE_REPLACED = 4001;
+/**
+ * Ein Admin hat das Konto gesperrt (WP-028). Ein Reconnect scheitert mit 401 (Sessions sind gelöscht); der Client
+ * sollte nicht erneut verbinden, sondern zur Anmeldung führen (Login meldet dann die Sperre).
+ */
+export const CLOSE_ACCOUNT_BANNED = 4002;
 
 // ---------------------------------------------------------------------------
 // Tisch-Einstellungen
@@ -140,6 +146,27 @@ export interface TableActionMessage extends ClientBase {
   seq: number;
   action: Action;
 }
+/**
+ * Emoji-Reaktion (WP-032): nur Spieler mit Sitz an diesem Tisch, höchstens eine pro `REACTION_COOLDOWN_MS`
+ * (sonst `RATE_LIMITED`). Der Server verteilt sie als `table.reaction` an alle Beobachter des Tisches.
+ */
+export interface TableReactMessage extends ClientBase {
+  type: 'table.react';
+  tableId: number;
+  reaction: ReactionId;
+}
+
+/**
+ * Admin deckt die verdeckten Karten eines Mitspielers auf (WP-033, D-027). Nur Admins (Flag aus der Session), nur am
+ * Tisch, an dem sie sitzen, nur während einer laufenden Hand. Antwort `admin.cards` geht nur an diese Verbindung;
+ * die Mitspieler erfahren nichts. Jedes erste Aufdecken eines Platzes pro Hand wird im Admin-Protokoll vermerkt.
+ */
+export interface AdminRevealCardsMessage extends ClientBase {
+  type: 'admin.revealCards';
+  tableId: number;
+  /** Platz des Mitspielers, dessen Karten aufgedeckt werden sollen. */
+  seat: number;
+}
 
 export type ClientMessage =
   | HelloMessage
@@ -153,7 +180,9 @@ export type ClientMessage =
   | TableStandMessage
   | TableStartMessage
   | TableRematchMessage
-  | TableActionMessage;
+  | TableActionMessage
+  | TableReactMessage
+  | AdminRevealCardsMessage;
 
 export type ClientMessageType = ClientMessage['type'];
 
@@ -235,6 +264,8 @@ export interface RoundView {
 export interface SeatView {
   seat: number;
   user: PublicUser;
+  /** Gewählter Avatar (WP-032); `null` = keiner (Client zeigt den Anfangsbuchstaben). */
+  avatar: AvatarId | null;
   /** Hat der Spieler gerade mindestens eine offene Verbindung zu diesem Tisch? */
   connected: boolean;
   /**
@@ -334,12 +365,20 @@ export type ErrorCode =
   | 'ILLEGAL_ACTION'
   | 'AMOUNT_TOO_SMALL'
   | 'AMOUNT_TOO_LARGE'
+  | 'RATE_LIMITED'
+  /** Aktion nur für Admins (WP-033). */
+  | 'FORBIDDEN'
   | 'INTERNAL';
 
 export interface WelcomeMessage {
   type: 'welcome';
   protocolVersion: number;
   user: PublicUser;
+  /**
+   * Admin-Flag der Session (WP-033): schaltet im Client das Aufdecken verdeckter Karten frei. Fehlt = `false`
+   * (additiv, ältere Server). Der Server prüft das Recht bei jeder Anfrage selbst.
+   */
+  isAdmin?: boolean;
 }
 /** Fehler geht nur an den Absender; der Tisch läuft weiter. */
 export interface ErrorMessage {
@@ -391,13 +430,40 @@ export interface RoundFinishedMessage {
 
 /**
  * Der Tisch existiert nicht mehr (WP-015): `abandoned` = verwaiste Runde, 10 Minuten lang kein Spieler
- * verbunden → Runde ohne Punkte abgebrochen (D-022). Geht an alle, die den Tisch noch beobachten; danach
+ * verbunden → Runde ohne Punkte abgebrochen (D-022); `admin` = ein Admin hat den Tisch geschlossen, eine laufende
+ * Runde wurde ohne Punkte abgebrochen (WP-028). Geht an alle, die den Tisch noch beobachten; danach
  * liefert `table.join` für diesen Tisch `TABLE_NOT_FOUND`.
  */
 export interface TableClosedMessage {
   type: 'table.closed';
   tableId: number;
-  reason: 'abandoned';
+  reason: 'abandoned' | 'admin';
+}
+
+/**
+ * Emoji-Reaktion eines Spielers (WP-032) an alle Beobachter des Tisches (auch den Absender). Flüchtig: wird
+ * nicht gespeichert und nach einem Reconnect nicht wiederholt.
+ */
+export interface TableReactionMessage {
+  type: 'table.reaction';
+  tableId: number;
+  seat: number;
+  userId: number;
+  reaction: ReactionId;
+}
+
+/**
+ * Antwort auf `admin.revealCards` (WP-033, D-027): die verdeckten Karten eines Mitspielers der laufenden Hand. Geht
+ * **nur** an die anfragende Verbindung des Admins, nie an andere und nie in `table.state`. Gilt nur für diese Hand
+ * (`handNumber`); der Client vergisst die Karten, sobald die Hand endet.
+ */
+export interface AdminCardsMessage {
+  type: 'admin.cards';
+  requestId: string | null;
+  tableId: number;
+  handNumber: number;
+  seat: number;
+  cards: Card[];
 }
 
 export type ServerMessage =
@@ -411,6 +477,8 @@ export type ServerMessage =
   | TableStateMessage
   | TableLeftMessage
   | RoundFinishedMessage
-  | TableClosedMessage;
+  | TableClosedMessage
+  | TableReactionMessage
+  | AdminCardsMessage;
 
 export type ServerMessageType = ServerMessage['type'];

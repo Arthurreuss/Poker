@@ -33,8 +33,8 @@ export interface MockState {
 
 const headsUp: TableView = {
   seats: seats({
-    2: player('Arthur', 1450, { bet: 50, holeCards: own('As', 'Kd') }),
-    6: player('Lena', 1400, { bet: 100 }),
+    2: player('Arthur', 1450, { bet: 50, holeCards: own('As', 'Kd'), avatar: 'fox' }),
+    6: player('Lena', 1400, { bet: 100, avatar: 'owl' }),
   }),
   heroSeat: 2,
   buttonSeat: 2,
@@ -49,12 +49,12 @@ const headsUp: TableView = {
 
 const sixFlop: TableView = {
   seats: seats({
-    0: player('Arthur', 8_450, { bet: 600, holeCards: own('Qh', 'Qc') }),
-    1: player('Lena', 12_300, { bet: 600 }),
+    0: player('Arthur', 8_450, { bet: 600, holeCards: own('Qh', 'Qc'), avatar: 'fox' }),
+    1: player('Lena', 12_300, { bet: 600, avatar: 'owl' }),
     2: player('Tobias', 4_100, { status: 'folded', holeCards: NONE }),
-    4: player('Mia', 9_900, { bet: 1_800 }),
+    4: player('Mia', 9_900, { bet: 1_800, avatar: 'cat' }),
     5: player('Jonas', 7_200, { status: 'folded', holeCards: NONE }),
-    7: player('Sophie', 15_750),
+    7: player('Sophie', 15_750, { avatar: 'rocket' }),
   }),
   heroSeat: 0,
   buttonSeat: 4,
@@ -65,19 +65,23 @@ const sixFlop: TableView = {
   board: ['Td', '7s', '2h'],
   pots: [{ amount: 3_600 }],
   blinds: { small: 100, big: 200, level: 4 },
+  reactions: [
+    { id: 1, seat: 0, emoji: '👍', label: 'Daumen hoch' },
+    { id: 2, seat: 4, emoji: '😂', label: 'Lachen' },
+  ],
 };
 
 const ninePreflop: TableView = {
   seats: seats({
-    0: player('Paul', 9_800),
-    1: player('Maximilian', 10_000),
-    2: player('Kim', 9_950, { bet: 50 }),
-    3: player('Ole', 9_900, { bet: 100 }),
-    4: player('Arthur', 10_000, { holeCards: own('Jc', 'Th') }),
-    5: player('Lena', 9_700, { status: 'folded', holeCards: NONE }),
-    6: player('Sophie', 10_250, { connected: false }),
-    7: player('Tobias', 9_700, { bet: 300 }),
-    8: player('Mia', 10_400, { status: 'folded', holeCards: NONE }),
+    0: player('Paul', 9_800, { avatar: 'bear' }),
+    1: player('Maximilian', 10_000, { avatar: 'spade' }),
+    2: player('Kim', 9_950, { bet: 50, avatar: 'frog' }),
+    3: player('Ole', 9_900, { bet: 100, avatar: 'lion' }),
+    4: player('Arthur', 10_000, { holeCards: own('Jc', 'Th'), avatar: 'fox' }),
+    5: player('Lena', 9_700, { status: 'folded', holeCards: NONE, avatar: 'panda' }),
+    6: player('Sophie', 10_250, { connected: false, avatar: 'crown' }),
+    7: player('Tobias', 9_700, { bet: 300, avatar: 'ghost' }),
+    8: player('Mia', 10_400, { status: 'folded', holeCards: NONE, avatar: 'cactus' }),
   }),
   heroSeat: 4,
   buttonSeat: 1,
@@ -92,15 +96,15 @@ const ninePreflop: TableView = {
 
 const nineAllIn: TableView = {
   seats: seats({
-    0: player('Paul', 0, { status: 'allIn', bet: 1_200 }),
-    1: player('Maximilian', 18_200, { bet: 6_400 }),
-    2: player('Kim', 0, { status: 'allIn', bet: 3_100 }),
-    3: player('Ole', 5_300, { status: 'folded', holeCards: NONE }),
-    4: player('Arthur', 11_600, { holeCards: own('8s', '8d') }),
-    5: player('Lena', 0, { status: 'eliminated', holeCards: NONE }),
-    6: player('Sophie', 7_400, { status: 'folded', holeCards: NONE }),
-    7: player('Tobias', 9_050, { status: 'folded', holeCards: NONE, connected: false }),
-    8: player('Mia', 2_150, { status: 'folded', holeCards: NONE }),
+    0: player('Paul', 0, { status: 'allIn', bet: 1_200, avatar: 'bear' }),
+    1: player('Maximilian', 18_200, { bet: 6_400, avatar: 'spade' }),
+    2: player('Kim', 0, { status: 'allIn', bet: 3_100, avatar: 'frog' }),
+    3: player('Ole', 5_300, { status: 'folded', holeCards: NONE, avatar: 'lion' }),
+    4: player('Arthur', 11_600, { holeCards: own('8s', '8d'), avatar: 'fox' }),
+    5: player('Lena', 0, { status: 'eliminated', holeCards: NONE, avatar: 'panda' }),
+    6: player('Sophie', 7_400, { status: 'folded', holeCards: NONE, avatar: 'crown' }),
+    7: player('Tobias', 9_050, { status: 'folded', holeCards: NONE, connected: false, avatar: 'ghost' }),
+    8: player('Mia', 2_150, { status: 'folded', holeCards: NONE, avatar: 'cactus' }),
   }),
   heroSeat: 4,
   buttonSeat: 8,
@@ -116,9 +120,9 @@ const nineAllIn: TableView = {
 const sixShowdown: TableView = {
   seats: seats({
     0: player('Arthur', 6_900, { holeCards: own('Kh', 'Jh') }),
-    1: player('Lena', 0, { status: 'allIn', holeCards: shown('Ac', 'Qd') }),
+    1: player('Lena', 0, { status: 'allIn', holeCards: shown('Ac', 'Qd'), avatar: 'owl' }),
     3: player('Tobias', 3_400, { status: 'folded', holeCards: NONE }),
-    4: player('Mia', 11_250, { holeCards: shown('Ts', '9s') }),
+    4: player('Mia', 11_250, { holeCards: shown('Ts', '9s'), avatar: 'cat' }),
     6: player('Jonas', 5_600, { status: 'folded', holeCards: NONE }),
     8: player('Sophie', 8_850, { status: 'folded', holeCards: NONE }),
   }),
@@ -130,14 +134,17 @@ const sixShowdown: TableView = {
   board: ['Qh', 'Th', '3c', '8d', '2h'],
   pots: [{ amount: 9_600 }, { amount: 2_400 }],
   blinds: { small: 150, big: 300, level: 5 },
+  // WP-031: Arthur gewinnt mit dem Herz-Flush – Plakette und Gewinnerhand hervorgehoben.
+  winnerSeats: [0],
+  winningCards: ['Kh', 'Qh', 'Jh', 'Th', '2h'],
 };
 
 const sixDisconnected: TableView = {
   seats: seats({
     1: player('Ole', 4_800, { bet: 400, connected: false }),
     2: player('Kim', 0, { status: 'eliminated', holeCards: NONE }),
-    3: player('Arthur', 13_200, { bet: 400, holeCards: own('5c', '4c') }),
-    5: player('Maximilian', 125_500, { bet: 1_200 }),
+    3: player('Arthur', 13_200, { bet: 400, holeCards: own('5c', '4c'), avatar: 'fox' }),
+    5: player('Maximilian', 125_500, { bet: 1_200, avatar: 'robot' }),
     6: player('Lena', 6_900, { status: 'folded', holeCards: NONE, connected: false }),
     8: player('Paul', 0, { status: 'allIn', bet: 900, connected: false }),
   }),

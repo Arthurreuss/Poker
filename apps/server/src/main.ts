@@ -1,4 +1,5 @@
 // Einstiegspunkt: liest die Konfiguration aus der Umgebung und startet den Server.
+import { startAuditPurgeJob } from './admin/audit';
 import { buildApp } from './app';
 import { loadConfig } from './config';
 import { createPgDatabase } from './db';
@@ -35,9 +36,12 @@ if (orphaned.rounds > 0 || orphaned.tables > 0) {
 
 // Speicherdauer von Feedback (D-025): jetzt und dann täglich abgelaufene Einträge löschen.
 const feedbackPurge = startFeedbackPurgeJob({ db, log: app.log });
+// Admin-Protokoll (D-025, WP-028): Einträge nach 1 Jahr löschen.
+const auditPurge = startAuditPurgeJob({ db, log: app.log });
 
 async function shutdown(): Promise<void> {
   feedbackPurge.stop();
+  auditPurge.stop();
   await app.close();
   process.exit(0);
 }

@@ -5,6 +5,7 @@
 import { DEFAULT_BLIND_STRUCTURE, type BlindLevel, type BlindStructure } from '../blind-structure';
 import type { Action } from '../hand-state';
 import { DEFAULT_TIME_BANK_SECONDS, DEFAULT_TURN_TIME_SECONDS, validateRoundConfig } from '../round';
+import { isReactionId } from './avatars';
 import {
   MAX_REQUEST_ID_LENGTH,
   type ClientMessage,
@@ -186,6 +187,8 @@ const MESSAGE_TYPES: ReadonlySet<string> = new Set<ClientMessageType>([
   'table.start',
   'table.rematch',
   'table.action',
+  'table.react',
+  'admin.revealCards',
 ]);
 
 function message(o: Obj, type: ClientMessageType): ClientMessage {
@@ -213,6 +216,7 @@ function message(o: Obj, type: ClientMessageType): ClientMessage {
     case 'table.rematch':
       return { type, tableId: id(o, 'tableId') };
     case 'table.sit':
+    case 'admin.revealCards':
       return { type, tableId: id(o, 'tableId'), seat: int(o, 'seat', 0, MAX_SEATS - 1) };
     case 'table.action':
       return {
@@ -222,6 +226,11 @@ function message(o: Obj, type: ClientMessageType): ClientMessage {
         seq: int(o, 'seq', 0, MAX_ID),
         action: action(o['action']),
       };
+    case 'table.react': {
+      const reaction = o['reaction'];
+      if (!isReactionId(reaction)) fail('reaction ist keine bekannte Reaktion');
+      return { type, tableId: id(o, 'tableId'), reaction };
+    }
   }
 }
 

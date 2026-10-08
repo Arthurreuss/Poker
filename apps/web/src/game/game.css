@@ -259,30 +259,11 @@
 }
 
 /* ---------- Dezente Animationen (abschaltbar, D-008-Anmutung) ---------- */
-/* `translate`/`scale` statt `transform`, damit die Drehungen/Verschiebungen aus table.css erhalten bleiben. */
-@keyframes pg-card-in {
-  from {
-    opacity: 0;
-    translate: 0 -40%;
-  }
-}
-@keyframes pg-chip-in {
-  from {
-    opacity: 0;
-    scale: 0.6;
-  }
-}
+/* Karten, Chips und Pots animiert `TableFx` (WP-031, Web Animations API); hier nur das Einblenden der Panels. */
 @keyframes pg-fade-in {
   from {
     opacity: 0;
   }
-}
-.pg-anim .pt-card {
-  animation: pg-card-in 260ms ease-out both;
-}
-.pg-anim .pt-bet,
-.pg-anim .pt-pot {
-  animation: pg-chip-in 220ms ease-out both;
 }
 .pg-anim .gp-panel,
 .pg-anim .ab-panel {

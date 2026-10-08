@@ -63,7 +63,7 @@ describe.skipIf(testDatabaseUrl === undefined)('Konto löschen (Test-DB)', () =>
       db: createPgDatabase({ ...s.config, max: 3 }),
       publicOrigin: ORIGIN,
       auth: AUTH,
-      game: { handPauseMs: 0, disconnectGraceMs: 0, rng: createSeededRng(7) },
+      game: { handPauseMs: 0, runoutPauseMs: 0, disconnectGraceMs: 0, rng: createSeededRng(7) },
     });
     return app;
   }

@@ -4,6 +4,7 @@
 import fastifyCookie from '@fastify/cookie';
 import rateLimit from '@fastify/rate-limit';
 import type { FastifyError, FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
+import { toAvatarId } from '../avatar/avatar';
 import type { Database } from '../db';
 import { anonymizeAccount } from './account';
 import type { AuthConfig } from './config';
@@ -30,7 +31,14 @@ export interface UserResponse {
 }
 
 export interface ErrorResponse {
-  error: 'invalid_request' | 'username_taken' | 'invalid_credentials' | 'unauthorized' | 'rate_limited' | 'internal';
+  error:
+    | 'invalid_request'
+    | 'username_taken'
+    | 'invalid_credentials'
+    | 'account_banned'
+    | 'unauthorized'
+    | 'rate_limited'
+    | 'internal';
   message: string;
 }
 
@@ -38,6 +46,11 @@ const UNIQUE_VIOLATION = '23505';
 const INVALID_CREDENTIALS: ErrorResponse = {
   error: 'invalid_credentials',
   message: 'Benutzername oder Passwort ist falsch',
+};
+/** Gesperrter Account (WP-028) – nur nach richtigem Passwort, damit Fremde den Sperrstatus nicht erfahren. */
+export const ACCOUNT_BANNED: ErrorResponse = {
+  error: 'account_banned',
+  message: 'Dein Konto ist gesperrt. Bei Fragen wende dich an den Admin.',
 };
 
 /** Client-IP für das Rate-Limit: hinter Cloudflare (nur prod, D-014) aus `CF-Connecting-IP`, sonst die Socket-IP. */
@@ -126,7 +139,7 @@ export const authRoutes: FastifyPluginAsync<AuthPluginOptions> = async (app, { d
     if (row === undefined) throw new Error('User konnte nicht angelegt werden');
     await startSession(reply, row.id);
     return reply.code(201).send({
-      user: { id: row.id, username: row.username, isAdmin: row.is_admin },
+      user: { id: row.id, username: row.username, isAdmin: row.is_admin, avatar: null },
     } satisfies UserResponse);
   });
 
@@ -136,8 +149,15 @@ export const authRoutes: FastifyPluginAsync<AuthPluginOptions> = async (app, { d
       return reply.code(400).send({ error: 'invalid_request', message: input.message } satisfies ErrorResponse);
     }
     const { username, password } = input.value;
-    const { rows } = await db.query<{ id: number; username: string; is_admin: boolean; password_hash: string }>(
-      `SELECT id, username, is_admin, password_hash FROM users
+    const { rows } = await db.query<{
+      id: number;
+      username: string;
+      is_admin: boolean;
+      password_hash: string;
+      banned: boolean;
+      avatar: string | null;
+    }>(
+      `SELECT id, username, is_admin, password_hash, banned_at IS NOT NULL AS banned, avatar FROM users
         WHERE lower(username) = lower($1) AND deleted_at IS NULL`,
       [username],
     );
@@ -148,8 +168,11 @@ export const authRoutes: FastifyPluginAsync<AuthPluginOptions> = async (app, { d
     if (user === undefined || !valid) {
       return reply.code(401).send(INVALID_CREDENTIALS);
     }
+    if (user.banned) return reply.code(403).send(ACCOUNT_BANNED);
     await startSession(reply, user.id);
-    return { user: { id: user.id, username: user.username, isAdmin: user.is_admin } } satisfies UserResponse;
+    return {
+      user: { id: user.id, username: user.username, isAdmin: user.is_admin, avatar: toAvatarId(user.avatar) },
+    } satisfies UserResponse;
   });
 
   app.post('/api/logout', async (request, reply) => {

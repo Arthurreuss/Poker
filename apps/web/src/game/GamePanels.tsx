@@ -2,7 +2,7 @@
 // (Warten auf Start, Aktionsleiste, Showdown) und Rundenende-Dialog.
 import { useEffect, useId, useRef } from 'react';
 import { Link } from 'react-router';
-import type { StandingView, TableView as ServerTableView } from '@poker/engine/protocol';
+import type { StandingView, TableClosedMessage, TableView as ServerTableView } from '@poker/engine/protocol';
 import { ActionBar } from '../table/actions/ActionBar';
 import { formatChips } from '../table/format';
 import { heroHandContext } from './adapter';
@@ -201,7 +201,16 @@ function InfoPanel({ children }: { children: React.ReactNode }) {
 }
 
 /** Inhalt des `actionBar`-Bereichs je nach Tisch- und Handzustand. */
-export function GameActionArea({ snapshot, store }: { snapshot: TableGameSnapshot; store: TableGameStore }) {
+export function GameActionArea({
+  snapshot,
+  store,
+  showResult = true,
+}: {
+  snapshot: TableGameSnapshot;
+  store: TableGameStore;
+  /** `false`, solange der Tisch einen Runout noch aufdeckt (WP-031) – das Ergebnis kommt danach. */
+  showResult?: boolean;
+}) {
   const table = snapshot.table;
   if (table === null) return null;
   const disconnected = snapshot.connection.kind !== 'open';
@@ -211,7 +220,9 @@ export function GameActionArea({ snapshot, store }: { snapshot: TableGameSnapsho
     return (
       <div className="gp-panel" data-testid="finished-panel">
         {/* Letzte Hand der Runde (Showdown) bleibt sichtbar; das Rundenergebnis zeigt der Dialog. */}
-        {handResult(table) === null ? (
+        {!showResult ? (
+          <p className="gp-panel-text gp-muted">Showdown …</p>
+        ) : handResult(table) === null ? (
           <p className="gp-panel-text">Die Runde ist beendet.</p>
         ) : (
           <HandResultList table={table} />
@@ -247,7 +258,9 @@ export function GameActionArea({ snapshot, store }: { snapshot: TableGameSnapsho
   }
 
   const hand = table.round?.hand ?? null;
-  if (hand?.phase === 'complete') return <HandResultPanel table={table} />;
+  if (hand?.phase === 'complete') {
+    return showResult ? <HandResultPanel table={table} /> : <InfoPanel>Showdown …</InfoPanel>;
+  }
 
   const ctx = heroHandContext(table);
   if (ctx !== null && (ctx.canAct || ctx.legal !== null)) {
@@ -375,8 +388,14 @@ export function RoundResultDialog({
   );
 }
 
-/** Tisch vom Server geschlossen (verwaiste Runde, D-022): Hinweis, nach kurzer Zeit zurück zur Lobby. */
-export function TableClosedNotice({ onBack }: { onBack: () => void }) {
+/** Tisch vom Server geschlossen (verwaiste Runde, D-022, oder Admin, WP-028): Hinweis, nach kurzer Zeit zur Lobby. */
+export function TableClosedNotice({
+  reason = 'abandoned',
+  onBack,
+}: {
+  reason?: TableClosedMessage['reason'];
+  onBack: () => void;
+}) {
   useEffect(() => {
     const id = setTimeout(onBack, 5000);
     return () => {
@@ -385,7 +404,11 @@ export function TableClosedNotice({ onBack }: { onBack: () => void }) {
   }, [onBack]);
   return (
     <div className="gp-center" role="alert" data-testid="table-closed">
-      <p>Runde abgebrochen – niemand war mehr da.</p>
+      <p>
+        {reason === 'admin'
+          ? 'Ein Admin hat den Tisch geschlossen – die Runde zählt nicht.'
+          : 'Runde abgebrochen – niemand war mehr da.'}
+      </p>
       <button type="button" className="gp-btn gp-btn--primary" onClick={onBack}>
         Zur Lobby
       </button>

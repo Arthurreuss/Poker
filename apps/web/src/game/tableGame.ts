@@ -5,12 +5,22 @@ import type { Action } from '@poker/engine';
 import type {
   ErrorCode,
   PublicUser,
+  ReactionId,
   ServerMessage,
   StandingView,
+  TableClosedMessage,
   TableView as ServerTableView,
 } from '@poker/engine/protocol';
 import { preActionValid, resolvePreAction, type PreAction, type PreActionKind } from '../table/actions/logic';
 import { heroHandContext } from './adapter';
+import {
+  clearPending,
+  EMPTY_REVEAL,
+  receiveRevealedCards,
+  syncReveal,
+  toggleReveal,
+  type AdminRevealState,
+} from './adminReveal';
 import type { ConnectionStatus, GameConnection } from './connection';
 
 export interface GameError {
@@ -32,13 +42,34 @@ export interface TableGameSnapshot {
   readonly error: GameError | null;
   /** Server kennt den Tisch nicht (mehr) bzw. er ist privat. */
   readonly notFound: boolean;
-  /** Server hat den Tisch geschlossen (`table.closed`, z. B. verwaiste Runde abgebrochen, D-022). */
-  readonly closed: 'abandoned' | null;
+  /** Server hat den Tisch geschlossen (`table.closed`: verwaiste Runde abgebrochen, D-022, oder Admin, WP-028). */
+  readonly closed: TableClosedMessage['reason'] | null;
   /** Eine Aktion für diesen Stand (`handNumber/actionSeq`) ist unterwegs. */
   readonly pendingAction: boolean;
   /** Gewählte Vorab-Aktion (gilt für Hand und Straße der Wahl, verfällt bei Änderungen). */
   readonly preAction: PreAction | null;
+  /** Admin-Flag der Session laut `welcome` (WP-033). */
+  readonly isAdmin: boolean;
+  /** Vom Admin aufgedeckte Karten der laufenden Hand (WP-033, D-027); nur im Client dieses Admins. */
+  readonly reveal: AdminRevealState;
+  /** Gerade eingeblendete Emoji-Reaktionen, höchstens eine je Sitz (WP-032). */
+  readonly reactions: readonly ReactionBubble[];
 }
+
+/** Emoji-Reaktion über einem Sitz (WP-032), solange sie eingeblendet ist. */
+export interface ReactionBubble {
+  /** Laufende Nummer (React-Key: dieselbe Reaktion erneut startet die Animation neu). */
+  readonly id: number;
+  readonly seat: number;
+  readonly userId: number;
+  readonly reaction: ReactionId;
+}
+
+/** So lange bleibt eine Reaktion über dem Platz stehen. */
+export const REACTION_DISPLAY_MS = 3000;
+
+/** `requestId`-Präfix von `admin.revealCards`, damit Fehler darauf nicht die Aktionsleiste freigeben. */
+const REVEAL_REQUEST = 'reveal:';
 
 type Listener = () => void;
 
@@ -66,6 +97,8 @@ export class TableGameStore {
   private unsubscribe: (() => void)[] = [];
   private pendingKey: string | null = null;
   private errorId = 0;
+  private reactionId = 0;
+  private readonly reactionTimers = new Set<ReturnType<typeof setTimeout>>();
 
   constructor(
     readonly connection: GameConnection,
@@ -83,6 +116,9 @@ export class TableGameStore {
       closed: null,
       pendingAction: false,
       preAction: null,
+      reactions: [],
+      isAdmin: connection.isAdmin,
+      reveal: EMPTY_REVEAL,
     };
   }
 
@@ -103,7 +139,12 @@ export class TableGameStore {
       this.connection.onStatus((status) => {
         // Nach einem Abbruch kann eine unterwegs verlorene Aktion nicht mehr bestätigt werden.
         if (status.kind !== 'open') this.pendingKey = null;
-        this.update({ connection: status, user: this.connection.user, pendingAction: this.pendingKey !== null });
+        this.update({
+          connection: status,
+          user: this.connection.user,
+          isAdmin: this.connection.isAdmin,
+          pendingAction: this.pendingKey !== null,
+        });
       }),
     ];
     this.connection.watchTable(this.tableId);
@@ -114,6 +155,8 @@ export class TableGameStore {
   stop(): void {
     for (const off of this.unsubscribe) off();
     this.unsubscribe = [];
+    for (const timer of this.reactionTimers) clearTimeout(timer);
+    this.reactionTimers.clear();
     this.connection.unwatchTable(this.tableId);
   }
 
@@ -156,6 +199,11 @@ export class TableGameStore {
     return this.send({ type: 'table.rematch', tableId: this.tableId });
   }
 
+  /** Emoji-Reaktion senden (WP-032); der Server begrenzt auf eine pro `REACTION_COOLDOWN_MS`. */
+  react(reaction: ReactionId): boolean {
+    return this.send({ type: 'table.react', tableId: this.tableId, reaction });
+  }
+
   /** Tisch verlassen: nicht mehr beobachten (vor dem Start steht man dabei auch auf). */
   leave(): void {
     this.connection.unwatchTable(this.tableId, true);
@@ -172,6 +220,25 @@ export class TableGameStore {
       return;
     }
     this.update({ preAction: { ...choice, handNumber: ctx.handNumber, street: ctx.street } });
+  }
+
+  /**
+   * Admin tippt auf verdeckte Karten eines Mitspielers (WP-033): umdrehen bzw. zurückdrehen. Nur das erste Umdrehen
+   * eines Platzes pro Hand fragt beim Server an (und wird dort protokolliert); Zurückdrehen bleibt im Client.
+   */
+  toggleReveal(seat: number): void {
+    if (!this.snapshot.isAdmin) return;
+    const { state, request } = toggleReveal(this.snapshot.reveal, seat);
+    if (request) {
+      const sent = this.send({
+        type: 'admin.revealCards',
+        tableId: this.tableId,
+        seat,
+        requestId: `${REVEAL_REQUEST}${String(seat)}`,
+      });
+      if (!sent) return;
+    }
+    this.update({ reveal: state });
   }
 
   reconnectNow(): void {
@@ -216,6 +283,7 @@ export class TableGameStore {
           notFound: false,
           pendingAction: this.pendingKey !== null,
           standings: message.table.status === 'finished' ? standings : null,
+          reveal: syncReveal(this.snapshot.reveal, message.table),
         });
         this.applyPreAction();
         return;
@@ -229,7 +297,13 @@ export class TableGameStore {
         if (message.code === 'TABLE_NOT_FOUND') {
           // Auch nach einem Server-Neustart (Tisch geschlossen): alten Stand nicht weiter zeigen.
           this.pendingKey = null;
-          this.update({ notFound: true, table: null, pendingAction: false, preAction: null });
+          this.update({ notFound: true, table: null, pendingAction: false, preAction: null, reveal: EMPTY_REVEAL });
+          return;
+        }
+        if (message.requestId?.startsWith(REVEAL_REQUEST) === true) {
+          // Aufdecken abgelehnt: nur die offene Anfrage verwerfen, eine laufende Aktion bleibt unberührt.
+          this.setError(message.code, message.message);
+          this.update({ reveal: clearPending(this.snapshot.reveal) });
           return;
         }
         // Abgelehnte Aktion: wieder bedienbar machen.
@@ -239,13 +313,27 @@ export class TableGameStore {
         return;
       }
       case 'table.left':
-        if (message.tableId === this.tableId) this.update({ table: null });
+        if (message.tableId === this.tableId) this.update({ table: null, reveal: EMPTY_REVEAL });
+        return;
+      case 'admin.cards':
+        if (message.tableId !== this.tableId) return;
+        this.update({ reveal: receiveRevealedCards(this.snapshot.reveal, message) });
         return;
       case 'table.closed':
         if (message.tableId !== this.tableId) return;
         this.pendingKey = null;
         this.connection.unwatchTable(this.tableId);
-        this.update({ closed: message.reason, table: null, pendingAction: false, preAction: null, standings: null });
+        this.update({
+          closed: message.reason,
+          table: null,
+          pendingAction: false,
+          preAction: null,
+          standings: null,
+          reveal: EMPTY_REVEAL,
+        });
+        return;
+      case 'table.reaction':
+        if (message.tableId === this.tableId) this.showReaction(message);
         return;
       // Für den Tisch ohne Bedeutung (Lobby, Handshake, Heartbeat). Bewusst ohne `default`, damit neue
       // Server-Nachrichten hier auffallen.
@@ -259,6 +347,18 @@ export class TableGameStore {
       default:
         message satisfies never;
     }
+  }
+
+  /** Reaktion einblenden (ersetzt eine noch sichtbare am selben Sitz) und nach `REACTION_DISPLAY_MS` entfernen. */
+  private showReaction({ seat, userId, reaction }: { seat: number; userId: number; reaction: ReactionId }): void {
+    this.reactionId += 1;
+    const bubble: ReactionBubble = { id: this.reactionId, seat, userId, reaction };
+    this.update({ reactions: [...this.snapshot.reactions.filter((r) => r.seat !== seat), bubble] });
+    const timer = setTimeout(() => {
+      this.reactionTimers.delete(timer);
+      this.update({ reactions: this.snapshot.reactions.filter((r) => r.id !== bubble.id) });
+    }, REACTION_DISPLAY_MS);
+    this.reactionTimers.add(timer);
   }
 
   /** Nach jedem Zustand: verfallene Vorab-Aktion verwerfen bzw. am Zug genau einmal auslösen. */

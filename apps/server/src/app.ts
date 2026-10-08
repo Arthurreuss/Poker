@@ -1,6 +1,10 @@
 import Fastify, { type FastifyInstance, type FastifyServerOptions } from 'fastify';
+import { registerAdminGuard } from './admin/guard';
+import { recordCardReveal } from './admin/reveal';
+import { adminRoutes } from './admin/routes';
 import { loadAuthConfig, type AuthConfig } from './auth/config';
 import { authRoutes } from './auth/routes';
+import { avatarRoutes } from './avatar/routes';
 import { getUserFromCookieHeader } from './auth/session';
 import type { Database } from './db';
 import { loadFeedbackConfig, type FeedbackConfig } from './feedback/config';
@@ -77,6 +81,8 @@ export function buildApp({
     authenticate = (cookie) => getUserFromCookieHeader(db, cookie),
     history = gameOptions.repository === undefined ? createPgHandHistoryStore(db) : null,
     retryDelaysMs = DEFAULT_RETRY_DELAYS_MS,
+    // Aufdecken durch Admins (WP-033): Protokolleintrag + Admin-Prüfung in der DB.
+    revealAudit = (entry) => recordCardReveal(db, entry),
     repository,
     hooks,
     ...rest
@@ -84,6 +90,7 @@ export function buildApp({
   const retry = { delaysMs: retryDelaysMs, log: app.log };
   const game = new GameServer({
     ...rest,
+    revealAudit,
     repository: repository ?? withFinishRoundRetry(createPgTableRepository(db), retry),
     hooks: combineHooks(history === null ? {} : createHandHistoryHooks(history, retry), hooks ?? {}),
     log: app.log,
@@ -119,6 +126,9 @@ export function buildApp({
     }
   });
 
+  // Vor allen Routen: Admin-Guard für /api/admin/* (WP-028) – gilt für alle Plugins, auch künftige.
+  registerAdminGuard(app, db);
+
   void app.register(authRoutes, {
     db,
     config: auth,
@@ -128,7 +138,22 @@ export function buildApp({
       webSocket.closeUserConnections(userId, CLOSE_ACCOUNT_DELETED, 'account deleted');
     },
   });
+  // Avatar geändert (WP-032): Sitze an laufenden Tischen sofort aktualisieren.
+  void app.register(avatarRoutes, {
+    db,
+    onAvatarChanged: (userId, avatar) => {
+      game.setAvatar(userId, avatar);
+    },
+  });
   void app.register(feedbackRoutes, { db, config: feedback });
+  void app.register(adminRoutes, {
+    db,
+    game,
+    closeUserConnections: (userId, code, reason) => {
+      webSocket.closeUserConnections(userId, code, reason);
+    },
+    onlineUserIds: () => webSocket.onlineUserIds(),
+  });
   void app.register(statsRoutes, { db });
 
   return app;

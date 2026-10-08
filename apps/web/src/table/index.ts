@@ -5,6 +5,7 @@ export { TableMenu, type TableMenuProps } from './TableMenu';
 export { useTableLayout, useDeviceLandscape, LANDSCAPE_QUERY } from './useTableLayout';
 export { SeatPlate, type SeatPlateProps } from './SeatPlate';
 export { Card, type CardProps, type CardSize } from './Card';
+export { RevealableCards, type CardReveal } from './RevealableCards';
 export { BetChips, Board, DealerButton, PotDisplay } from './parts';
 export {
   placeSeats,

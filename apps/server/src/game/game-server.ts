@@ -8,14 +8,18 @@ import {
   CLOSE_REPLACED,
   CLOSE_UNSUPPORTED_VERSION,
   PROTOCOL_VERSION,
+  REACTION_COOLDOWN_MS,
   parseClientMessage,
+  type AvatarId,
   type ClientMessage,
   type ErrorCode,
   type PublicUser,
+  type ReactionId,
   type ServerMessage,
   type TableSettings,
   type TableSettingsInput,
 } from '@poker/engine/protocol';
+import { CardRevealer, type CardRevealAuditSink } from './admin-reveal';
 import { systemClock, type Cancel, type Clock } from './clock';
 import type { GameHooks } from './hooks';
 import type { TableRepository } from './repository';
@@ -23,6 +27,12 @@ import { Table, type Logger, type TableResult } from './table';
 
 /** Pause nach jeder Hand (Showdown-Anzeige), bevor die nächste startet. */
 export const DEFAULT_HAND_PAUSE_MS = 4000;
+
+/**
+ * Zusätzliche Pause je Straße eines All-in-Runouts (WP-031): Der Client deckt Flop, Turn und River dann
+ * nacheinander auf (ca. 0,9 s Abstand), damit bleibt die Showdown-Anzeige trotzdem ein paar Sekunden stehen.
+ */
+export const DEFAULT_RUNOUT_PAUSE_MS = 1000;
 
 /**
  * Gnadenfrist für getrennte Spieler am Zug (WP-012): Ein Reload oder kurzer Netzwechsel kostet so keine Hand,
@@ -58,6 +68,8 @@ export interface GameServerOptions {
   rng?: Rng;
   /** Standard: {@link DEFAULT_HAND_PAUSE_MS}. */
   handPauseMs?: number;
+  /** Standard: {@link DEFAULT_RUNOUT_PAUSE_MS}. */
+  runoutPauseMs?: number;
   /** Standard: {@link DEFAULT_DISCONNECT_GRACE_MS}. */
   disconnectGraceMs?: number;
   /** Standard: {@link DEFAULT_ORPHAN_TIMEOUT_MS}. */
@@ -68,6 +80,29 @@ export interface GameServerOptions {
   hooks?: GameHooks;
   /** Standard: 12 Zeichen base64url aus 9 Zufallsbytes. */
   generateInviteCode?: () => string;
+  /**
+   * Admin-Protokoll für `admin.revealCards` (WP-033, D-027): schreibt den Eintrag und bestätigt das Admin-Recht.
+   * Ohne Angabe ist Aufdecken abgeschaltet (`FORBIDDEN`). Betrieb: `recordCardReveal(db, …)` (siehe `buildApp`).
+   */
+  revealAudit?: CardRevealAuditSink;
+}
+
+/** Zusätzliche Angaben zur Verbindung aus der Session (nie vom Client). */
+export interface ConnectOptions {
+  /** Admin-Flag der Session (WP-028/WP-033). */
+  isAdmin?: boolean;
+}
+
+/** Ergebnis von {@link GameServer.closeTableByAdmin}. */
+export interface AdminClosedTable {
+  tableId: number;
+  /** Status vor dem Schließen. */
+  status: 'open' | 'running' | 'finished';
+  roundId: number | null;
+  /** Belegte Plätze vor dem Schließen. */
+  seated: number;
+  /** Eine laufende Runde wurde ohne Punkte abgebrochen. */
+  roundAborted: boolean;
 }
 
 export interface GameClient {
@@ -76,7 +111,11 @@ export interface GameClient {
 }
 
 interface Client extends GameClient {
+  /** Avatar des Users (WP-032); wird beim Hinsetzen an den Tisch übergeben. */
+  avatar: AvatarId | null;
   conn: Connection;
+  /** Admin-Flag aus der Session beim Verbinden (WP-033). */
+  isAdmin: boolean;
   hello: boolean;
   lobby: boolean;
   tables: Set<number>;
@@ -95,6 +134,10 @@ export class GameServer {
   private readonly lobbyClients = new Set<Client>();
   /** Aktive Verbindung (nach `hello`) je User – höchstens eine (WP-012: die neuere übernimmt). */
   private readonly activeByUser = new Map<number, Client>();
+  /** Alle offenen Verbindungen (für Avatar-Änderungen, WP-032). */
+  private readonly clients = new Set<Client>();
+  /** Zeitpunkt der letzten Emoji-Reaktion je User (Rate-Limit, WP-032). */
+  private readonly lastReactionAt = new Map<number, number>();
   /** Zuletzt an die Lobby gesendeter Eintrag je Tisch (JSON), um nur Änderungen zu schicken. */
   private readonly lobbyCache = new Map<number, string>();
   /** Geplantes Aufräumen von Tischen ohne Beobachter (WP-015). */
@@ -105,43 +148,62 @@ export class GameServer {
   private readonly clock: Clock;
   private readonly rng: Rng;
   private readonly handPauseMs: number;
+  private readonly runoutPauseMs: number;
   private readonly disconnectGraceMs: number;
   private readonly orphanTimeoutMs: number;
   private readonly idleTableTimeoutMs: number;
   private readonly hooks: GameHooks;
   private readonly generateInviteCode: () => string;
+  private readonly revealer: CardRevealer;
 
   constructor(private readonly options: GameServerOptions) {
     this.clock = options.clock ?? systemClock;
     this.rng = options.rng ?? cryptoRng;
     this.handPauseMs = options.handPauseMs ?? DEFAULT_HAND_PAUSE_MS;
+    this.runoutPauseMs = options.runoutPauseMs ?? DEFAULT_RUNOUT_PAUSE_MS;
     this.disconnectGraceMs = options.disconnectGraceMs ?? DEFAULT_DISCONNECT_GRACE_MS;
     this.orphanTimeoutMs = options.orphanTimeoutMs ?? DEFAULT_ORPHAN_TIMEOUT_MS;
     this.idleTableTimeoutMs = options.idleTableTimeoutMs ?? DEFAULT_IDLE_TABLE_TIMEOUT_MS;
     this.hooks = options.hooks ?? {};
     this.generateInviteCode = options.generateInviteCode ?? (() => randomBytes(9).toString('base64url'));
+    this.revealer = new CardRevealer(options.revealAudit);
   }
 
   // -------------------------------------------------------------------------
   // Verbindungen
   // -------------------------------------------------------------------------
 
-  connect(user: PublicUser, conn: Connection): GameClient {
+  connect(user: PublicUser & { avatar?: AvatarId | null }, conn: Connection, options: ConnectOptions = {}): GameClient {
     const client: Client = {
       id: this.nextClientId++,
       user: { id: user.id, username: user.username },
+      avatar: user.avatar ?? null,
       conn,
+      isAdmin: options.isAdmin === true,
       hello: false,
       lobby: false,
       tables: new Set(),
       replaced: false,
     };
+    this.clients.add(client);
     return client;
+  }
+
+  /**
+   * Avatar eines Users geändert (WP-032, `PUT /api/me/avatar`): gilt ab sofort für seine Verbindungen und an
+   * allen Tischen, an denen er sitzt (neuer `table.state` an deren Beobachter).
+   */
+  setAvatar(userId: number, avatar: AvatarId | null): void {
+    for (const client of this.clients) if (client.user.id === userId) client.avatar = avatar;
+    for (const table of this.tables.values()) {
+      if (table.setAvatar(userId, avatar)) this.broadcastState(table);
+    }
   }
 
   /** Verbindung ist weg (oder abgelöst): Lobby/Tische abmelden. Mehrfacher Aufruf ist harmlos. */
   disconnect(gameClient: GameClient): void {
     const client = gameClient as Client;
+    this.clients.delete(client);
     if (this.activeByUser.get(client.user.id) === client) this.activeByUser.delete(client.user.id);
     this.lobbyClients.delete(client);
     for (const tableId of [...client.tables]) {
@@ -175,6 +237,33 @@ export class GameServer {
     return this.tables.get(tableId);
   }
 
+  /**
+   * Admin schließt einen Tisch (WP-028): laufende Runde ohne Punkte abbrechen (wie D-019), Tisch in der DB schließen,
+   * alle Beobachter mit `table.closed` (`reason: 'admin'`) informieren und den Tisch aus Speicher und Lobby nehmen.
+   * `null`, wenn der Tisch nicht (mehr) im Speicher ist. Liefert den Zustand vor dem Schließen (fürs Protokoll).
+   */
+  closeTableByAdmin(tableId: number): AdminClosedTable | null {
+    const table = this.tables.get(tableId);
+    if (table === undefined) return null;
+    const closed: AdminClosedTable = {
+      tableId,
+      status: table.status,
+      roundId: table.roundId,
+      seated: table.seats.size,
+      roundAborted: table.status === 'running',
+    };
+    table.terminate();
+    this.broadcast(tableId, { type: 'table.closed', tableId, reason: 'admin' });
+    for (const c of this.tableClients.get(tableId) ?? []) c.tables.delete(tableId);
+    this.remove(table);
+    return closed;
+  }
+
+  /** Tische im Speicher (z. B. für Admin-Übersichten). */
+  tableIds(): number[] {
+    return [...this.tables.keys()];
+  }
+
   /** Wartet auf alle eingereihten Hooks/DB-Schreibvorgänge aller Tische. */
   async idle(): Promise<void> {
     await Promise.all([...[...this.tables.values()].map((t) => t.idle()), ...this.retiring]);
@@ -206,7 +295,12 @@ export class GameServer {
       }
       client.hello = true;
       this.takeOver(client);
-      this.send(client, { type: 'welcome', protocolVersion: PROTOCOL_VERSION, user: { ...client.user } });
+      this.send(client, {
+        type: 'welcome',
+        protocolVersion: PROTOCOL_VERSION,
+        user: { ...client.user },
+        isAdmin: client.isAdmin,
+      });
       return OK;
     }
     if (msg.type === 'ping') {
@@ -237,7 +331,7 @@ export class GameServer {
         return OK;
       }
       case 'table.sit':
-        return this.withTable(client, msg.tableId, (t) => t.sit(client.user, msg.seat));
+        return this.withTable(client, msg.tableId, (t) => t.sit(client.user, msg.seat, client.avatar));
       case 'table.stand':
         return this.withTable(client, msg.tableId, (t) => t.stand(client.user.id));
       case 'table.start':
@@ -246,7 +340,49 @@ export class GameServer {
         return this.withTable(client, msg.tableId, (t) => t.rematch(client.user.id));
       case 'table.action':
         return this.withTable(client, msg.tableId, (t) => t.act(client.user.id, msg.handNumber, msg.seq, msg.action));
+      case 'table.react':
+        return this.withTable(client, msg.tableId, (t) => this.react(client, t, msg.reaction));
+      case 'admin.revealCards':
+        return this.withTable(client, msg.tableId, (t) => this.revealCards(client, t, msg.seat, msg.requestId ?? null));
     }
+  }
+
+  /** WP-033 (D-027): Karten nur an genau diese Verbindung; Mitspieler bekommen keine Nachricht. */
+  private async revealCards(
+    client: Client,
+    table: Table,
+    seat: number,
+    requestId: string | null,
+  ): Promise<TableResult> {
+    const result = await this.revealer.reveal(table, { id: client.user.id, isAdmin: client.isAdmin }, seat);
+    if (!result.ok) return result;
+    if (client.replaced || !client.tables.has(table.id)) return OK; // Verbindung inzwischen weg
+    this.send(client, {
+      type: 'admin.cards',
+      requestId,
+      tableId: table.id,
+      handNumber: result.handNumber,
+      seat: result.seat,
+      cards: result.cards,
+    });
+    return OK;
+  }
+
+  /**
+   * Emoji-Reaktion (WP-032): nur Spieler mit Sitz, höchstens eine pro {@link REACTION_COOLDOWN_MS} und User
+   * (abgelehnte Versuche zählen nicht). Geht an alle Beobachter des Tisches, auch den Absender.
+   */
+  private react(client: Client, table: Table, reaction: ReactionId): TableResult {
+    const seat = table.seatOf(client.user.id);
+    if (seat === null) return err('NOT_SEATED', 'Nur Spieler am Tisch können reagieren');
+    const now = this.clock.now();
+    const last = this.lastReactionAt.get(client.user.id);
+    if (last !== undefined && now - last < REACTION_COOLDOWN_MS) {
+      return err('RATE_LIMITED', 'Nicht so schnell – höchstens eine Reaktion alle 2 Sekunden');
+    }
+    this.lastReactionAt.set(client.user.id, now);
+    this.broadcast(table.id, { type: 'table.reaction', tableId: table.id, seat, userId: client.user.id, reaction });
+    return OK;
   }
 
   /**
@@ -290,6 +426,7 @@ export class GameServer {
       repository: this.options.repository,
       hooks: this.hooks,
       handPauseMs: this.handPauseMs,
+      runoutPauseMs: this.runoutPauseMs,
       disconnectGraceMs: this.disconnectGraceMs,
       orphanTimeoutMs: this.orphanTimeoutMs,
       log: this.options.log,
@@ -407,6 +544,7 @@ export class GameServer {
     this.pendingDispose.get(table.id)?.();
     this.pendingDispose.delete(table.id);
     this.tables.delete(table.id);
+    this.revealer.forget(table.id);
     this.byInviteCode.delete(table.inviteCode);
     this.tableClients.delete(table.id);
     this.updateLobby(table);

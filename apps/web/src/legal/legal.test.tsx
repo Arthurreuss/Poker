@@ -62,6 +62,7 @@ describe('Rechtstexte', () => {
     expect(text).toMatch(/spätestens nach 14 Tagen automatisch gelöscht/);
     expect(text).toMatch(/erledigt, wird es 30\s+Tage danach automatisch gelöscht/);
     expect(text).toMatch(/spätestens 1 Jahr nach dem Absenden/);
+    expect(text).toMatch(/Admin-Protokoll werden 1 Jahr nach dem Anlegen automatisch\s+gelöscht/);
     expect(text).toMatch(/7 tägliche, 4 wöchentliche und 6 monatliche/);
     expect(text).toMatch(/nur lokal auf dem Rechner des Verantwortlichen/);
     expect(text).toMatch(/Data Privacy Framework/);

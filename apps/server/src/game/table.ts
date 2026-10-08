@@ -12,6 +12,7 @@ import {
 } from '@poker/engine';
 import {
   toClientView,
+  type AvatarId,
   type ErrorCode,
   type LobbyTable,
   type PublicUser,
@@ -23,6 +24,7 @@ import {
 } from '@poker/engine/protocol';
 import type { Cancel, Clock } from './clock';
 import type { GameHooks } from './hooks';
+import { handPauseFor } from './pause';
 import type { TableRepository } from './repository';
 
 export type TableResult = { ok: true } | { ok: false; code: ErrorCode; message: string };
@@ -51,6 +53,8 @@ export interface TableDeps {
   hooks: GameHooks;
   /** Pause nach jeder Hand, bevor die nächste startet (Showdown-Anzeige); in Tests 0. */
   handPauseMs: number;
+  /** Zusätzliche Pause je Straße eines All-in-Runouts (Client deckt sie nacheinander auf, WP-031). */
+  runoutPauseMs: number;
   /**
    * Gnadenfrist für getrennte Spieler am Zug (WP-012): so lange nach Zugbeginn bzw. Abbruch wartet der
    * Server höchstens, bevor er für sie checkt/foldet (Reload/Netzwechsel ohne Fold); in Tests frei wählbar.
@@ -91,6 +95,8 @@ export class Table {
   status: TableStatus = 'open';
   /** Sitz → Spieler. */
   readonly seats = new Map<number, PublicUser>();
+  /** Avatar je sitzendem User (WP-032); aktualisiert per {@link setAvatar}, wenn er ihn ändert. */
+  private readonly avatars = new Map<number, AvatarId | null>();
   round: RoundState | null = null;
   roundId: number | null = null;
   /** Offene Verbindungen je User, die diesen Tisch beobachten (Verbindungsstatus pro Spieler, WP-012). */
@@ -170,7 +176,7 @@ export class Table {
   // Vor dem Start: Sitze
   // -------------------------------------------------------------------------
 
-  sit(user: PublicUser, seat: number): TableResult {
+  sit(user: PublicUser, seat: number, avatar: AvatarId | null = null): TableResult {
     if (this.status !== 'open') return err('ROUND_STARTED', 'Die Runde läuft bereits – nur Zuschauen möglich');
     if (this.seatOf(user.id) !== null) return err('ALREADY_SEATED', 'Du sitzt schon an diesem Tisch');
     if (seat >= this.settings.maxSeats) {
@@ -179,8 +185,19 @@ export class Table {
     if (this.seats.size >= this.settings.maxSeats) return err('TABLE_FULL', 'Der Tisch ist voll');
     if (this.seats.has(seat)) return err('SEAT_TAKEN', 'Dieser Platz ist schon besetzt');
     this.seats.set(seat, { id: user.id, username: user.username });
+    this.avatars.set(user.id, avatar);
     this.deps.onChange(this);
     return OK;
+  }
+
+  /**
+   * Avatar eines Users geändert (WP-032). Liefert `true`, wenn er hier sitzt und sich die Sicht damit ändert –
+   * der Aufrufer sendet dann den neuen Zustand.
+   */
+  setAvatar(userId: number, avatar: AvatarId | null): boolean {
+    if (this.seatOf(userId) === null || (this.avatars.get(userId) ?? null) === avatar) return false;
+    this.avatars.set(userId, avatar);
+    return true;
   }
 
   stand(userId: number): TableResult {
@@ -188,6 +205,7 @@ export class Table {
     const seat = this.seatOf(userId);
     if (seat === null) return err('NOT_SEATED', 'Du sitzt nicht an diesem Tisch');
     this.seats.delete(seat);
+    this.avatars.delete(userId);
     this.deps.onChange(this);
     return OK;
   }
@@ -216,7 +234,10 @@ export class Table {
     if (this.seats.size - away.length < 2) {
       return err('NOT_ENOUGH_PLAYERS', 'Mindestens 2 verbundene Spieler müssen sitzen');
     }
-    for (const [seat] of away) this.seats.delete(seat);
+    for (const [seat, user] of away) {
+      this.seats.delete(seat);
+      this.avatars.delete(user.id);
+    }
     const result = await this.beginRound('finished');
     // Bei Erfolg hat beginRound den neuen Zustand schon gesendet; sonst die geänderten Sitze nachreichen.
     if (!result.ok && away.length > 0 && !this.closed) this.deps.onChange(this);
@@ -346,9 +367,20 @@ export class Table {
     });
   }
 
-  /** Runde ohne Punkte abbrechen (DB: `aborted`, Tisch `closed`), Tisch schließen. Gespeicherte Hände bleiben. */
+  /** Verwaiste Runde (D-022) abbrechen und melden. */
   private abortOrphaned(): void {
     if (this.status !== 'running' || this.closed || this.hasConnectedPlayer()) return;
+    this.terminate();
+    this.deps.onAborted(this);
+  }
+
+  /**
+   * Tisch sofort beenden (verwaiste Runde oder Admin, WP-028): Timer stoppen, eine laufende Runde ohne Punkte
+   * abbrechen (DB: `aborted`, wie D-019) und den Tisch in der DB schließen. Gespeicherte Hände bleiben; eine
+   * beendete Runde bleibt `finished` (`abortRound` ändert nur laufende Runden). Benachrichtigen muss der Aufrufer.
+   */
+  terminate(): void {
+    if (this.closed) return;
     const roundId = this.roundId;
     this.close();
     if (roundId !== null) {
@@ -356,7 +388,6 @@ export class Table {
     } else {
       this.enqueue('closeTable', () => this.deps.repository.closeTable(this.id));
     }
-    this.deps.onAborted(this);
   }
 
   // -------------------------------------------------------------------------
@@ -492,7 +523,8 @@ export class Table {
       this.finish(round, roundId, now);
       return;
     }
-    this.cancelPending = this.deps.clock.schedule(this.deps.handPauseMs, () => {
+    const pause = handPauseFor(round.hand, this.deps.handPauseMs, this.deps.runoutPauseMs);
+    this.cancelPending = this.deps.clock.schedule(pause, () => {
       try {
         this.dealNextHand();
       } catch (error) {
@@ -554,6 +586,7 @@ export class Table {
       .map(([s, user]) => ({
         seat: s,
         user: { ...user },
+        avatar: this.avatars.get(user.id) ?? null,
         connected: this.isConnected(user.id),
         timeBankMs: turn?.userId === user.id ? turn.bankAtStartMs - this.bankUsed(turn, now) : this.timeBankOf(user.id),
       }));

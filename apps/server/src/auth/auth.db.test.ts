@@ -82,10 +82,10 @@ describe.skipIf(testDatabaseUrl === undefined)('Auth-Endpunkte (Test-DB)', () =>
       const a = start();
       const res = await register(a);
 
-      expect(res.json()).toEqual({ user: { id: 1, username: 'Alice', isAdmin: false } });
+      expect(res.json()).toEqual({ user: { id: 1, username: 'Alice', isAdmin: false, avatar: null } });
       const meRes = await me(a, cookieHeader(res));
       expect(meRes.statusCode).toBe(200);
-      expect(meRes.json()).toEqual({ user: { id: 1, username: 'Alice', isAdmin: false } });
+      expect(meRes.json()).toEqual({ user: { id: 1, username: 'Alice', isAdmin: false, avatar: null } });
     });
 
     it('speichert argon2id-Hash statt Klartext und nur den SHA-256 des Tokens', async () => {
@@ -149,7 +149,7 @@ describe.skipIf(testDatabaseUrl === undefined)('Auth-Endpunkte (Test-DB)', () =>
       const res = await post(a, '/api/login', { username: 'alice', password: PASSWORD });
 
       expect(res.statusCode).toBe(200);
-      expect(res.json()).toEqual({ user: { id: 1, username: 'Alice', isAdmin: false } });
+      expect(res.json()).toEqual({ user: { id: 1, username: 'Alice', isAdmin: false, avatar: null } });
       expect((await me(a, cookieHeader(res))).statusCode).toBe(200);
     });
 
@@ -343,6 +343,7 @@ describe.skipIf(testDatabaseUrl === undefined)('Auth-Endpunkte (Test-DB)', () =>
           id: 1,
           username: 'Alice',
           isAdmin: false,
+          avatar: null,
         });
         expect(await getUserFromCookieHeader(db, undefined)).toBeNull();
         expect(await getUserFromCookieHeader(db, 'theme=dark')).toBeNull();
@@ -378,7 +379,7 @@ describe.skipIf(testDatabaseUrl === undefined)('Auth-Endpunkte (Test-DB)', () =>
       const a = start();
       const cookie = cookieHeader(await register(a, 'Alice'));
       expect(await setAdmin(s.pool, 'ALICE', true)).toBe(true);
-      expect((await me(a, cookie)).json()).toEqual({ user: { id: 1, username: 'Alice', isAdmin: true } });
+      expect((await me(a, cookie)).json()).toEqual({ user: { id: 1, username: 'Alice', isAdmin: true, avatar: null } });
       expect(await setAdmin(s.pool, 'Bob', true)).toBe(false);
     });
   });

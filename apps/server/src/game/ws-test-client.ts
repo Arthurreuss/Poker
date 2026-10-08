@@ -12,18 +12,21 @@ import type { AuthUser } from '../auth/session';
 
 const WAIT_TIMEOUT_MS = 10_000;
 
-function rawToText(data: RawData): string {
+export function rawToText(data: RawData): string {
   if (Array.isArray(data)) return Buffer.concat(data).toString('utf8');
   if (data instanceof ArrayBuffer) return Buffer.from(data).toString('utf8');
   return data.toString('utf8');
 }
 
-/** Fake-Session für Tests ohne DB: Cookie `poker_session=user-<id>` → User <id> (`user<id>`). */
+/**
+ * Fake-Session für Tests ohne DB: Cookie `poker_session=user-<id>` → User <id> (`user<id>`);
+ * `poker_session=admin-<id>` → derselbe User mit Admin-Flag (WP-033).
+ */
 export function fakeAuthenticate(cookie: string | undefined): Promise<AuthUser | null> {
-  const match = /poker_session=user-(\d+)/.exec(cookie ?? '');
-  if (match?.[1] === undefined) return Promise.resolve(null);
-  const id = Number(match[1]);
-  return Promise.resolve({ id, username: `user${String(id)}`, isAdmin: false });
+  const match = /poker_session=(user|admin)-(\d+)/.exec(cookie ?? '');
+  if (match?.[2] === undefined) return Promise.resolve(null);
+  const id = Number(match[2]);
+  return Promise.resolve({ id, username: `user${String(id)}`, isAdmin: match[1] === 'admin', avatar: null });
 }
 
 type Outgoing = ClientMessage | Record<string, unknown>;

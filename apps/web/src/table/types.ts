@@ -44,6 +44,8 @@ export interface PlayerSeatView {
   /** `false` = Verbindung getrennt (wird automatisch gecheckt/gefoldet, D-012). */
   readonly connected: boolean;
   readonly holeCards: HoleCardsView;
+  /** Gewählter Avatar (ID, WP-032); fehlt/`null` = keiner. Darstellung: `src/avatars/Avatar.tsx`. */
+  readonly avatar?: string | null;
 }
 
 export interface EmptySeatView {
@@ -65,6 +67,15 @@ export interface BlindsView {
   readonly ante?: number;
 }
 
+/** Emoji-Reaktion, die gerade über einem Sitz steht (WP-032). */
+export interface SeatReactionView {
+  /** Laufende Nummer: neue Reaktion → neue Einblend-Animation. */
+  readonly id: number;
+  readonly seat: number;
+  readonly emoji: string;
+  readonly label: string;
+}
+
 export interface TableView {
   /** Genau `MAX_SEATS` Einträge, Index = Sitznummer 0–8. */
   readonly seats: readonly SeatView[];
@@ -84,4 +95,12 @@ export interface TableView {
   /** Main Pot zuerst, danach Side Pots. Leer = noch nichts im Pot. */
   readonly pots: readonly PotView[];
   readonly blinds: BlindsView;
+  /** Nummer der laufenden bzw. letzten Hand (WP-031: erkennt neues Austeilen für Animationen/Sounds). */
+  readonly handNumber?: number;
+  /** Sitze, die in der beendeten Hand einen Pot gewonnen haben (WP-031: Hervorhebung, Chips zum Gewinner). */
+  readonly winnerSeats?: readonly number[];
+  /** Die fünf Karten der Gewinnerhand (Main Pot), werden am Tisch hervorgehoben (WP-031). */
+  readonly winningCards?: readonly Card[];
+  /** Eingeblendete Emoji-Reaktionen (WP-032); fehlt/leer = keine. */
+  readonly reactions?: readonly SeatReactionView[];
 }

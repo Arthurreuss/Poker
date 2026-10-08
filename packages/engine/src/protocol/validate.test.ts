@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_BLIND_STRUCTURE } from '../blind-structure';
+import { AVATAR_IDS, REACTION_COOLDOWN_MS, REACTION_IDS, isAvatarId, isReactionId } from './avatars';
 import { MAX_REQUEST_ID_LENGTH, PROTOCOL_VERSION } from './messages';
 import {
   DEFAULT_STARTING_STACK,
@@ -27,6 +28,9 @@ describe('parseClientMessage', () => {
     [{ type: 'table.rematch', tableId: 3, requestId: 'n1' }],
     [{ type: 'table.action', tableId: 3, handNumber: 1, seq: 2, action: { type: 'fold' } }],
     [{ type: 'table.action', tableId: 3, handNumber: 1, seq: 2, action: { type: 'raise', amount: 60 } }],
+    [{ type: 'table.react', tableId: 3, reaction: 'thumbs-up' }],
+    [{ type: 'table.react', tableId: 3, reaction: 'fire', requestId: 'e1' }],
+    [{ type: 'admin.revealCards', tableId: 3, seat: 4, requestId: 'r2' }],
   ])('akzeptiert %j', (msg) => {
     const result = parse(msg);
     expect(result).toEqual({ ok: true, message: msg });
@@ -61,6 +65,9 @@ describe('parseClientMessage', () => {
     [{ type: 'table.sit', tableId: 1, seat: 1.5 }],
     [{ type: 'table.start', tableId: '1' }],
     [{ type: 'table.rematch' }],
+    [{ type: 'admin.revealCards', tableId: 1 }],
+    [{ type: 'admin.revealCards', tableId: 1, seat: 9 }],
+    [{ type: 'admin.revealCards', seat: 1 }],
     [{ type: 'table.rematch', tableId: 0 }],
     [{ type: 'table.action', tableId: 1, handNumber: 1, seq: 0 }],
     [{ type: 'table.action', tableId: 1, handNumber: 1, seq: 0, action: { type: 'raise' } }],
@@ -70,6 +77,10 @@ describe('parseClientMessage', () => {
     [{ type: 'table.action', tableId: 1, handNumber: 0, seq: 0, action: { type: 'fold' } }],
     [{ type: 'table.create' }],
     [{ type: 'table.create', settings: { name: '' } }],
+    [{ type: 'table.react', tableId: 3 }],
+    [{ type: 'table.react', tableId: 3, reaction: 'poop' }],
+    [{ type: 'table.react', tableId: 3, reaction: '👍' }],
+    [{ type: 'table.react', reaction: 'clap' }],
   ])('lehnt %j ab', (msg) => {
     const result = parse(msg);
     expect(result.ok).toBe(false);
@@ -91,6 +102,27 @@ describe('parseClientMessage', () => {
   it('lehnt zu lange oder falsch typisierte requestIds ab', () => {
     expect(parse({ type: 'lobby.subscribe', requestId: 'x'.repeat(MAX_REQUEST_ID_LENGTH + 1) }).ok).toBe(false);
     expect(parse({ type: 'lobby.subscribe', requestId: 5 }).ok).toBe(false);
+  });
+});
+
+describe('Avatare und Reaktionen (WP-032)', () => {
+  it('feste Auswahl: 24 Avatare, 8 Reaktionen, eindeutig und URL-tauglich', () => {
+    expect(AVATAR_IDS).toHaveLength(24);
+    expect(REACTION_IDS).toHaveLength(8);
+    for (const ids of [AVATAR_IDS, REACTION_IDS]) {
+      expect(new Set(ids).size).toBe(ids.length);
+      for (const id of ids) expect(id).toMatch(/^[a-z][a-z0-9-]{0,31}$/);
+    }
+  });
+
+  it('isAvatarId/isReactionId akzeptieren nur bekannte IDs', () => {
+    expect(isAvatarId('fox')).toBe(true);
+    expect(isAvatarId('Fox')).toBe(false);
+    expect(isAvatarId(null)).toBe(false);
+    expect(isAvatarId('toString')).toBe(false);
+    expect(isReactionId('clap')).toBe(true);
+    expect(isReactionId('constructor')).toBe(false);
+    expect(REACTION_COOLDOWN_MS).toBe(2000);
   });
 });
 

@@ -30,7 +30,12 @@ async function start(heartbeatIntervalMs?: number): Promise<string> {
     db: fakeDb,
     publicOrigin: ORIGIN,
     ...(heartbeatIntervalMs === undefined ? {} : { heartbeatIntervalMs }),
-    game: { repository: new InMemoryTableRepository(), authenticate: fakeAuthenticate, handPauseMs: 0 },
+    game: {
+      repository: new InMemoryTableRepository(),
+      authenticate: fakeAuthenticate,
+      handPauseMs: 0,
+      runoutPauseMs: 0,
+    },
   });
   await app.listen({ host: '127.0.0.1', port: 0 });
   const { port } = app.server.address() as AddressInfo;
@@ -68,6 +73,7 @@ describe('WebSocket /ws: Upgrade', () => {
       type: 'welcome',
       protocolVersion: PROTOCOL_VERSION,
       user: { id: 7, username: 'user7' },
+      isAdmin: false,
     });
     c.close();
   });
@@ -88,7 +94,12 @@ describe('WebSocket /ws: Upgrade', () => {
     app = buildApp({
       db: fakeDb,
       publicOrigin: [ORIGIN, second],
-      game: { repository: new InMemoryTableRepository(), authenticate: fakeAuthenticate, handPauseMs: 0 },
+      game: {
+        repository: new InMemoryTableRepository(),
+        authenticate: fakeAuthenticate,
+        handPauseMs: 0,
+        runoutPauseMs: 0,
+      },
     });
     await app.listen({ host: '127.0.0.1', port: 0 });
     const url = `ws://127.0.0.1:${String((app.server.address() as AddressInfo).port)}`;

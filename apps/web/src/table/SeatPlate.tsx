@@ -1,3 +1,4 @@
+import { Avatar } from '../avatars/Avatar';
 import { DisconnectedSvg } from './assets/icons';
 import { formatChips } from './format';
 import type { SeatStatus } from './types';
@@ -13,6 +14,10 @@ export interface SeatPlateProps {
   /** Restliche Zeitbank in Sekunden, solange sie läuft (D-013). */
   readonly timeBankSeconds?: number | undefined;
   readonly isHero?: boolean;
+  /** Avatar-ID (WP-032); ohne Wert kein Avatar an der Plakette. */
+  readonly avatar?: string | null | undefined;
+  /** Seite, an der der Avatar über den Rand ragt (gegenüber Dealer-Button/Blind-Marker). */
+  readonly avatarSide?: 'left' | 'right';
 }
 
 /**
@@ -71,7 +76,10 @@ export function SeatPlate({
   timeRemaining,
   timeBankSeconds,
   isHero = false,
+  avatar,
+  avatarSide = 'left',
 }: SeatPlateProps) {
+  const hasAvatar = avatar !== undefined && avatar !== null;
   const pill = statusLabel(status, connected);
   const classes = [
     'pt-plate',
@@ -79,6 +87,7 @@ export function SeatPlate({
     toAct && 'pt-plate--to-act',
     `pt-plate--${status}`,
     !connected && 'pt-plate--disconnected',
+    hasAvatar && `pt-plate--avatar-${avatarSide}`,
   ]
     .filter(Boolean)
     .join(' ');
@@ -89,6 +98,9 @@ export function SeatPlate({
         <span className={`pt-pill pt-pill--${pill === 'Fold' ? 'folded' : 'disconnected'}`} data-testid="status">
           {pill}
         </span>
+      )}
+      {hasAvatar && (
+        <Avatar avatar={avatar} name={name} decorative className={`pt-plate-avatar pt-plate-avatar--${avatarSide}`} />
       )}
       <div className="pt-plate-name">
         {!connected && (

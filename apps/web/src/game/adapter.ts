@@ -9,10 +9,13 @@ import {
   type HoleCardsView,
   type PlayerSeatView,
   type PotView,
+  type SeatReactionView,
   type SeatStatus,
   type SeatView,
   type TableView,
 } from '../table/types';
+import { REACTIONS } from '../reactions/reactions';
+import type { ReactionBubble } from './tableGame';
 import { turnClockDisplay, type TurnClock } from './turnClock';
 
 const EMPTY: SeatView = { kind: 'empty' };
@@ -46,7 +49,34 @@ function potsOf(hand: HandView): PotView[] {
   return pots.filter((p) => p.amount > 0).map((p) => ({ amount: p.amount }));
 }
 
+/** Pots einer beendeten Hand vor der Auszahlung (alle Einsätze) und der nicht gecallte Überschuss. */
+function unpaidPotsOf(hand: HandView): { pots: PotView[]; uncalled: { playerId: string; amount: number } | null } {
+  const { pots, uncalled } = calculatePots(
+    hand.players.map((p) => ({ id: p.playerId, status: p.status, totalBet: p.totalBet })),
+  );
+  return { pots: pots.filter((p) => p.amount > 0).map((p) => ({ amount: p.amount })), uncalled };
+}
+
+/** Gewinner einer beendeten Hand: Showdown-Pots, sonst (Fold-out) die Auszahlungen. */
+function winnerIdsOf(hand: HandView): Set<string> {
+  if (hand.showdown !== null) return new Set(hand.showdown.pots.flatMap((p) => p.winnerIds));
+  return new Set((hand.payouts ?? []).map((p) => p.playerId));
+}
+
+/**
+ * Was die Tischansicht von der Hand schon zeigt (WP-031, `game/presentation.ts`): Bei einem All-in-Runout
+ * deckt der Client Flop, Turn und River nacheinander auf und zeigt das Ergebnis erst danach.
+ * - `board`: so viele Board-Karten zeigen
+ * - `result`: Ergebnis zeigen (Auszahlung in den Stacks, Gewinner); sonst Stacks und Pots vor der Auszahlung
+ */
+export interface Reveal {
+  readonly board: number;
+  readonly result: boolean;
+}
+
 export interface AdaptOptions {
+  /** Teil-Aufdecken (WP-031); ohne Angabe wird alles gezeigt. */
+  readonly reveal?: Reveal | null;
   /** Zug-Timer (aus `readTurnClock`); ohne Timer bleibt der Ring aus. */
   readonly turnClock?: TurnClock | null;
   /** Lokale Uhrzeit für den Timer-Anteil. */
@@ -58,6 +88,10 @@ export function toTableView(server: ServerTableView, options: AdaptOptions = {})
   const round = server.round;
   const hand = round?.hand ?? null;
   const heroSeat = server.you.seat;
+  const reveal = options.reveal ?? null;
+  const holdResult = hand !== null && hand.phase === 'complete' && reveal !== null && !reveal.result;
+  const unpaid = holdResult ? unpaidPotsOf(hand) : null;
+  const winners = hand !== null && hand.phase === 'complete' && !holdResult ? winnerIdsOf(hand) : null;
   const seats: SeatView[] = Array.from({ length: MAX_SEATS }, () => EMPTY);
 
   for (const s of server.seats) {
@@ -82,6 +116,11 @@ export function toTableView(server: ServerTableView, options: AdaptOptions = {})
     } else if (hand !== null && handPlayer !== undefined) {
       status = handPlayer.status;
       stack = handPlayer.stack;
+      if (unpaid !== null) {
+        // Ergebnis noch nicht gezeigt: Stack vor der Auszahlung (nur der nicht gecallte Rest kommt zurück).
+        const back = unpaid.uncalled?.playerId === playerId ? unpaid.uncalled.amount : 0;
+        stack = handPlayer.startStack - handPlayer.totalBet + back;
+      }
       bet = hand.phase === 'complete' ? 0 : handPlayer.streetBet;
       holeCards = holeCardsOf(hand, handPlayer, isHero);
     }
@@ -93,6 +132,7 @@ export function toTableView(server: ServerTableView, options: AdaptOptions = {})
       status,
       connected: s.connected,
       holeCards,
+      avatar: s.avatar,
     };
     seats[s.seat] = seat;
   }
@@ -126,6 +166,11 @@ export function toTableView(server: ServerTableView, options: AdaptOptions = {})
     };
   }
 
+  const board = hand?.board ?? [];
+  const winnerSeats =
+    winners === null || hand === null ? [] : hand.players.filter((p) => winners.has(p.playerId)).map((p) => p.seat);
+  const winningCards = winners === null ? undefined : hand?.showdown?.pots[0]?.winningHand?.cards;
+
   return {
     seats,
     heroSeat,
@@ -134,9 +179,12 @@ export function toTableView(server: ServerTableView, options: AdaptOptions = {})
     bigBlindSeat: hand?.bigBlindSeat ?? null,
     toActSeat,
     ...timer,
-    board: hand?.board ?? [],
-    pots: hand === null ? [] : potsOf(hand),
+    board: reveal === null ? board : board.slice(0, reveal.board),
+    pots: hand === null ? [] : unpaid !== null ? unpaid.pots : potsOf(hand),
     blinds: levelNumber === undefined ? blinds : { ...blinds, level: levelNumber },
+    ...(hand === null ? {} : { handNumber: hand.handNumber }),
+    ...(winnerSeats.length > 0 ? { winnerSeats } : {}),
+    ...(winningCards === undefined ? {} : { winningCards }),
   };
 }
 
@@ -177,4 +225,11 @@ export function heroHandContext(server: ServerTableView): HeroHandContext | null
     bigBlind: hand.bigBlind,
     canAct: me.status === 'active',
   };
+}
+
+/** Eingeblendete Reaktionen (Store) → View-Model; nur Sitze, an denen gerade jemand sitzt (WP-032). */
+export function toReactionViews(bubbles: readonly ReactionBubble[], view: TableView): SeatReactionView[] {
+  return bubbles
+    .filter((b) => view.seats[b.seat]?.kind === 'player')
+    .map((b) => ({ id: b.id, seat: b.seat, emoji: REACTIONS[b.reaction].emoji, label: REACTIONS[b.reaction].label }));
 }
