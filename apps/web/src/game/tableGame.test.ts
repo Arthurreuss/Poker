@@ -71,6 +71,17 @@ describe('TableGameStore – Zustand', () => {
     expect(store.getSnapshot()).toMatchObject({ notFound: true, table: null });
   });
 
+  it('table.closed: Tisch weg, Hinweis, kein erneuter Beitritt nach Reconnect', () => {
+    const { store, state, last, connection, connect } = setup(1);
+    state(serverView(startGame(), 1));
+    last().receive({ type: 'table.closed', tableId: TABLE, reason: 'abandoned' });
+    expect(store.getSnapshot()).toMatchObject({ closed: 'abandoned', table: null });
+    last().serverClose(1006);
+    connection.reconnectNow();
+    connect();
+    expect(last().types()).toEqual(['hello']);
+  });
+
   it('stop gibt den Tisch frei, ohne die Verbindung zu beenden', () => {
     const { store, connection, last } = setup(1);
     store.stop();
@@ -138,16 +149,18 @@ describe('TableGameStore – Aktionen', () => {
     expect(store.getSnapshot().error?.code).toBe('NOT_CONNECTED');
   });
 
-  it('sit/stand/start/leave senden die passenden Nachrichten', () => {
+  it('sit/stand/start/rematch/leave senden die passenden Nachrichten', () => {
     const { store, last } = setup(1);
     store.sit(4);
     store.stand();
     store.startRound();
+    store.rematch();
     store.leave();
     expect(last().sent.slice(2)).toEqual([
       { type: 'table.sit', tableId: TABLE, seat: 4 },
       { type: 'table.stand', tableId: TABLE },
       { type: 'table.start', tableId: TABLE },
+      { type: 'table.rematch', tableId: TABLE },
       { type: 'table.leave', tableId: TABLE },
     ]);
   });
@@ -239,6 +252,14 @@ describe('TableGameStore – Rundenende', () => {
     expect(store.getSnapshot().standings).toBeNull();
     store.showStandings();
     expect(store.getSnapshot().standings?.map((s) => s.user.username)).toEqual(['ben', 'anna', 'cleo']);
+  });
+
+  it('Nochmal: neuer Stand mit laufender Runde schließt das Ergebnis', () => {
+    const { store, state } = setup(1);
+    state(finished());
+    expect(store.getSnapshot().standings).not.toBeNull();
+    state(serverView(startGame(), 1));
+    expect(store.getSnapshot().standings).toBeNull();
   });
 
   it('nach Reconnect (roundFinished verpasst) aus dem Zustand – aber nur beim Wechsel auf beendet', () => {

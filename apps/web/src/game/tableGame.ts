@@ -32,6 +32,8 @@ export interface TableGameSnapshot {
   readonly error: GameError | null;
   /** Server kennt den Tisch nicht (mehr) bzw. er ist privat. */
   readonly notFound: boolean;
+  /** Server hat den Tisch geschlossen (`table.closed`, z. B. verwaiste Runde abgebrochen, D-022). */
+  readonly closed: 'abandoned' | null;
   /** Eine Aktion für diesen Stand (`handNumber/actionSeq`) ist unterwegs. */
   readonly pendingAction: boolean;
   /** Gewählte Vorab-Aktion (gilt für Hand und Straße der Wahl, verfällt bei Änderungen). */
@@ -78,6 +80,7 @@ export class TableGameStore {
       standings: null,
       error: null,
       notFound: false,
+      closed: null,
       pendingAction: false,
       preAction: null,
     };
@@ -146,6 +149,11 @@ export class TableGameStore {
 
   startRound(): boolean {
     return this.send({ type: 'table.start', tableId: this.tableId });
+  }
+
+  /** „Nochmal“ (D-020): nur Ersteller, nur nach Rundenende; Erfolg = neuer `table.state` mit `running`. */
+  rematch(): boolean {
+    return this.send({ type: 'table.rematch', tableId: this.tableId });
   }
 
   /** Tisch verlassen: nicht mehr beobachten (vor dem Start steht man dabei auch auf). */
@@ -233,8 +241,23 @@ export class TableGameStore {
       case 'table.left':
         if (message.tableId === this.tableId) this.update({ table: null });
         return;
-      default:
+      case 'table.closed':
+        if (message.tableId !== this.tableId) return;
+        this.pendingKey = null;
+        this.connection.unwatchTable(this.tableId);
+        this.update({ closed: message.reason, table: null, pendingAction: false, preAction: null, standings: null });
         return;
+      // Für den Tisch ohne Bedeutung (Lobby, Handshake, Heartbeat). Bewusst ohne `default`, damit neue
+      // Server-Nachrichten hier auffallen.
+      case 'welcome':
+      case 'pong':
+      case 'lobby.snapshot':
+      case 'lobby.update':
+      case 'lobby.remove':
+      case 'table.created':
+        return;
+      default:
+        message satisfies never;
     }
   }
 

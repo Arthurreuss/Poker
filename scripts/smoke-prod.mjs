@@ -24,7 +24,10 @@ function envFileValue(name) {
 }
 
 const baseUrl = new URL(process.env.SMOKE_URL ?? `http://localhost:${envFileValue('WEB_PORT') ?? '4320'}`);
-const origin = process.env.SMOKE_ORIGIN ?? process.env.PUBLIC_ORIGIN ?? envFileValue('PUBLIC_ORIGIN');
+// PUBLIC_ORIGIN darf mehrere Origins enthalten (D-023) – geprüft wird die erste (Hauptadresse).
+const origin = (process.env.SMOKE_ORIGIN ?? process.env.PUBLIC_ORIGIN ?? envFileValue('PUBLIC_ORIGIN'))
+  ?.split(',')[0]
+  ?.trim();
 if (!origin) {
   console.error('✗ Keine Origin: SMOKE_ORIGIN oder PUBLIC_ORIGIN setzen (oder .env.prod anlegen).');
   process.exit(1);

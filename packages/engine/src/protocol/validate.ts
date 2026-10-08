@@ -27,8 +27,16 @@ export const DEFAULT_TABLE_SETTINGS: Omit<TableSettings, 'name'> = {
 export const TABLE_NAME_MAX_LENGTH = 50;
 export const MIN_SEATS = 2;
 export const MAX_SEATS = 9; // D-007
-export const MAX_TURN_TIME_SECONDS = 600;
-export const MAX_TIME_BANK_SECONDS = 3600;
+/** Grenzen der Zeit-Einstellungen (D-020): Zugzeit 10–120 s, Zeitbank 0–300 s. */
+export const MIN_TURN_TIME_SECONDS = 10;
+export const MAX_TURN_TIME_SECONDS = 120;
+export const MIN_TIME_BANK_SECONDS = 0;
+export const MAX_TIME_BANK_SECONDS = 300;
+/** Startstack 1 … 10⁸ (D-015, wie `validateRoundConfig`). */
+export const MAX_STARTING_STACK = 100_000_000;
+/** Dauer eines Blind-Levels bei steigenden Blinds (Minuten). */
+export const MIN_LEVEL_MINUTES = 1;
+export const MAX_LEVEL_MINUTES = 1440;
 const MAX_ID = 2 ** 31 - 1; // integer-IDs in Postgres (D-015)
 const MAX_HAND_NUMBER = 2 ** 31 - 1;
 const INVITE_CODE_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
@@ -89,7 +97,10 @@ function action(v: unknown): Action {
 function blindLevel(v: unknown): BlindLevel {
   if (!isObject(v)) fail('Blind-Level muss ein Objekt sein');
   if ('ante' in v) fail('Antes gibt es nicht (D-016)');
-  return { smallBlind: int(v, 'smallBlind', 1, 100_000_000), bigBlind: int(v, 'bigBlind', 1, 100_000_000) };
+  return {
+    smallBlind: int(v, 'smallBlind', 1, MAX_STARTING_STACK),
+    bigBlind: int(v, 'bigBlind', 1, MAX_STARTING_STACK),
+  };
 }
 
 function blindStructure(v: unknown): BlindStructure {
@@ -100,7 +111,11 @@ function blindStructure(v: unknown): BlindStructure {
     if (!Array.isArray(levels) || levels.length === 0 || levels.length > 100) {
       fail('levels muss 1–100 Level enthalten');
     }
-    return { type: 'increasing', levels: levels.map(blindLevel), levelMinutes: int(v, 'levelMinutes', 1, 1440) };
+    return {
+      type: 'increasing',
+      levels: levels.map(blindLevel),
+      levelMinutes: int(v, 'levelMinutes', MIN_LEVEL_MINUTES, MAX_LEVEL_MINUTES),
+    };
   }
   return fail('blindStructure.type muss fixed oder increasing sein');
 }
@@ -120,10 +135,14 @@ function settings(v: unknown): TableSettings {
     name,
     isPublic: has('isPublic') ? (v['isPublic'] as boolean) : d.isPublic,
     maxSeats: has('maxSeats') ? int(v, 'maxSeats', MIN_SEATS, MAX_SEATS) : d.maxSeats,
-    startingStack: has('startingStack') ? int(v, 'startingStack', 1, 100_000_000) : d.startingStack,
+    startingStack: has('startingStack') ? int(v, 'startingStack', 1, MAX_STARTING_STACK) : d.startingStack,
     blindStructure: has('blindStructure') ? blindStructure(v['blindStructure']) : structuredCopy(d.blindStructure),
-    turnTimeSeconds: has('turnTimeSeconds') ? int(v, 'turnTimeSeconds', 1, MAX_TURN_TIME_SECONDS) : d.turnTimeSeconds,
-    timeBankSeconds: has('timeBankSeconds') ? int(v, 'timeBankSeconds', 0, MAX_TIME_BANK_SECONDS) : d.timeBankSeconds,
+    turnTimeSeconds: has('turnTimeSeconds')
+      ? int(v, 'turnTimeSeconds', MIN_TURN_TIME_SECONDS, MAX_TURN_TIME_SECONDS)
+      : d.turnTimeSeconds,
+    timeBankSeconds: has('timeBankSeconds')
+      ? int(v, 'timeBankSeconds', MIN_TIME_BANK_SECONDS, MAX_TIME_BANK_SECONDS)
+      : d.timeBankSeconds,
   };
   const roundError = validateRoundConfig({
     startingStack: result.startingStack,
@@ -165,6 +184,7 @@ const MESSAGE_TYPES: ReadonlySet<string> = new Set<ClientMessageType>([
   'table.sit',
   'table.stand',
   'table.start',
+  'table.rematch',
   'table.action',
 ]);
 
@@ -190,6 +210,7 @@ function message(o: Obj, type: ClientMessageType): ClientMessage {
     case 'table.leave':
     case 'table.stand':
     case 'table.start':
+    case 'table.rematch':
       return { type, tableId: id(o, 'tableId') };
     case 'table.sit':
       return { type, tableId: id(o, 'tableId'), seat: int(o, 'seat', 0, MAX_SEATS - 1) };

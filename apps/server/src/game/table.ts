@@ -56,11 +56,18 @@ export interface TableDeps {
    * Server höchstens, bevor er für sie checkt/foldet (Reload/Netzwechsel ohne Fold); in Tests frei wählbar.
    */
   disconnectGraceMs: number;
+  /**
+   * Verwaiste Runde (D-022, WP-015): so lange darf eine laufende Runde ohne verbundenen Spieler bleiben,
+   * dann wird sie ohne Punkte abgebrochen.
+   */
+  orphanTimeoutMs: number;
   log: Logger;
   /** Zustand hat sich geändert → Sichten neu senden, Lobby aktualisieren. */
   onChange(table: Table): void;
   /** Runde beendet → Ergebnis an alle. */
   onRoundFinished(table: Table, standings: StandingView[]): void;
+  /** Verwaiste Runde abgebrochen (D-022) → Tisch ist geschlossen und muss aus dem Speicher. */
+  onAborted(table: Table): void;
 }
 
 /** Engine-Spieler-ID eines Users (D-003: die Engine kennt nur Strings). */
@@ -95,6 +102,12 @@ export class Table {
   private readonly timeBanks = new Map<number, number>();
   private hookQueue: Promise<void> = Promise.resolve();
   private closed = false;
+  /** Geplanter Abbruch, solange kein Spieler verbunden ist (D-022). */
+  private cancelOrphan: Cancel | null = null;
+  /** Users, die per Einladungscode beigetreten sind – dürfen danach auch per `tableId` zurück (WP-015). */
+  private readonly invited = new Set<number>();
+  /** `seq` (ab 1) der automatischen Aktionen der laufenden Hand (WP-013, Hand-Historie). */
+  private autoActionSeqs: number[] = [];
 
   constructor(
     readonly id: number,
@@ -126,6 +139,26 @@ export class Table {
 
   get watcherCount(): number {
     return this.watchers.size;
+  }
+
+  /** Mindestens ein Spieler mit Sitz ist verbunden (Zuschauer zählen nicht, D-022). */
+  hasConnectedPlayer(): boolean {
+    for (const user of this.seats.values()) if (this.isConnected(user.id)) return true;
+    return false;
+  }
+
+  /** Per Einladungscode beigetreten (WP-015): darf private Tische danach auch per `tableId` betreten. */
+  invite(userId: number): void {
+    this.invited.add(userId);
+  }
+
+  isInvited(userId: number): boolean {
+    return this.invited.has(userId);
+  }
+
+  /** Geschlossen (Server fährt herunter, Tisch aufgeräumt oder Runde abgebrochen). */
+  get isClosed(): boolean {
+    return this.closed;
   }
 
   seatOf(userId: number): number | null {
@@ -168,17 +201,34 @@ export class Table {
     if (this.status !== 'open') return err('ROUND_STARTED', 'Die Runde wurde schon gestartet');
     if (userId !== this.createdBy.id) return err('NOT_CREATOR', 'Nur der Ersteller kann die Runde starten');
     if (this.seats.size < 2) return err('NOT_ENOUGH_PLAYERS', 'Mindestens 2 Spieler müssen sitzen');
+    return this.beginRound('open');
+  }
 
-    // Sofort sperren: ab hier kein Hinsetzen/Aufstehen mehr, auch während die DB schreibt.
+  /**
+   * „Nochmal“ (D-020): nach Rundenende startet der Ersteller eine neue Runde am selben Tisch mit denselben
+   * Sitzen. Stacks, Zeitbanken und Blind-Level beginnen von vorn; die Runde bekommt eine neue Runden-ID.
+   */
+  async rematch(userId: number): Promise<TableResult> {
+    if (this.status !== 'finished') return err('ROUND_NOT_FINISHED', 'Die Runde ist noch nicht beendet');
+    if (userId !== this.createdBy.id) return err('NOT_CREATOR', 'Nur der Ersteller kann eine neue Runde starten');
+    if (this.seats.size < 2) return err('NOT_ENOUGH_PLAYERS', 'Mindestens 2 Spieler müssen sitzen');
+    return this.beginRound('finished');
+  }
+
+  private async beginRound(previous: 'open' | 'finished'): Promise<TableResult> {
+    // Sofort sperren: ab hier kein Hinsetzen/Aufstehen und kein zweiter Start mehr, auch während die DB schreibt.
     this.status = 'running';
     const seated = [...this.seats].sort(([a], [b]) => a - b);
     try {
+      // „Nochmal“: erst die ausstehenden Schreibvorgänge der vorigen Runde (finishRound schließt den Tisch in
+      // der DB), sonst könnte das Schließen nach dem Wiedereröffnen ankommen.
+      if (previous === 'finished') await this.idle();
       this.roundId = await this.deps.repository.startRound(
         this.id,
         seated.map(([seat, user]) => ({ userId: user.id, seat })),
       );
     } catch (error) {
-      this.status = 'open';
+      this.status = previous;
       this.deps.log.error({ err: error, tableId: this.id }, 'Runde konnte nicht gespeichert werden');
       return err('INTERNAL', 'Die Runde konnte nicht gestartet werden');
     }
@@ -197,12 +247,16 @@ export class Table {
     );
     if (!started.ok) {
       // Kann bei validierten Einstellungen nicht passieren; Tisch bleibt bedienbar.
-      this.status = 'open';
+      this.status = previous;
       this.deps.log.error({ tableId: this.id, error: started.error }, 'startRound fehlgeschlagen');
       return err('INTERNAL', started.error.message);
     }
     this.round = started.round;
+    this.turn?.cancel();
+    this.turn = null;
+    this.timeBanks.clear();
     this.dealNextHand();
+    this.checkOrphaned();
     return OK;
   }
 
@@ -240,10 +294,15 @@ export class Table {
     return OK;
   }
 
-  /** Check, wenn möglich, sonst Fold (D-013) – für WP-012. */
+  /** Check, wenn möglich, sonst Fold (D-013) – für WP-012. In der Hand-Historie als automatisch markiert (WP-013). */
   autoCheckOrFold(userId: number): TableResult {
+    // Vorher merken: actFor löst bei Handende synchron onHandComplete aus.
+    this.autoActionSeqs.push((this.round?.hand?.log.length ?? 0) + 1);
     const checked = this.actFor(userId, { type: 'check' });
-    return checked.ok ? checked : this.actFor(userId, { type: 'fold' });
+    if (checked.ok) return checked;
+    const folded = this.actFor(userId, { type: 'fold' });
+    if (!folded.ok) this.autoActionSeqs.pop();
+    return folded;
   }
 
   /** Beendet Timer; der Tisch nimmt danach keine Spielschritte mehr vor. */
@@ -253,6 +312,43 @@ export class Table {
     this.cancelPending = null;
     this.turn?.cancel();
     this.turn = null;
+    this.cancelOrphan?.();
+    this.cancelOrphan = null;
+  }
+
+  // -------------------------------------------------------------------------
+  // Verwaiste Runden (D-022, WP-015)
+  // -------------------------------------------------------------------------
+
+  /**
+   * Läuft die Runde und ist kein Spieler verbunden, wird der Abbruch nach `orphanTimeoutMs` geplant; kommt
+   * ein Spieler zurück (oder endet die Runde), wird er aufgehoben. Aufruf bei jedem Verbindungswechsel.
+   */
+  private checkOrphaned(): void {
+    const orphaned = this.status === 'running' && !this.closed && !this.hasConnectedPlayer();
+    if (!orphaned) {
+      this.cancelOrphan?.();
+      this.cancelOrphan = null;
+      return;
+    }
+    if (this.cancelOrphan !== null) return;
+    this.cancelOrphan = this.deps.clock.schedule(this.deps.orphanTimeoutMs, () => {
+      this.cancelOrphan = null;
+      this.abortOrphaned();
+    });
+  }
+
+  /** Runde ohne Punkte abbrechen (DB: `aborted`, Tisch `closed`), Tisch schließen. Gespeicherte Hände bleiben. */
+  private abortOrphaned(): void {
+    if (this.status !== 'running' || this.closed || this.hasConnectedPlayer()) return;
+    const roundId = this.roundId;
+    this.close();
+    if (roundId !== null) {
+      this.enqueue('abortRound', () => this.deps.repository.abortRound(this.id, roundId));
+    } else {
+      this.enqueue('closeTable', () => this.deps.repository.closeTable(this.id));
+    }
+    this.deps.onAborted(this);
   }
 
   // -------------------------------------------------------------------------
@@ -335,6 +431,7 @@ export class Table {
   /** Spieler am Zug hat sich getrennt bzw. ist zurück → Frist neu berechnen (Sicht sendet der Aufrufer). */
   private onConnectivityChange(userId: number): void {
     if (this.turn?.userId === userId) this.scheduleDeadline(this.deps.clock.now());
+    this.checkOrphaned();
   }
 
   private dealNextHand(): void {
@@ -342,6 +439,7 @@ export class Table {
     if (this.closed || this.round === null) return;
     const now = this.deps.clock.now();
     const update = startNextHand(this.round, now, this.deps.rng);
+    this.autoActionSeqs = [];
     if (!update.ok) {
       this.deps.log.error({ tableId: this.id, error: update.error }, 'startNextHand fehlgeschlagen');
       return;
@@ -366,6 +464,7 @@ export class Table {
     if (round === null) return;
     if (round.phase === 'finished') this.status = 'finished';
     this.syncTurn();
+    this.checkOrphaned();
     this.deps.onChange(this);
     if (round.hand?.phase !== 'complete') return;
 
@@ -377,6 +476,7 @@ export class Table {
       handNumber: round.handNumber,
       hand: round.hand,
       round,
+      autoActionSeqs: [...this.autoActionSeqs],
       atMs: now,
     });
 

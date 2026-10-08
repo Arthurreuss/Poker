@@ -5,8 +5,11 @@ export interface ServerConfig {
   host: string;
   port: number;
   databaseUrl: string;
-  /** Öffentliche Origin der App, z. B. für den Origin-Check beim WebSocket-Upgrade (D-014). */
-  publicOrigin: string;
+  /**
+   * Öffentliche Origins der App (D-014, D-023), z. B. für den Origin-Check beim WebSocket-Upgrade.
+   * `PUBLIC_ORIGIN` darf mehrere, durch Komma getrennte Origins enthalten; die erste ist die Hauptadresse.
+   */
+  publicOrigins: readonly string[];
   nodeEnv: string;
   /** Proxy-Header (`X-Forwarded-For`/`-Proto`) nur in prod vertrauen (D-014). */
   trustProxy: boolean;
@@ -22,6 +25,27 @@ function required(env: Env, name: string): string {
   return value;
 }
 
+/** Zerlegt `PUBLIC_ORIGIN` (kommagetrennt) und prüft, dass jeder Eintrag eine reine Origin ist (`https://host[:port]`). */
+export function parsePublicOrigins(raw: string): string[] {
+  const origins = raw
+    .split(',')
+    .map((part) => part.trim())
+    .filter((part) => part !== '');
+  for (const origin of origins) {
+    let parsed: URL;
+    try {
+      parsed = new URL(origin);
+    } catch {
+      throw new Error(`PUBLIC_ORIGIN enthält keine gültige Origin: ${origin}`);
+    }
+    if (parsed.origin !== origin) {
+      throw new Error(`PUBLIC_ORIGIN muss Origins ohne Pfad und ohne Schrägstrich am Ende enthalten: ${origin}`);
+    }
+  }
+  if (origins.length === 0) throw new Error('Umgebungsvariable PUBLIC_ORIGIN fehlt');
+  return origins;
+}
+
 export function loadConfig(env: Env): ServerConfig {
   const rawPort = required(env, 'PORT');
   const port = Number(rawPort);
@@ -34,7 +58,7 @@ export function loadConfig(env: Env): ServerConfig {
     host: env['HOST'] ?? '127.0.0.1',
     port,
     databaseUrl: required(env, 'DATABASE_URL'),
-    publicOrigin: required(env, 'PUBLIC_ORIGIN'),
+    publicOrigins: parsePublicOrigins(required(env, 'PUBLIC_ORIGIN')),
     nodeEnv,
     trustProxy: nodeEnv === 'production',
   };

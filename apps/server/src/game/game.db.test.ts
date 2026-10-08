@@ -140,6 +140,16 @@ describe.skipIf(testDatabaseUrl === undefined)('Game-Server mit Postgres', () =>
     expect(closed[0]?.closed_at).toBeInstanceOf(Date);
 
     for (const cl of [a, b, c]) expect(findHoleCardLeaks(cl, hands)).toEqual([]);
+
+    // Hand-Historie (WP-013) ist in buildApp standardmäßig aktiv: jede Hand beendet und mit Aktionen gespeichert.
+    const { rows: stored } = await s.pool.query<{ hand_number: number; finished: boolean; actions: number }>(
+      `SELECT h.hand_number, h.finished_at IS NOT NULL AND h.result IS NOT NULL AS finished,
+              (SELECT count(*)::int FROM hand_actions a WHERE a.hand_id = h.id) AS actions
+         FROM hands h WHERE h.round_id = $1 ORDER BY h.hand_number`,
+      [rounds[0]?.id],
+    );
+    expect(stored.map((h) => h.hand_number)).toEqual([...hands.keys()].sort((x, y) => x - y));
+    expect(stored.every((h) => h.finished && h.actions >= 2)).toBe(true);
   }, 30_000);
 
   it('WebSocket-Upgrade ohne, mit unbekannter oder abgelaufener Session → 401', async () => {

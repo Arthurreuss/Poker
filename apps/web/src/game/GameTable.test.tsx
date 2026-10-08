@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import type { RoundStanding } from '@poker/engine';
 import type { TableView as ServerTableView } from '@poker/engine/protocol';
-import { act, render, screen, within } from '@testing-library/react';
+import { act, cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -28,12 +28,18 @@ afterEach(() => {
   stopAll = [];
 });
 
-function Page({ create }: { create: () => ReturnType<typeof fakeConnection>['connection'] }) {
+function Page({
+  create,
+  onLeave,
+}: {
+  create: () => ReturnType<typeof fakeConnection>['connection'];
+  onLeave: () => void;
+}) {
   const [snapshot, store] = useTableGame(42, create);
-  return <GameTable snapshot={snapshot} store={store} onLeave={() => undefined} />;
+  return <GameTable snapshot={snapshot} store={store} onLeave={onLeave} />;
 }
 
-function renderGame(viewer: number) {
+function renderGame(viewer: number, onLeave: () => void = () => undefined) {
   const user = USERS.find((u) => u.id === viewer) ?? USERS[0];
   const fake = fakeConnection({ welcome: { type: 'welcome', protocolVersion: 1, user: { ...user } } });
   stopAll.push(() => {
@@ -41,7 +47,7 @@ function renderGame(viewer: number) {
   });
   render(
     <MemoryRouter>
-      <Page create={() => fake.connection} />
+      <Page create={() => fake.connection} onLeave={onLeave} />
     </MemoryRouter>,
   );
   act(() => {
@@ -127,6 +133,53 @@ describe('GameTable', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Schließen' }));
     expect(screen.queryByRole('dialog')).toBeNull();
     await user.click(screen.getByRole('button', { name: 'Ergebnis' }));
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  it('Nochmal nur für den Ersteller; sendet table.rematch', async () => {
+    const user = userEvent.setup();
+    const view = serverView(startGame(), 1);
+    if (view.round === null) throw new Error();
+    const finished: ServerTableView = {
+      ...view,
+      status: 'finished',
+      round: { ...view.round, phase: 'finished', standings: [] },
+    };
+    const creator = renderGame(1);
+    creator.state(finished);
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Nochmal' }));
+    expect(creator.last().sent.at(-1)).toEqual({ type: 'table.rematch', tableId: 42 });
+    cleanup();
+    const other = renderGame(2);
+    other.state({ ...finished, you: { userId: 2, seat: 1, isCreator: false } });
+    expect(screen.queryByRole('button', { name: 'Nochmal' })).toBeNull();
+  });
+
+  it('table.closed: Hinweis „Runde abgebrochen“ und zurück zur Lobby', async () => {
+    const user = userEvent.setup();
+    const onLeave = vi.fn();
+    const { state, last } = renderGame(1, onLeave);
+    state(serverView(startGame(), 1));
+    act(() => {
+      last().receive({ type: 'table.closed', tableId: 42, reason: 'abandoned' });
+    });
+    expect(screen.getByTestId('table-closed')).toHaveTextContent('Runde abgebrochen – niemand war mehr da.');
+    await user.click(screen.getByRole('button', { name: 'Zur Lobby' }));
+    expect(onLeave).toHaveBeenCalled();
+  });
+
+  it('Tisch-Menü: Feedback, Impressum, Datenschutz; Einladen nur bei privaten Tischen', async () => {
+    const user = userEvent.setup();
+    const { state } = renderGame(1);
+    const view = serverView(null, 1);
+    state(view);
+    await user.click(screen.getByRole('button', { name: 'Tisch-Menü' }));
+    expect(screen.getByRole('link', { name: 'Impressum' })).toHaveAttribute('target', '_blank');
+    expect(screen.getByRole('link', { name: 'Datenschutz' })).toHaveAttribute('href', '/datenschutz');
+    expect(screen.queryByRole('group', { name: 'Einladen' })).toBeNull();
+    state({ ...view, settings: { ...view.settings, isPublic: false } });
+    expect(screen.getByRole('group', { name: 'Einladen' })).toHaveTextContent('Einladungslink');
+    await user.click(screen.getByRole('button', { name: 'Feedback senden' }));
     expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
 });

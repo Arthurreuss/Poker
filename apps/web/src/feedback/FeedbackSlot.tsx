@@ -1,7 +1,13 @@
+import { FeedbackButton } from './FeedbackDialog';
+
 /**
- * Platzhalter für den Feedback-Button (WP-024 füllt ihn; vorgesehen in App-Menü und Tisch-Menü).
- * Rendert bis dahin nur einen leeren Slot.
+ * Feedback-Einstieg in der App-Shell (WP-024): Knopf „Feedback“ neben dem Menü, öffnet das Formular.
+ * Für das Tisch-Menü (ohne App-Shell) gibt es `useFeedbackDialog` aus `./index`.
  */
 export function FeedbackSlot() {
-  return <span data-slot="feedback" />;
+  return (
+    <span data-slot="feedback">
+      <FeedbackButton />
+    </span>
+  );
 }

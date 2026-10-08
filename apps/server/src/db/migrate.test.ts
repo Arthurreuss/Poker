@@ -74,6 +74,7 @@ describe.skipIf(testDatabaseUrl === undefined)('runMigrations (Test-DB)', () => 
 
     expect(result.applied).toEqual(all);
     expect(await tablesIn(s)).toEqual([
+      'feedback',
       'hand_actions',
       'hands',
       'round_players',

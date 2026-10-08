@@ -11,10 +11,14 @@ RUN npm ci --ignore-scripts
 COPY tsconfig.base.json ./
 COPY packages/engine packages/engine
 COPY apps/web apps/web
-RUN npm run build -w @poker/web
+# App-Version (Commit) für das Feedback (WP-024); .git ist nicht im Build-Kontext, scripts/prod.sh setzt sie.
+ARG APP_VERSION=
+RUN APP_VERSION="$APP_VERSION" npm run build -w @poker/web
 
 FROM nginxinc/nginx-unprivileged:1.30.5-alpine AS runtime
 # API_UPSTREAM (host:port des Servers) wird beim Start per envsubst in die Konfiguration eingesetzt.
 COPY docker/nginx/default.conf.template /etc/nginx/templates/default.conf.template
+# Security-Header (WP-022), per include in jedem location-Block.
+COPY docker/nginx/security-headers.conf /etc/nginx/snippets/security-headers.conf
 COPY --from=build /app/apps/web/dist /usr/share/nginx/html
 EXPOSE 8080

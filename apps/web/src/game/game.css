@@ -172,6 +172,27 @@
 }
 
 /* Menü-Einträge (Tisch-Menü aus WP-017) */
+.gp-menu-heading {
+  margin: 0;
+  font-weight: 600;
+}
+.gp-menu-invite {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.gp-menu-links {
+  display: flex;
+  gap: var(--space-4);
+  justify-content: center;
+  font-size: var(--font-size-sm);
+}
+.gp-menu-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--color-text-muted);
+}
 .gp-menu-items {
   display: flex;
   flex-direction: column;

@@ -1,3 +1,4 @@
+import { useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { GameTable } from '../game/GameTable';
 import { useTableGame } from '../game/hooks';
@@ -23,13 +24,8 @@ export function TablePage() {
 function TableGamePage({ tableId }: { tableId: number }) {
   const navigate = useNavigate();
   const [snapshot, store] = useTableGame(tableId);
-  return (
-    <GameTable
-      snapshot={snapshot}
-      store={store}
-      onLeave={() => {
-        void navigate('/');
-      }}
-    />
-  );
+  const toLobby = useCallback(() => {
+    void navigate('/');
+  }, [navigate]);
+  return <GameTable snapshot={snapshot} store={store} onLeave={toLobby} />;
 }

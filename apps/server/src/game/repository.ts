@@ -23,11 +23,19 @@ export interface RoundResultRecord {
 export interface TableRepository {
   /** Legt den Tisch an (Status `open`) und liefert seine ID. */
   createTable(table: NewTable): Promise<number>;
-  /** Tisch auf `running`, Runde mit Teilnehmern anlegen; liefert die Runden-ID. */
+  /**
+   * Tisch auf `running`, Runde mit Teilnehmern anlegen; liefert die Runden-ID. Auch für „Nochmal“ (D-020):
+   * ein nach der vorigen Runde geschlossener Tisch wird dabei wieder geöffnet (`closed_at` = NULL).
+   */
   startRound(tableId: number, players: readonly RoundSeatRecord[]): Promise<number>;
   /** Runde `finished` mit Platzierungen und Punkten, Tisch `closed`. */
   finishRound(tableId: number, roundId: number, results: readonly RoundResultRecord[]): Promise<void>;
-  /** Verlassenen offenen Tisch schließen (`closed`). */
+  /**
+   * Verwaiste Runde (D-022): Runde `aborted` ohne Platzierungen/Punkte, Tisch `closed`. Idempotent
+   * (eine schon beendete/abgebrochene Runde bleibt, wie sie ist).
+   */
+  abortRound(tableId: number, roundId: number): Promise<void>;
+  /** Verlassenen Tisch schließen (`closed`); ein schon geschlossener bleibt unverändert. */
   closeTable(tableId: number): Promise<void>;
 }
 
@@ -39,7 +47,7 @@ export interface MemoryTableRecord extends NewTable {
 export interface MemoryRoundRecord {
   id: number;
   tableId: number;
-  status: 'running' | 'finished';
+  status: 'running' | 'finished' | 'aborted';
   players: (RoundSeatRecord & { placement: number | null; points: number | null })[];
 }
 
@@ -79,6 +87,14 @@ export class InMemoryTableRepository implements TableRepository {
       p.placement = r.placement;
       p.points = r.points;
     }
+    this.table(tableId).status = 'closed';
+    return Promise.resolve();
+  }
+
+  abortRound(tableId: number, roundId: number): Promise<void> {
+    const round = this.rounds.get(roundId);
+    if (round === undefined) return Promise.reject(new Error(`Runde ${String(roundId)} unbekannt`));
+    if (round.status === 'running') round.status = 'aborted';
     this.table(tableId).status = 'closed';
     return Promise.resolve();
   }

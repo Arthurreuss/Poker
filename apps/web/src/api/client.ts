@@ -6,6 +6,8 @@ export type ApiErrorCode =
   | 'username_taken'
   | 'invalid_credentials'
   | 'unauthorized'
+  | 'forbidden'
+  | 'not_found'
   | 'rate_limited'
   | 'internal'
   /** Server nicht erreichbar (fetch wirft). */

@@ -1,6 +1,6 @@
 // WP-018: komplette Runde mit drei echten Browsern gegen den laufenden Game-Server.
 // Drei registrierte Test-User (`wp018_…`), Tisch über `/dev/new-table`, alle setzen sich, der Ersteller
-// startet, alle gehen jede Hand All-in, bis der Rundenende-Dialog bei allen erscheint.
+// startet, zwei Hände bis zum Showdown, dann All-in bis zum Rundenende-Dialog bei allen; danach „Nochmal“.
 import { expect, test, type Browser, type Page } from '@playwright/test';
 
 const PASSWORD = 'wp018-passwort';
@@ -129,4 +129,12 @@ test('komplette Runde mit drei Browsern', async ({ browser }) => {
   // Dialog schließen, Ergebnis bleibt abrufbar
   await creator.getByRole('button', { name: 'Schließen' }).click();
   await expect(creator.getByTestId('finished-panel')).toBeVisible();
+  await expect(second.getByRole('button', { name: 'Nochmal' })).toHaveCount(0); // nur der Ersteller
+
+  // „Nochmal“ (D-020): neue Runde am selben Tisch, Dialog schließt bei allen
+  await creator.getByTestId('finished-panel').getByRole('button', { name: 'Nochmal' }).click();
+  for (const page of pages) {
+    await expect(page.getByTestId('round-result')).toHaveCount(0);
+    await expect(page.getByTestId('timer')).toBeVisible();
+  }
 });

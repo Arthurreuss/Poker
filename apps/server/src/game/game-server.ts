@@ -16,7 +16,7 @@ import {
   type TableSettings,
   type TableSettingsInput,
 } from '@poker/engine/protocol';
-import { systemClock, type Clock } from './clock';
+import { systemClock, type Cancel, type Clock } from './clock';
 import type { GameHooks } from './hooks';
 import type { TableRepository } from './repository';
 import { Table, type Logger, type TableResult } from './table';
@@ -29,6 +29,16 @@ export const DEFAULT_HAND_PAUSE_MS = 4000;
  * der Tisch wartet aber höchstens so lange (nie länger als Zugzeit + Zeitbank).
  */
 export const DEFAULT_DISCONNECT_GRACE_MS = 3000;
+
+/** Verwaiste Runde (D-022): 10 Minuten ohne verbundenen Spieler → Abbruch ohne Punkte. */
+export const DEFAULT_ORPHAN_TIMEOUT_MS = 10 * 60_000;
+
+/**
+ * Offene oder beendete Tische ohne Beobachter bleiben so lange im Speicher (WP-015), damit ein Reload, der
+ * Wechsel Lobby → Tisch (neue WebSocket-Verbindung) oder das Teilen des Einladungslinks den Tisch nicht schließt.
+ * Ein explizites `table.leave` des letzten Beobachters räumt einen leeren offenen bzw. beendeten Tisch sofort auf.
+ */
+export const DEFAULT_IDLE_TABLE_TIMEOUT_MS = 10 * 60_000;
 
 // Schließcodes leben im Protokoll (der Client braucht sie); hier für bestehende Importe re-exportiert.
 export { CLOSE_REPLACED, CLOSE_UNSUPPORTED_VERSION };
@@ -50,6 +60,10 @@ export interface GameServerOptions {
   handPauseMs?: number;
   /** Standard: {@link DEFAULT_DISCONNECT_GRACE_MS}. */
   disconnectGraceMs?: number;
+  /** Standard: {@link DEFAULT_ORPHAN_TIMEOUT_MS}. */
+  orphanTimeoutMs?: number;
+  /** Standard: {@link DEFAULT_IDLE_TABLE_TIMEOUT_MS}. */
+  idleTableTimeoutMs?: number;
   /** Erweiterungspunkte für WP-013 (Hand-Historie). */
   hooks?: GameHooks;
   /** Standard: 12 Zeichen base64url aus 9 Zufallsbytes. */
@@ -83,11 +97,17 @@ export class GameServer {
   private readonly activeByUser = new Map<number, Client>();
   /** Zuletzt an die Lobby gesendeter Eintrag je Tisch (JSON), um nur Änderungen zu schicken. */
   private readonly lobbyCache = new Map<number, string>();
+  /** Geplantes Aufräumen von Tischen ohne Beobachter (WP-015). */
+  private readonly pendingDispose = new Map<number, Cancel>();
+  /** Ausstehende Schreibvorgänge entfernter Tische (z. B. `abortRound`), damit `idle()` auch auf sie wartet. */
+  private readonly retiring = new Set<Promise<void>>();
   private nextClientId = 1;
   private readonly clock: Clock;
   private readonly rng: Rng;
   private readonly handPauseMs: number;
   private readonly disconnectGraceMs: number;
+  private readonly orphanTimeoutMs: number;
+  private readonly idleTableTimeoutMs: number;
   private readonly hooks: GameHooks;
   private readonly generateInviteCode: () => string;
 
@@ -96,6 +116,8 @@ export class GameServer {
     this.rng = options.rng ?? cryptoRng;
     this.handPauseMs = options.handPauseMs ?? DEFAULT_HAND_PAUSE_MS;
     this.disconnectGraceMs = options.disconnectGraceMs ?? DEFAULT_DISCONNECT_GRACE_MS;
+    this.orphanTimeoutMs = options.orphanTimeoutMs ?? DEFAULT_ORPHAN_TIMEOUT_MS;
+    this.idleTableTimeoutMs = options.idleTableTimeoutMs ?? DEFAULT_IDLE_TABLE_TIMEOUT_MS;
     this.hooks = options.hooks ?? {};
     this.generateInviteCode = options.generateInviteCode ?? (() => randomBytes(9).toString('base64url'));
   }
@@ -155,12 +177,14 @@ export class GameServer {
 
   /** Wartet auf alle eingereihten Hooks/DB-Schreibvorgänge aller Tische. */
   async idle(): Promise<void> {
-    await Promise.all([...this.tables.values()].map((t) => t.idle()));
+    await Promise.all([...[...this.tables.values()].map((t) => t.idle()), ...this.retiring]);
   }
 
   /** Beim Herunterfahren: Timer aller Tische beenden. */
   close(): void {
     for (const table of this.tables.values()) table.close();
+    for (const cancel of this.pendingDispose.values()) cancel();
+    this.pendingDispose.clear();
   }
 
   // -------------------------------------------------------------------------
@@ -218,6 +242,8 @@ export class GameServer {
         return this.withTable(client, msg.tableId, (t) => t.stand(client.user.id));
       case 'table.start':
         return this.withTable(client, msg.tableId, (t) => t.start(client.user.id));
+      case 'table.rematch':
+        return this.withTable(client, msg.tableId, (t) => t.rematch(client.user.id));
       case 'table.action':
         return this.withTable(client, msg.tableId, (t) => t.act(client.user.id, msg.handNumber, msg.seq, msg.action));
     }
@@ -265,12 +291,18 @@ export class GameServer {
       hooks: this.hooks,
       handPauseMs: this.handPauseMs,
       disconnectGraceMs: this.disconnectGraceMs,
+      orphanTimeoutMs: this.orphanTimeoutMs,
       log: this.options.log,
       onChange: (t) => {
         this.broadcastState(t);
       },
       onRoundFinished: (t, standings) => {
         this.broadcast(t.id, { type: 'table.roundFinished', tableId: t.id, standings });
+      },
+      onAborted: (t) => {
+        this.broadcast(t.id, { type: 'table.closed', tableId: t.id, reason: 'abandoned' });
+        for (const c of this.tableClients.get(t.id) ?? []) c.tables.delete(t.id);
+        this.remove(t);
       },
     });
     this.tables.set(id, table);
@@ -282,14 +314,17 @@ export class GameServer {
 
   private join(client: Client, target: { tableId: number } | { inviteCode: string }): TableResult {
     const table = 'tableId' in target ? this.tables.get(target.tableId) : this.byInviteCode.get(target.inviteCode);
-    // Private Tische nur per Code – außer für Ersteller und Spieler am Tisch; sonst wie „nicht vorhanden“.
+    // Private Tische nur per Code – außer für Ersteller, Spieler am Tisch und wer schon per Code beigetreten
+    // ist (Reload, Wechsel Einladungsseite → Tischseite, WP-015); sonst wie „nicht vorhanden“.
     const allowed =
       table !== undefined &&
       ('inviteCode' in target ||
         table.settings.isPublic ||
         table.createdBy.id === client.user.id ||
-        table.seatOf(client.user.id) !== null);
+        table.seatOf(client.user.id) !== null ||
+        table.isInvited(client.user.id));
     if (!allowed) return err('TABLE_NOT_FOUND', 'Tisch nicht gefunden');
+    if ('inviteCode' in target) table.invite(client.user.id);
     if (client.tables.has(table.id)) {
       this.sendState(client, table);
       return OK;
@@ -310,6 +345,8 @@ export class GameServer {
       this.tableClients.set(table.id, set);
     }
     set.add(client);
+    this.pendingDispose.get(table.id)?.();
+    this.pendingDispose.delete(table.id);
     table.addWatcher(client.user.id);
     this.broadcastState(table);
   }
@@ -326,23 +363,49 @@ export class GameServer {
     } else {
       this.broadcastState(table);
     }
-    this.disposeIfAbandoned(table);
+    this.disposeIfAbandoned(table, explicit);
   }
 
   /**
-   * Räumt Tische ohne Beobachter auf: beendete Tische verschwinden aus dem Speicher, offene Tische ohne
-   * Spieler werden geschlossen. Laufende Runden bleiben (Spieler können zurückkommen, WP-012).
+   * Räumt Tische ohne Beobachter auf (laufende Runden nie – dafür gilt D-022, siehe `Table.checkOrphaned`).
+   * Offene und beendete Tische werden nach {@link DEFAULT_IDLE_TABLE_TIMEOUT_MS} geschlossen und aus dem Speicher
+   * entfernt; beobachtet sie vorher wieder jemand, bleiben sie. Sofort, wenn der letzte Beobachter den Tisch
+   * explizit verlässt (`table.leave`) und niemand mehr sitzt bzw. die Runde beendet ist.
    */
-  private disposeIfAbandoned(table: Table): void {
-    if (table.watcherCount > 0) return;
-    if (table.status === 'running') return;
-    if (table.status === 'open') {
-      if (table.seats.size > 0) return;
-      this.options.repository.closeTable(table.id).catch((error: unknown) => {
-        this.options.log.error({ err: error, tableId: table.id }, 'Tisch konnte nicht geschlossen werden');
-      });
+  private disposeIfAbandoned(table: Table, explicit: boolean): void {
+    if (table.watcherCount > 0 || table.status === 'running') return;
+    if (explicit && (table.status === 'finished' || table.seats.size === 0)) {
+      this.dispose(table);
+      return;
     }
+    if (this.pendingDispose.has(table.id)) return;
+    this.pendingDispose.set(
+      table.id,
+      this.clock.schedule(this.idleTableTimeoutMs, () => {
+        this.pendingDispose.delete(table.id);
+        if (table.watcherCount === 0 && table.status !== 'running' && this.tables.get(table.id) === table) {
+          this.dispose(table);
+        }
+      }),
+    );
+  }
+
+  /** Tisch schließen (DB `closed`, auch nach einer beendeten Runde ein No-op) und aus dem Speicher nehmen. */
+  private dispose(table: Table): void {
+    this.options.repository.closeTable(table.id).catch((error: unknown) => {
+      this.options.log.error({ err: error, tableId: table.id }, 'Tisch konnte nicht geschlossen werden');
+    });
     table.close();
+    this.remove(table);
+  }
+
+  private remove(table: Table): void {
+    const pending = table.idle().then(() => {
+      this.retiring.delete(pending);
+    });
+    this.retiring.add(pending);
+    this.pendingDispose.get(table.id)?.();
+    this.pendingDispose.delete(table.id);
     this.tables.delete(table.id);
     this.byInviteCode.delete(table.inviteCode);
     this.tableClients.delete(table.id);

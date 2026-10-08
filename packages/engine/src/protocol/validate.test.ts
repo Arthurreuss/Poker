@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_BLIND_STRUCTURE } from '../blind-structure';
 import { MAX_REQUEST_ID_LENGTH, PROTOCOL_VERSION } from './messages';
-import { DEFAULT_STARTING_STACK, parseClientMessage, validateTableSettings } from './validate';
+import {
+  DEFAULT_STARTING_STACK,
+  MAX_TIME_BANK_SECONDS,
+  MAX_TURN_TIME_SECONDS,
+  MIN_TURN_TIME_SECONDS,
+  parseClientMessage,
+  validateTableSettings,
+} from './validate';
 
 const parse = (value: unknown) => parseClientMessage(JSON.stringify(value));
 
@@ -17,6 +24,7 @@ describe('parseClientMessage', () => {
     [{ type: 'table.sit', tableId: 3, seat: 8 }],
     [{ type: 'table.stand', tableId: 3 }],
     [{ type: 'table.start', tableId: 3 }],
+    [{ type: 'table.rematch', tableId: 3, requestId: 'n1' }],
     [{ type: 'table.action', tableId: 3, handNumber: 1, seq: 2, action: { type: 'fold' } }],
     [{ type: 'table.action', tableId: 3, handNumber: 1, seq: 2, action: { type: 'raise', amount: 60 } }],
   ])('akzeptiert %j', (msg) => {
@@ -52,6 +60,8 @@ describe('parseClientMessage', () => {
     [{ type: 'table.sit', tableId: 1, seat: -1 }],
     [{ type: 'table.sit', tableId: 1, seat: 1.5 }],
     [{ type: 'table.start', tableId: '1' }],
+    [{ type: 'table.rematch' }],
+    [{ type: 'table.rematch', tableId: 0 }],
     [{ type: 'table.action', tableId: 1, handNumber: 1, seq: 0 }],
     [{ type: 'table.action', tableId: 1, handNumber: 1, seq: 0, action: { type: 'raise' } }],
     [{ type: 'table.action', tableId: 1, handNumber: 1, seq: 0, action: { type: 'bet', amount: -5 } }],
@@ -123,7 +133,18 @@ describe('validateTableSettings', () => {
     [{ name: 'a', startingStack: 0 }],
     [{ name: 'a', startingStack: 100_000_001 }],
     [{ name: 'a', turnTimeSeconds: 0 }],
+    [{ name: 'a', turnTimeSeconds: 9 }],
+    [{ name: 'a', turnTimeSeconds: 121 }],
+    [{ name: 'a', turnTimeSeconds: 20.5 }],
     [{ name: 'a', timeBankSeconds: -1 }],
+    [{ name: 'a', timeBankSeconds: 301 }],
+    [{ name: 'a', blindStructure: { type: 'increasing', levels: [{ smallBlind: 1, bigBlind: 2 }], levelMinutes: 0 } }],
+    [
+      {
+        name: 'a',
+        blindStructure: { type: 'increasing', levels: [{ smallBlind: 1, bigBlind: 2 }], levelMinutes: 1441 },
+      },
+    ],
     [{ name: 'a', blindStructure: { type: 'fixed', level: { smallBlind: 20, bigBlind: 20 } } }],
     [{ name: 'a', blindStructure: { type: 'fixed', level: { smallBlind: 5, bigBlind: 10, ante: 1 } } }],
     [{ name: 'a', blindStructure: { type: 'increasing', levels: [], levelMinutes: 10 } }],
@@ -132,5 +153,25 @@ describe('validateTableSettings', () => {
     [{ name: 'a', startingStack: 10, blindStructure: { type: 'fixed', level: { smallBlind: 10, bigBlind: 20 } } }],
   ])('lehnt %j ab', (settings) => {
     expect(validateTableSettings(settings).ok).toBe(false);
+  });
+});
+
+describe('Grenzen der Zeit-Einstellungen (D-020)', () => {
+  it('Zugzeit 10–120 s, Zeitbank 0–300 s', () => {
+    expect([MIN_TURN_TIME_SECONDS, MAX_TURN_TIME_SECONDS, MAX_TIME_BANK_SECONDS]).toEqual([10, 120, 300]);
+    for (const [turnTimeSeconds, timeBankSeconds] of [
+      [10, 0],
+      [120, 300],
+    ]) {
+      const result = validateTableSettings({ name: 'a', turnTimeSeconds, timeBankSeconds });
+      expect(result).toMatchObject({ ok: true, value: { turnTimeSeconds, timeBankSeconds } });
+    }
+  });
+
+  it('Fehlermeldung nennt den erlaubten Bereich', () => {
+    expect(validateTableSettings({ name: 'a', turnTimeSeconds: 5 })).toEqual({
+      ok: false,
+      message: 'turnTimeSeconds muss eine ganze Zahl von 10 bis 120 sein',
+    });
   });
 });

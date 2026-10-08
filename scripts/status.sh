@@ -67,7 +67,8 @@ fi
 echo "Health:"
 local_url="http://localhost:$WEB_PORT_VALUE/api/health"
 if body="$(curl -fsS -m 5 "$local_url" 2>&1)"; then ok "$local_url → $body"; else bad "$local_url → $body"; fi
-public_origin="$(env_value PUBLIC_ORIGIN)"
+# Mehrere Origins (D-023): Health über die erste (Hauptadresse).
+public_origin="$(env_value PUBLIC_ORIGIN | cut -d, -f1 | tr -d ' ')"
 if [ -n "$public_origin" ] && [ -n "$(env_value TUNNEL_TOKEN)" ]; then
   public_url="$public_origin/api/health"
   if body="$(curl -fsS -m 10 "$public_url" 2>&1)"; then ok "$public_url → $body"; else bad "$public_url → $body"; fi

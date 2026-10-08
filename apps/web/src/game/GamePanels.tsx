@@ -226,6 +226,18 @@ export function GameActionArea({ snapshot, store }: { snapshot: TableGameSnapsho
           >
             Ergebnis
           </button>
+          {table.you.isCreator && (
+            <button
+              type="button"
+              className="gp-btn gp-btn--primary"
+              disabled={disconnected}
+              onClick={() => {
+                store.rematch();
+              }}
+            >
+              Nochmal
+            </button>
+          )}
           <Link className="gp-btn gp-btn--muted" to="/">
             Zur Lobby
           </Link>
@@ -279,10 +291,13 @@ export function RoundResultDialog({
   standings,
   youUserId,
   onClose,
+  onRematch = null,
 }: {
   standings: readonly StandingView[];
   youUserId: number | null;
   onClose: () => void;
+  /** „Nochmal“ (D-020) – nur für den Ersteller nach Rundenende; `null` = kein Knopf. */
+  onRematch?: (() => void) | null;
 }) {
   const titleId = useId();
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -332,11 +347,40 @@ export function RoundResultDialog({
           <button ref={closeRef} type="button" className="gp-btn gp-btn--muted" onClick={onClose}>
             Schließen
           </button>
-          <Link className="gp-btn gp-btn--primary" to="/">
-            Zur Lobby
-          </Link>
+          {onRematch === null ? (
+            <Link className="gp-btn gp-btn--primary" to="/">
+              Zur Lobby
+            </Link>
+          ) : (
+            <>
+              <Link className="gp-btn gp-btn--muted" to="/">
+                Zur Lobby
+              </Link>
+              <button type="button" className="gp-btn gp-btn--primary" onClick={onRematch}>
+                Nochmal
+              </button>
+            </>
+          )}
         </div>
       </div>
+    </div>
+  );
+}
+
+/** Tisch vom Server geschlossen (verwaiste Runde, D-022): Hinweis, nach kurzer Zeit zurück zur Lobby. */
+export function TableClosedNotice({ onBack }: { onBack: () => void }) {
+  useEffect(() => {
+    const id = setTimeout(onBack, 5000);
+    return () => {
+      clearTimeout(id);
+    };
+  }, [onBack]);
+  return (
+    <div className="gp-center" role="alert" data-testid="table-closed">
+      <p>Runde abgebrochen – niemand war mehr da.</p>
+      <button type="button" className="gp-btn gp-btn--primary" onClick={onBack}>
+        Zur Lobby
+      </button>
     </div>
   );
 }
