@@ -5,7 +5,8 @@
   "type": "module",
   "description": "Reine Poker-Logik ohne I/O",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./crypto-rng": "./src/crypto-rng.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
