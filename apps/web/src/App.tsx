@@ -5,6 +5,7 @@ import { AuthProvider } from './auth/AuthContext';
 import { RedirectIfAuthenticated, RequireAdmin, RequireAuth } from './auth/guards';
 import { AppShell } from './layout/AppShell';
 import { AdminPage } from './pages/AdminPage';
+import { JoinPage } from './pages/JoinPage';
 import { LeaderboardPage } from './pages/LeaderboardPage';
 import { LobbyPage } from './pages/LobbyPage';
 import { LoginPage } from './pages/LoginPage';
@@ -65,6 +66,7 @@ export function AppRoutes() {
         }
       >
         <Route index element={<LobbyPage />} />
+        <Route path="join/:code" element={<JoinPage />} />
         <Route path="leaderboard" element={<LeaderboardPage />} />
         <Route path="settings" element={<SettingsPage />} />
         <Route
