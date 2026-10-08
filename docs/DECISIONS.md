@@ -131,7 +131,7 @@ Format: Kontext → Entscheidung → Konsequenzen. Status: `akzeptiert`, `offen`
 ## D-018: Geteilte Platzierungen bei gleichzeitigem Ausscheiden
 - **Status:** akzeptiert
 - **Kontext:** Scheiden mehrere Spieler in derselben Hand aus, ist ihre Reihenfolge nicht eindeutig. Das Schema aus WP-009 erzwang `UNIQUE (round_id, placement)`.
-- **Entscheidung:** Gleichzeitig Ausgeschiedene teilen sich die Platzierung. Ihre Punkte sind der gerundete Durchschnitt der Punkte der belegten Plätze. Beispiel: Zwei Spieler teilen sich die Plätze 3 und 4 und bekommen beide die gerundeten Punkte für Platz 3,5. Die Unique-Bedingung auf die Platzierung entfällt (neue Migration, D-015).
+- **Entscheidung:** Gleichzeitig Ausgeschiedene teilen sich die Platzierung. Ihre Punkte sind der **abgerundete** Durchschnitt der Punkte der belegten Plätze (so werden nie mehr Punkte verteilt als ohne Gleichstand). Beispiel: Zwei Spieler teilen sich bei 4 Spielern die Plätze 3 und 4 → (1 + 0) / 2 = 0,5 → je 0 Punkte. Die Unique-Bedingung auf die Platzierung entfällt (neue Migration, D-015).
 - **Konsequenzen:** Rangliste und Statistiken (WP-019) müssen geteilte Plätze darstellen können.
 
 ## D-019: Server-Neustart bricht laufende Runden ohne Punkte ab
@@ -151,3 +151,12 @@ Format: Kontext → Entscheidung → Konsequenzen. Status: `akzeptiert`, `offen`
 - **Kontext:** WP-017: Wählt man „Quer“, während das Gerät hochkant steht (oder umgekehrt), passt nicht alles in den Bildschirm.
 - **Entscheidung:** Der Tisch wird im gewählten Layout verkleinert eingepasst und nicht per CSS um 90° gedreht. Standard ist „Auto“ (D-009).
 - **Konsequenzen:** Keine Sonderfälle für Drehrichtung oder Desktop. Bei erzwungenem Layout gegen die Gerätelage wird es eng.
+
+## D-022: Verbindungsabbrüche, verwaiste Runden, ein aktiver Tab
+- **Status:** akzeptiert
+- **Kontext:** WP-012 musste D-012 („getrennte Spieler werden automatisch gecheckt/gefoldet“) konkret auslegen.
+- **Entscheidung:**
+  - Ist ein Spieler am Zug getrennt, wartet der Server 3 s (Gnadenfrist), dann checkt oder foldet er automatisch. Die Frist kostet keine Zeitbank.
+  - Ist an einem laufenden Tisch 10 Minuten lang kein Spieler verbunden, wird die Runde abgebrochen, ohne Punkte (wie D-019).
+  - Pro User ist nur eine Verbindung aktiv: Die neuere übernimmt, die ältere wird mit Close-Code 4001 getrennt und zeigt einen Hinweis.
+- **Konsequenzen:** Der Abbruch verwaister Runden wird in WP-015 umgesetzt. Hände abgebrochener Runden bleiben in der Historie, zählen aber nicht in Statistiken (WP-019).
