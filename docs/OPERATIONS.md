@@ -1,6 +1,6 @@
 # Betrieb
 
-Wie dev und prod gestartet, gestoppt und released werden, wie der Cloudflare-Tunnel eingerichtet wird, Backup, Restore, Status, Betrieb nach Neustart und die Security-Checkliste. Aufbau der Umgebungen: [ARCHITECTURE.md](ARCHITECTURE.md); Begründungen: D-002, D-005, D-006, D-010, D-014, D-017 in [DECISIONS.md](DECISIONS.md).
+Wie dev und prod gestartet, gestoppt und released werden, wie der Cloudflare-Tunnel eingerichtet wird, Backup, Restore, Status, Logs, Betrieb nach Neustart und die Security-Checkliste. Aufbau der Umgebungen: [ARCHITECTURE.md](ARCHITECTURE.md); Begründungen: D-002, D-005, D-006, D-010, D-014, D-017 in [DECISIONS.md](DECISIONS.md).
 
 | | dev | prod |
 |---|---|---|
@@ -40,10 +40,10 @@ Solange `main` noch nicht released wurde, fehlt im Prod-Worktree `compose.prod.y
 ### Bedienung
 Alle `prod:*`-Befehle werden im Arbeitsordner aufgerufen, arbeiten aber mit `compose.prod.yml` und `.env.prod` aus dem Prod-Worktree (fehlt er, kommt ein Hinweis auf `npm run prod:setup`):
 ```sh
-npm run prod:up          # baut die Images aus dem Prod-Worktree (main) und startet db, server, web, backup (ohne Tunnel); wartet auf healthy
+npm run prod:up          # baut die Images aus dem Prod-Worktree (main) und startet db, server, web, backup, logrotate (ohne Tunnel); wartet auf healthy
 npm run prod:smoke       # Smoke-Test: /api/health und WebSocket (401 ohne Session, 403 fremde Origin) über http://localhost:4320
 npm run prod:status      # Zustandsbericht (siehe Status)
-npm run prod:logs        # Logs folgen
+npm run prod:logs        # Container-Logs folgen (Request-Logs von server/web: siehe Logs)
 npm run prod:tunnel:up   # wie prod:up, zusätzlich cloudflared (braucht TUNNEL_TOKEN)
 npm run prod:down        # alles stoppen inkl. cloudflared, Volume poker-prod-db und Backups bleiben
 npm run prod:backup      # sofort ein Backup (siehe Backup)
@@ -107,7 +107,7 @@ Der Dienst `backup` (Image `prodrigestivill/postgres-backup-local:16`) in `compo
 
 - **Sofort sichern:** `npm run prod:backup` – gleicher Ablauf wie der tägliche Lauf (inkl. Rotation), gibt Datei und Größe aus. Sinnvoll vor riskanten Änderungen.
 - **Healthcheck:** der Dienst meldet über den eingebauten Scheduler-Endpunkt `healthy`; Fehler stehen in `docker logs poker-prod-backup-1`.
-- Off-Site-Kopien sind noch nicht drin (später); bis dahin den Backup-Ordner z. B. per Time Machine mitsichern.
+- **Nur lokal (D-025):** Die Datenschutzerklärung sagt zu, dass Backups nur auf dem Mac liegen und nach 6 Monaten weg sind. Den Backup-Ordner deshalb **nicht** in Time Machine, iCloud oder andere Cloud-/Off-Site-Sicherungen aufnehmen (Time Machine: Systemeinstellungen → Allgemein → Time Machine → Optionen → Ordner ausschließen) – oder vorher Datenschutzerklärung und D-025 anpassen.
 
 ## Restore
 ```sh
@@ -132,7 +132,7 @@ Ist das Volume `poker-prod-db` verloren: `npm run prod:up` (legt eine leere DB a
 
 ## Status
 `npm run prod:status` (`scripts/status.sh`) zeigt und prüft:
-- Container `db`, `server`, `web`, `backup` (und `cloudflared`, wenn `TUNNEL_TOKEN` gesetzt ist): läuft + healthy
+- Container `db`, `server`, `web`, `backup`, `logrotate` (und `cloudflared`, wenn `TUNNEL_TOKEN` gesetzt ist): läuft + healthy
 - letztes Backup: Zeitpunkt, Größe, Alter (Fehler ab 26 h, anpassbar per `MAX_BACKUP_AGE_HOURS`), Anzahl Dateien, Größe des Ordners
 - freier Speicher auf dem Laufwerk des Backup-Ordners (Fehler unter 1 GB)
 - `GET /api/health` lokal über `http://localhost:4320` und – mit Tunnel – über `PUBLIC_ORIGIN`
@@ -143,6 +143,26 @@ Exit-Code `0` = alles in Ordnung, `1` = mindestens ein Problem (✗-Zeilen).
 Ein Dienst außerhalb des Macs merkt auch, wenn der Mac selbst aus ist. Zu prüfen ist `https://poker.arthur-reuss.de/api/health` (Antwort `200` mit `{"status":"ok","db":"ok"}`; bei DB-Problem `503`).
 - **Kostenloser Uptime-Dienst** (z. B. UptimeRobot, Better Stack): neuen HTTP(S)-Monitor anlegen, URL oben, Intervall 5 min, optional Keyword `"status":"ok"`; Benachrichtigung per E-Mail oder App.
 - **Cloudflare Health Checks** (Dashboard der Domain → Traffic → Health Checks): gleiche URL, erwarteter Code `200`, Benachrichtigung unter Notifications einrichten. Je nach Tarif kostenpflichtig – dann den Uptime-Dienst nehmen.
+
+## Logs
+Speicherdauer nach D-025: Logs mit IP-Adressen höchstens **14 Tage** (so steht es in der Datenschutzerklärung). Docker rotiert Container-Logs nur nach Größe, nie nach Alter – deshalb zwei Wege:
+
+| Log | Inhalt | Wo | Aufbewahrung |
+|---|---|---|---|
+| Request-Log `server` (Fastify/pino, JSON) | Client-IP (`remoteAddress`), Methode, URL, Status, Fehler, Meldungen wie „Konto gelöscht“ | Datei `/var/log/poker/server.log` im Volume `poker-prod_server-logs` (`LOG_FILE`) | täglich rotiert, rotierte Dateien nach 12 Tagen gelöscht → max. ~13 Tage |
+| Access-Log `web` (nginx) | Client-IP (`CF-Connecting-IP`), Zeit, Request, Status, Größe, Antwortzeit, Referrer, User-Agent; ohne Healthchecks | Datei `/var/log/poker/access.log` im Volume `poker-prod_web-logs` (`NGINX_ACCESS_LOG`) | wie oben |
+| Container-Logs aller Dienste (`docker logs`, `prod:logs`) | Start/Stopp, nginx-Fehlerlog, Postgres, Backup, cloudflared (Level `info`: Verbindungen zum Cloudflare-Edge, keine Requests, keine Client-IPs) – keine Client-IPs | Docker, Treiber `local` | nach Größe: 3 × 10 MB je Container; beim Neu-Erstellen des Containers (Release) gelöscht |
+
+- **Rotation:** Dienst `logrotate` (`alpine`, ohne Netz) führt `docker/logrotate/rotate.sh loop` aus: stündliche Prüfung; einmal pro Kalendertag (UTC) wird jede nicht leere `*.log` nach `<datei>.<JJJJMMTT>T<HHMMSS>Z` kopiert und geleert (copytruncate, die Dienste schreiben weiter), rotierte Dateien älter als 12 Tage werden gelöscht. Healthy, solange die letzte Rotation < 26 h her ist. Abgesichert durch `scripts/test/log-rotate.test.mjs` und `scripts/test/compose-prod.test.mjs`.
+- **Lesen:**
+  ```sh
+  docker compose -p poker-prod exec logrotate tail -f /logs/server/server.log    # Server-Requests/Fehler live
+  docker compose -p poker-prod exec logrotate tail -f /logs/web/access.log       # nginx-Access-Log live
+  docker compose -p poker-prod exec logrotate ls -l /logs/server /logs/web       # rotierte Dateien
+  docker compose -p poker-prod exec logrotate grep -h 'Konto gelöscht' /logs/server/server.log /logs/server/server.log.*
+  ```
+- **Nicht** `cloudflared` auf `--loglevel debug` stellen (schreibt Request-Header inkl. Client-IP in die Container-Logs, die nur nach Größe rotieren) – zum Debuggen nur kurz und danach den Container neu erstellen (`npm run prod:tunnel:up`).
+- Lokal ohne `LOG_FILE`/`NGINX_ACCESS_LOG` (dev, Header-Test) loggen server und nginx wie gewohnt nach stdout.
 
 ## Betrieb nach Neustart
 Ziel: Nach einem Neustart oder Stromausfall läuft poker-prod ohne Eingreifen wieder. Docker startet beim Hochfahren alle Container mit `restart: unless-stopped` neu (gilt für alle prod-Dienste, abgesichert durch `scripts/test/compose-prod.test.mjs`) – außer sie wurden vorher mit `prod:down` gestoppt. Dafür muss Docker Desktop laufen, und das setzt eine angemeldete Benutzersitzung voraus.
@@ -165,7 +185,7 @@ Einmalig einzurichten (Arthur, macOS-Systemeinstellungen – nicht automatisiert
 ## Feedback lesen
 Spieler schicken Feedback über den Knopf „Feedback“ in der App (Bug, Idee, Sonstiges; WP-024). Es landet in der Tabelle `feedback` (Aufbau: [ARCHITECTURE.md](ARCHITECTURE.md), „Datenmodell“ → „Feedback“).
 
-- **Im Browser:** als Admin unter `/admin/feedback` (Menü „Admin“ → „Feedback“), z. B. https://poker.arthur-reuss.de/admin/feedback. Filter Neu/Gelesen/Erledigt/Alle; den Status je Eintrag über die Auswahl „Status“ ändern. Admin-Flag setzen: README, Abschnitt „Admin“.
+- **Im Browser:** als Admin unter `/admin/feedback` (Menü „Admin“ → „Feedback“), z. B. https://poker.arthur-reuss.de/admin/feedback oder https://poker.deinemudda.win/admin/feedback. Filter Neu/Gelesen/Erledigt/Alle; den Status je Eintrag über die Auswahl „Status“ ändern. Admin-Flag setzen: README, Abschnitt „Admin“.
 - **Im Terminal (prod):** die CLI ist im Server-Image gebündelt:
   ```sh
   docker compose -p poker-prod exec server node cli/feedback.mjs                 # die 20 neuesten, alle Status
@@ -177,12 +197,14 @@ Spieler schicken Feedback über den Knopf „Feedback“ in der App (Bug, Idee, 
 - Den Status setzt nur die Admin-Ansicht; die CLI liest nur.
 - Rate-Limit: 5 Feedbacks pro Stunde und Spieler (`FEEDBACK_RATE_LIMIT_MAX`, `FEEDBACK_RATE_LIMIT_WINDOW_SECONDS` in der Server-Umgebung).
 - Wird ein Account gelöscht, bleibt sein Feedback ohne Absender und ohne User-Agent erhalten.
+- **Automatisches Löschen (D-025, so in der Datenschutzerklärung):** Erledigtes Feedback wird **30 Tage nach dem Erledigen** gelöscht, jedes Feedback **spätestens 1 Jahr nach dem Absenden** – auch ungelesenes. Der Server prüft beim Start und danach täglich (`feedback/retention.ts`, Log „Feedback: abgelaufene Einträge gelöscht“). Wird ein erledigter Eintrag wieder auf Neu/Gelesen gesetzt, beginnt die 30-Tage-Frist beim nächsten „Erledigt“ neu. Was aufgehoben werden soll, vorher selbst notieren (z. B. als Issue).
 
 ## Security-Checkliste
 Grundschutz der öffentlichen Seite (WP-022). Vor jedem Release mit Änderungen an nginx, Abhängigkeiten oder Datenverarbeitung durchgehen.
 
 **Automatisch (in `npm run check`):**
 - [ ] `scripts/test/nginx-headers.test.mjs`: jede `location` bindet `docker/nginx/security-headers.conf` ein, CSP ohne `unsafe-inline`/`unsafe-eval`, keine Inline-Skripte in `index.html`, PWA-Registrierung als eigene Datei.
+- [ ] `scripts/test/compose-prod.test.mjs` und `scripts/test/log-rotate.test.mjs`: Log-Rotation nach D-025 (Größen-Rotation aller Container-Logs, Request-Logs in rotierten Dateien, Löschfrist < 14 Tage, cloudflared nicht auf `debug`).
 
 **Security-Header (nginx, prod):** Wortlaut in `docker/nginx/security-headers.conf`:
 ```
@@ -204,14 +226,27 @@ curl -sI http://127.0.0.1:4324/api/health   # 502 (kein Server), Header trotzdem
 # Browser: http://127.0.0.1:4324 öffnen, DevTools-Konsole: keine „Content Security Policy“-Meldungen (502 der API sind ok)
 docker rm -f poker-headertest && docker rmi poker-headertest-web
 ```
-Gegen die echte Domain: `curl -sI https://poker.arthur-reuss.de/ | grep -iE 'strict-transport|content-security'`.
+Gegen die echten Domains: siehe Prüfschleife unter HSTS.
 
-**HSTS über Cloudflare (Arthur, einmalig):** nginx sieht hinter dem Tunnel nur `http`, deshalb setzt Cloudflare HSTS.
-1. Cloudflare-Dashboard → Domain `arthur-reuss.de` → **SSL/TLS** → **Edge Certificates**.
-2. **Always Use HTTPS** an.
-3. **HTTP Strict Transport Security (HSTS)** → **Enable HSTS**: Status an, `Max Age` zunächst 1 Monat (später 6–12 Monate), **Include subdomains** nur, wenn *alle* Subdomains von `arthur-reuss.de` HTTPS können (sonst aus lassen), **Preload** aus, **No-Sniff** an.
-4. Prüfen: `curl -sI https://poker.arthur-reuss.de/ | grep -i strict-transport` → `strict-transport-security: max-age=…`.
-5. Optional unter **SSL/TLS** → **Edge Certificates**: **Minimum TLS Version** 1.2.
+**HSTS über Cloudflare (Arthur, einmalig, für jede Domain – D-023):** nginx sieht hinter dem Tunnel nur `http`, deshalb setzt Cloudflare HSTS. HSTS gilt pro Zone, also beide Domains getrennt einrichten:
+
+| Zone im Cloudflare-Dashboard | Hostname der App |
+|---|---|
+| `arthur-reuss.de` | `poker.arthur-reuss.de` |
+| `deinemudda.win` | `poker.deinemudda.win` |
+
+Für **jede** der beiden Zonen:
+1. Cloudflare-Dashboard → Zone auswählen → **SSL/TLS** → **Edge Certificates** → **Always Use HTTPS** an.
+2. **HTTP Strict Transport Security (HSTS)** → **Enable HSTS**: Status an, `Max Age` zunächst 1 Monat (später 6–12 Monate), **Include subdomains** nur, wenn *alle* Subdomains der Zone HTTPS können (sonst aus lassen), **Preload** aus, **No-Sniff** an.
+3. Optional: **Minimum TLS Version** 1.2.
+4. Prüfen (beide Domains):
+   ```sh
+   for d in poker.arthur-reuss.de poker.deinemudda.win; do
+     echo "$d"; curl -sI "https://$d/" | grep -iE 'strict-transport|content-security'
+     curl -sI "http://$d/" | grep -iE '^HTTP|^location'   # 301 auf https://
+   done
+   ```
+   Erwartet je Domain: `strict-transport-security: max-age=…`, die CSP aus nginx und für `http://` eine Weiterleitung auf `https://`.
 
 **Abhängigkeiten:**
 - [ ] `npm audit` ohne `high`/`critical` (Stand 2026-10-08: 0 Schwachstellen). Treffer: `npm audit fix` bzw. Version anheben; nicht behebbare mit Begründung im WP-Log dokumentieren.
@@ -226,11 +261,14 @@ Gegen die echte Domain: `curl -sI https://poker.arthur-reuss.de/ | grep -iE 'str
 
 **Rechtliches:**
 - [ ] Impressum und Datenschutz unter `/impressum`, `/datenschutz` erreichbar (ohne Login), Footer auf allen Seiten, am Tisch im Tisch-Menü.
-- [ ] Datenschutzerklärung (`apps/web/src/legal/content/datenschutz.tsx`) beschreibt die aktuelle Datenverarbeitung; keine offenen Platzhalter (gelb markiert).
-- [ ] Wird ein Backup eingespielt (`prod:restore`), Konten, die seit dem Backup gelöscht wurden, erneut löschen (die Datenschutzerklärung sagt das zu). Die IDs stehen im Server-Log (`Konto gelöscht (anonymisiert)`, `userId`); erneut anonymisieren z. B. per `UPDATE users SET username = NULL, password_hash = NULL, is_admin = false, deleted_at = now() WHERE id = …` plus `DELETE FROM sessions WHERE user_id = …`.
+- [ ] Datenschutzerklärung (`apps/web/src/legal/content/datenschutz.tsx`) beschreibt die aktuelle Datenverarbeitung, gilt für beide Domains, „Stand“ aktuell; keine Platzhalter (Test in `legal.test.tsx`).
+- [ ] Speicherdauern nach D-025 greifen: `npm run prod:status` zeigt `logrotate` healthy; in `/logs/*/` keine rotierten Dateien älter als 12 Tage (siehe [Logs](#logs)); Feedback-Löschjob ohne Fehler im Server-Log; Backup-Ordner nicht in Time Machine/Cloud.
+- [ ] Wird ein Backup eingespielt (`prod:restore`), Konten, die seit dem Backup gelöscht wurden, erneut löschen (die Datenschutzerklärung sagt das zu). **Vor** dem Restore die IDs aus der aktuellen DB holen (das Server-Log reicht nur 14 Tage zurück; notfalls aus dem Dump in `pre-restore/`):
+  `docker compose -p poker-prod exec db psql -U poker -d poker -tAc 'SELECT id FROM users WHERE deleted_at IS NOT NULL'`.
+  Nach dem Restore die IDs, die im Backup noch nicht gelöscht sind, erneut anonymisieren, z. B. per `UPDATE users SET username = NULL, password_hash = NULL, is_admin = false, deleted_at = now() WHERE id = … AND deleted_at IS NULL` (der Trigger trennt dabei auch ihr Feedback) plus `DELETE FROM sessions WHERE user_id = …`. Abgelaufenes Feedback löscht der Server beim Start nach dem Restore selbst.
 
 ## Fehlersuche
-- `npm run prod:logs` bzw. `docker compose -p poker-prod ps` (Status inkl. Healthchecks).
+- `npm run prod:logs` bzw. `docker compose -p poker-prod ps` (Status inkl. Healthchecks); Requests und Fehler des Servers stehen in der Log-Datei (siehe [Logs](#logs)).
 - Server direkt: `curl http://localhost:4321/api/health`.
 - WebSocket-Upgrade mit `403`: `Origin` passt nicht zu `PUBLIC_ORIGIN`.
 - WebSocket-Upgrade mit `401`: kein gültiges Session-Cookie (nicht eingeloggt, Session abgelaufen); `500`: Session-Prüfung fehlgeschlagen (DB nicht erreichbar).

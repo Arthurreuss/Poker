@@ -4,6 +4,15 @@
 # Betrieb: docs/OPERATIONS.md
 name: poker-prod
 
+# Container-Logs (stdout/stderr) aller Dienste: Docker rotiert nur nach Größe. Sie enthalten keine Client-IPs –
+# die Request-Logs von server und web (mit IP) gehen in Dateien, die der Dienst logrotate nach Zeit rotiert und
+# nach spätestens 14 Tagen löscht (D-025). Test: scripts/test/compose-prod.test.mjs.
+x-logging: &logging
+  driver: local
+  options:
+    max-size: 10m
+    max-file: '3'
+
 services:
   db:
     image: postgres:16-alpine
@@ -20,6 +29,7 @@ services:
       interval: 10s
       timeout: 3s
       retries: 10
+    logging: *logging
     restart: unless-stopped
 
   server:
@@ -33,6 +43,10 @@ services:
       PORT: 4321
       DATABASE_URL: postgres://${POSTGRES_USER:-poker}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-poker}
       PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:?PUBLIC_ORIGIN in .env.prod setzen}
+      # Request-Logs (mit Client-IP) in eine Datei, rotiert von logrotate (D-025).
+      LOG_FILE: /var/log/poker/server.log
+    volumes:
+      - server-logs:/var/log/poker
     # Nur zum Debuggen vom Host aus; der normale Weg geht über web (/api, /ws).
     ports:
       - '127.0.0.1:${SERVER_PORT:-4321}:4321'
@@ -46,6 +60,7 @@ services:
       timeout: 3s
       retries: 5
       start_period: 10s
+    logging: *logging
     restart: unless-stopped
 
   web:
@@ -58,6 +73,10 @@ services:
     image: poker-prod-web
     environment:
       API_UPSTREAM: server:4321
+      # Access-Log (mit Client-IP) in eine Datei, rotiert von logrotate (D-025).
+      NGINX_ACCESS_LOG: /var/log/poker/access.log
+    volumes:
+      - web-logs:/var/log/poker
     ports:
       - '127.0.0.1:${WEB_PORT:-4320}:8080'
     networks: [frontend]
@@ -70,6 +89,7 @@ services:
       timeout: 3s
       retries: 5
       start_period: 5s
+    logging: *logging
     restart: unless-stopped
 
   # Tägliches pg_dump (WP-021) in einen Host-Ordner außerhalb von Docker-Volumes. BACKUP_DIR setzen die
@@ -103,13 +123,41 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
+    logging: *logging
+    restart: unless-stopped
+
+  # Request-Logs von server und web (enthalten IP-Adressen): einmal täglich rotieren, rotierte Dateien nach
+  # 12 Tagen löschen → keine Zeile ist älter als 14 Tage (D-025). Ablauf und Rechnung: docker/logrotate/rotate.sh.
+  # Lesen: docs/OPERATIONS.md, „Logs“.
+  logrotate:
+    image: alpine:3.24.2
+    command: ['sh', '/rotate.sh', 'loop']
+    environment:
+      LOG_DIR: /logs
+      LOG_DELETE_AFTER_DAYS: 12
+      LOG_CHECK_INTERVAL_SECONDS: 3600
+    volumes:
+      - ./docker/logrotate/rotate.sh:/rotate.sh:ro
+      - server-logs:/logs/server
+      - web-logs:/logs/web
+    network_mode: none
+    # healthy = in den letzten 26 h rotiert (läuft einmal pro Kalendertag).
+    healthcheck:
+      test: ['CMD-SHELL', 'test -n "$$(find /logs/.last-rotation -mmin -1560 2>/dev/null)"']
+      interval: 5m
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    logging: *logging
     restart: unless-stopped
 
   # Eigener Tunnel für Poker (D-014) – unabhängig vom Jarvis-Tunnel. Public Hostname im
   # Cloudflare-Dashboard: poker.arthur-reuss.de → http://web:8080. Nur mit Profil "tunnel".
   cloudflared:
     image: cloudflare/cloudflared:2026.9.3
-    command: ['tunnel', '--no-autoupdate', 'run']
+    # loglevel info: cloudflared loggt dann keine Requests und keine Client-IPs (erst debug schreibt Header mit),
+    # deshalb reicht für seine Logs die Größen-Rotation (D-025).
+    command: ['tunnel', '--no-autoupdate', '--loglevel', 'info', '--transport-loglevel', 'warn', 'run']
     environment:
       TUNNEL_TOKEN: ${TUNNEL_TOKEN:-}
     networks: [frontend]
@@ -117,6 +165,7 @@ services:
       web:
         condition: service_healthy
     profiles: [tunnel]
+    logging: *logging
     restart: unless-stopped
 
 networks:
@@ -128,3 +177,6 @@ networks:
 volumes:
   db:
     name: poker-prod-db
+  # Log-Dateien (D-025); Name mit Projekt-Präfix, damit der Restore-Test (poker-restoretest) eigene bekommt.
+  server-logs:
+  web-logs:

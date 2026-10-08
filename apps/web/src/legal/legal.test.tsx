@@ -40,7 +40,7 @@ describe('Rechtstexte', () => {
     await heading('Datenschutzerklärung');
   });
 
-  it('Impressum nennt den Anbieter, ohne offene Platzhalter', async () => {
+  it('Impressum nennt den Anbieter und gilt für beide Domains (D-023)', async () => {
     mockApi({ 'GET /api/me': unauthorized() });
     renderApp('/impressum');
     await heading('Impressum');
@@ -49,14 +49,35 @@ describe('Rechtstexte', () => {
       'href',
       'mailto:poker@arthur-reuss.de',
     );
-    expect(document.querySelectorAll('[data-placeholder]')).toHaveLength(0);
+    expect(screen.getByText(/poker\.arthur-reuss\.de und poker\.deinemudda\.win/)).toBeInTheDocument();
   });
 
-  it('offene Angaben im Datenschutz-Entwurf sind sichtbar markiert', async () => {
+  it('Datenschutz: Stand, beide Domains und Speicherdauern nach D-025', async () => {
     mockApi({ 'GET /api/me': unauthorized() });
     renderApp('/datenschutz');
     await heading('Datenschutzerklärung');
-    for (const p of document.querySelectorAll('[data-placeholder]')) expect(p.textContent).toMatch(/^\[.+\]$/);
+    expect(screen.getByText('Stand: 8. Oktober 2026')).toBeInTheDocument();
+    expect(screen.getByText(/poker\.arthur-reuss\.de und poker\.deinemudda\.win/)).toBeInTheDocument();
+    const text = document.body.textContent;
+    expect(text).toMatch(/spätestens nach 14 Tagen automatisch gelöscht/);
+    expect(text).toMatch(/erledigt, wird es 30\s+Tage danach automatisch gelöscht/);
+    expect(text).toMatch(/spätestens 1 Jahr nach dem Absenden/);
+    expect(text).toMatch(/7 tägliche, 4 wöchentliche und 6 monatliche/);
+    expect(text).toMatch(/nur lokal auf dem Rechner des Verantwortlichen/);
+    expect(text).toMatch(/Data Privacy Framework/);
+  });
+
+  // Rechtstexte gehen ohne offene Angaben live: keine markierten Platzhalter und keine „[…]“-Lücken.
+  it.each([
+    ['/impressum', 'Impressum'],
+    ['/datenschutz', 'Datenschutzerklärung'],
+  ])('%s enthält keine Platzhalter', async (path, title) => {
+    mockApi({ 'GET /api/me': unauthorized() });
+    renderApp(path);
+    await heading(title);
+    const article = screen.getByRole('heading', { level: 1, name: title }).closest('main') ?? document.body;
+    expect(article.querySelectorAll('[data-placeholder], mark')).toHaveLength(0);
+    expect(article.textContent).not.toMatch(/\[[^\]]*\]|TODO|prüfen:|z\. B\. \d+ Tagen/);
   });
 
   it.each([

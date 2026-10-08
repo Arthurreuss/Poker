@@ -55,6 +55,7 @@ describe('/admin/feedback', () => {
     expect(screen.getByRole('button', { name: 'Neu (2)' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('button', { name: 'Erledigt (1)' })).toHaveAttribute('aria-pressed', 'false');
     expect(screen.getByRole('button', { name: 'Alle (3)' })).toBeInTheDocument();
+    expect(screen.getByText(/Erledigtes Feedback wird 30 Tage nach dem Erledigen automatisch gelöscht/)).toBeVisible();
   });
 
   it('filtert nach Status', async () => {

@@ -35,6 +35,9 @@ COPY --from=build --chown=root:root /app/apps/server/dist/ ./
 # SQL-Migrationen laufen beim Start (D-015); der gebündelte Server findet sie über MIGRATIONS_DIR.
 COPY --chown=root:root apps/server/migrations ./migrations
 ENV MIGRATIONS_DIR=/app/migrations
+# Ziel für LOG_FILE in prod (Volume server-logs, rotiert vom Dienst logrotate, D-025); ohne LOG_FILE → stdout.
+# Ein frisches Named Volume übernimmt Besitzer und Rechte dieses Verzeichnisses.
+RUN mkdir -p /var/log/poker && chown node:node /var/log/poker
 USER node
 EXPOSE 4321
 CMD ["node", "server.mjs"]

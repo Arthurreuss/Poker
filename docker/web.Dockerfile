@@ -21,4 +21,10 @@ COPY docker/nginx/default.conf.template /etc/nginx/templates/default.conf.templa
 # Security-Header (WP-022), per include in jedem location-Block.
 COPY docker/nginx/security-headers.conf /etc/nginx/snippets/security-headers.conf
 COPY --from=build /app/apps/web/dist /usr/share/nginx/html
+# Access-Log: Standard stdout; prod setzt NGINX_ACCESS_LOG=/var/log/poker/access.log (Volume web-logs, rotiert vom
+# Dienst logrotate, D-025). Ein frisches Named Volume übernimmt Besitzer und Rechte dieses Verzeichnisses.
+ENV NGINX_ACCESS_LOG=/dev/stdout
+USER root
+RUN mkdir -p /var/log/poker && chown 101:101 /var/log/poker
+USER 101
 EXPOSE 8080

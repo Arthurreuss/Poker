@@ -123,6 +123,10 @@ export function AdminFeedbackPage() {
       <h2 id="admin-feedback-title" className={styles.title}>
         Feedback
       </h2>
+      {/* Speicherdauer (D-025), umgesetzt im Server: apps/server/src/feedback/retention.ts */}
+      <p className={styles.muted}>
+        Erledigtes Feedback wird 30 Tage nach dem Erledigen automatisch gelöscht, jedes Feedback spätestens nach 1 Jahr.
+      </p>
       <div role="group" aria-label="Nach Status filtern" className={styles.filters}>
         {FILTERS.map((f) => {
           const count = countOf(f);

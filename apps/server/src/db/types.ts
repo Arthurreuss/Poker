@@ -124,4 +124,6 @@ export interface FeedbackRow {
   orientation: 'auto' | 'portrait' | 'landscape' | null;
   status: 'new' | 'read' | 'done';
   created_at: Date;
+  /** 0006 (WP-022): Zeitpunkt des Erledigens, nur bei `status = 'done'` gesetzt (Löschfrist, D-025). */
+  done_at: Date | null;
 }

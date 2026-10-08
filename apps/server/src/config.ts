@@ -13,6 +13,11 @@ export interface ServerConfig {
   nodeEnv: string;
   /** Proxy-Header (`X-Forwarded-For`/`-Proto`) nur in prod vertrauen (D-014). */
   trustProxy: boolean;
+  /**
+   * `LOG_FILE`: Logs in diese Datei statt nach stdout (prod: `/var/log/poker/server.log`, rotiert vom Dienst
+   * `logrotate`, D-025). `null` = stdout.
+   */
+  logFile: string | null;
 }
 
 export type Env = Record<string, string | undefined>;
@@ -23,6 +28,11 @@ function required(env: Env, name: string): string {
     throw new Error(`Umgebungsvariable ${name} fehlt`);
   }
   return value;
+}
+
+function optional(env: Env, name: string): string | null {
+  const value = env[name]?.trim();
+  return value === undefined || value === '' ? null : value;
 }
 
 /** Zerlegt `PUBLIC_ORIGIN` (kommagetrennt) und prüft, dass jeder Eintrag eine reine Origin ist (`https://host[:port]`). */
@@ -61,5 +71,6 @@ export function loadConfig(env: Env): ServerConfig {
     publicOrigins: parsePublicOrigins(required(env, 'PUBLIC_ORIGIN')),
     nodeEnv,
     trustProxy: nodeEnv === 'production',
+    logFile: optional(env, 'LOG_FILE'),
   };
 }
