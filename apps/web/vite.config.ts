@@ -8,8 +8,12 @@ import { VitePWA } from 'vite-plugin-pwa';
 // API_PROXY_TARGET: Ziel für /api und /ws im Dev-Server, z. B. http://server:4311 im Compose-Netz.
 // WEB_DEV_PORT / WEB_DEV_HOST: Port und Bind-Adresse des Dev-Servers.
 // VITE_USE_POLLING=true: Datei-Polling, falls Bind-Mount-Events (Docker Desktop) nicht ankommen.
+// API_PROXY_ORIGIN (optional): Origin-Header für /api und /ws überschreiben – nur für einen zweiten
+// Dev-Server gegen einen laufenden Game-Server mit anderer PUBLIC_ORIGIN (z. B. Playwright, WP-018).
 const env = process.env;
 const proxyTarget = env['API_PROXY_TARGET'];
+const proxyOrigin = env['API_PROXY_ORIGIN'];
+const proxyHeaders = proxyOrigin === undefined ? {} : { headers: { origin: proxyOrigin } };
 const port = env['WEB_DEV_PORT'] === undefined ? undefined : Number(env['WEB_DEV_PORT']);
 
 // Theme-/Hintergrundfarbe für Manifest und <meta name="theme-color"> kommen aus den Design-Tokens.
@@ -87,8 +91,8 @@ export default defineConfig({
       ? {}
       : {
           proxy: {
-            '/api': { target: proxyTarget, changeOrigin: true },
-            '/ws': { target: proxyTarget, ws: true, changeOrigin: true },
+            '/api': { target: proxyTarget, changeOrigin: true, ...proxyHeaders },
+            '/ws': { target: proxyTarget, ws: true, changeOrigin: true, ...proxyHeaders },
           },
         }),
   },

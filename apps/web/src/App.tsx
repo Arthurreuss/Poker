@@ -23,6 +23,10 @@ import { TablePage } from './pages/TablePage';
 const TableDevPage = import.meta.env.DEV
   ? lazy(() => import('./table/dev/TableDevPage').then((m) => ({ default: m.TableDevPage })))
   : null;
+// Tisch per WebSocket anlegen, solange es keine Lobby gibt (WP-018) – ebenfalls nur im Dev-Build.
+const DevNewTablePage = import.meta.env.DEV
+  ? lazy(() => import('./game/dev/DevNewTablePage').then((m) => ({ default: m.DevNewTablePage })))
+  : null;
 
 /** Alle Routen ohne Router – Tests betten sie in einen `MemoryRouter`. */
 export function AppRoutes() {
@@ -54,6 +58,18 @@ export function AppRoutes() {
             <Suspense fallback={null}>
               <TableDevPage />
             </Suspense>
+          }
+        />
+      )}
+      {DevNewTablePage && (
+        <Route
+          path="/dev/new-table"
+          element={
+            <RequireAuth>
+              <Suspense fallback={null}>
+                <DevNewTablePage />
+              </Suspense>
+            </RequireAuth>
           }
         />
       )}
