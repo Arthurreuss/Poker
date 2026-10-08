@@ -21,8 +21,8 @@ export interface LeaderboardEntry {
 }
 
 /**
- * Rangliste aller aktiven Accounts (auch ohne Runde, dann 0 Punkte). Gelöschte Accounts erscheinen nicht.
- * Reihenfolge: Punkte, dann Siege, dann Runden, dann Name – der Platz hängt nur an den Punkten.
+ * Rangliste aller aktiven Accounts mit mindestens einer beendeten Runde (D-024). Gelöschte Accounts erscheinen
+ * nicht. Reihenfolge: Punkte, dann Siege, dann Runden, dann Name – der Platz hängt nur an den Punkten.
  */
 export async function loadLeaderboard(db: Queryable): Promise<LeaderboardEntry[]> {
   const { rows } = await db.query<{
@@ -39,8 +39,8 @@ export async function loadLeaderboard(db: Queryable): Promise<LeaderboardEntry[]
             count(rp.round_id)::int AS rounds,
             count(*) FILTER (WHERE rp.placement = 1)::int AS wins
        FROM users u
-       LEFT JOIN (round_players rp JOIN rounds r ON r.id = rp.round_id AND r.status = 'finished')
-              ON rp.user_id = u.id
+       JOIN round_players rp ON rp.user_id = u.id
+       JOIN rounds r ON r.id = rp.round_id AND r.status = 'finished'
       WHERE u.deleted_at IS NULL AND u.username IS NOT NULL
       GROUP BY u.id
       ORDER BY points DESC, wins DESC, rounds DESC, lower(u.username), u.id`,
@@ -95,7 +95,8 @@ export async function loadPlayerHands(db: Queryable, userId: number): Promise<Pl
 
 export interface PlayerStats {
   player: { id: number; name: string };
-  rank: number;
+  /** `null` = noch keine beendete Runde, also nicht in der Rangliste (D-024). */
+  rank: number | null;
   points: number;
   rounds: number;
   wins: number;
@@ -109,7 +110,7 @@ export async function loadPlayerStats(db: Queryable, name: string): Promise<Play
   const entry = board.find((e) => e.userId === user.id);
   return {
     player: user,
-    rank: entry?.rank ?? board.length,
+    rank: entry?.rank ?? null,
     points: entry?.points ?? 0,
     rounds: entry?.rounds ?? 0,
     wins: entry?.wins ?? 0,
@@ -137,6 +138,8 @@ export interface RoundSummary {
   handCount: number;
   /** Betrachter hat mitgespielt (dann darf er die Hände nachlesen). */
   viewerParticipated: boolean;
+  /** Öffentlicher Tisch: Ergebnis für alle Eingeloggten, sonst nur für Teilnehmer (D-024). */
+  isPublic: boolean;
   /** Nach Platz, dann Sitz. */
   players: RoundPlayerSummary[];
 }
@@ -144,6 +147,7 @@ export interface RoundSummary {
 interface RoundSummaryRow {
   id: number;
   table_name: string;
+  is_public: boolean;
   status: Exclude<RoundStatus, 'running'>;
   started_at: Date;
   finished_at: Date;
@@ -158,7 +162,7 @@ interface RoundSummaryRow {
 }
 
 const ROUND_SUMMARY_SELECT = `
-  SELECT r.id, t.name AS table_name, r.status, r.started_at, r.finished_at,
+  SELECT r.id, t.name AS table_name, t.is_public, r.status, r.started_at, r.finished_at,
          (SELECT count(*)::int FROM hands h WHERE h.round_id = r.id AND h.result IS NOT NULL) AS hand_count,
          (SELECT coalesce(json_agg(json_build_object(
                    'userId', p.user_id,
@@ -185,13 +189,15 @@ function toRoundSummary(row: RoundSummaryRow, viewerId: number): RoundSummary {
     finishedAt: row.finished_at.toISOString(),
     handCount: row.hand_count,
     viewerParticipated: players.some((p) => p.isViewer),
+    isPublic: row.is_public,
     players,
   };
 }
 
 /**
  * Letzte beendete oder abgebrochene Runden von `userId` (neueste zuerst), Sicht von `viewerId`. Laufende Runden
- * fehlen. Über den Index `round_players (user_id, round_id)`.
+ * fehlen, Runden privater Tische nur, wenn `viewerId` mitgespielt hat (D-024). Über den Index
+ * `round_players (user_id, round_id)`.
  */
 export async function loadRecentRounds(
   db: Queryable,
@@ -202,9 +208,10 @@ export async function loadRecentRounds(
   const { rows } = await db.query<RoundSummaryRow>(
     `${ROUND_SUMMARY_SELECT}
       WHERE r.id IN (SELECT round_id FROM round_players WHERE user_id = $1) AND r.status <> 'running'
+        AND (t.is_public OR EXISTS (SELECT 1 FROM round_players v WHERE v.round_id = r.id AND v.user_id = $3))
       ORDER BY r.finished_at DESC, r.id DESC
       LIMIT $2`,
-    [userId, limit],
+    [userId, limit, viewerId],
   );
   return rows.map((r) => toRoundSummary(r, viewerId));
 }

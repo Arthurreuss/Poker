@@ -104,6 +104,7 @@ export function GameTable({ snapshot, store, onLeave }: GameTableProps) {
           youUserId={table?.you.userId ?? null}
           onClose={closeStandings}
           onRematch={table?.status === 'finished' && table.you.isCreator ? rematch : null}
+          away={table?.seats.filter((s) => !s.connected).map((s) => s.user.username) ?? []}
         />
       )}
       {/* Außerhalb des Menü-Panels: bleibt offen, auch wenn das Menü schließt. */}

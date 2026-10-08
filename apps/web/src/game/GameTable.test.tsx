@@ -149,6 +149,13 @@ describe('GameTable', () => {
     creator.state(finished);
     await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Nochmal' }));
     expect(creator.last().sent.at(-1)).toEqual({ type: 'table.rematch', tableId: 42 });
+    expect(screen.queryByTestId('rematch-away')).toBeNull();
+    // Getrennte Spieler stehen bei „Nochmal“ auf (D-024) – der Dialog sagt, wer nicht mitspielt.
+    creator.state({
+      ...finished,
+      seats: finished.seats.map((x) => (x.user.id === 3 ? { ...x, connected: false } : x)),
+    });
+    expect(screen.getByTestId('rematch-away')).toHaveTextContent('nicht mit: cleo');
     cleanup();
     const other = renderGame(2);
     other.state({ ...finished, you: { userId: 2, seat: 1, isCreator: false } });
