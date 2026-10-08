@@ -1,0 +1,9 @@
+#!/bin/sh
+# Aktiviert über: npm run setup
+branch=$(git symbolic-ref --short HEAD 2>/dev/null)
+if [ "$branch" = "main" ] && [ -z "$ALLOW_MAIN_COMMIT" ]; then
+  echo "✗ Kein direkter Commit auf main – auf dev arbeiten und mergen (siehe docs/WORKFLOW.md)."
+  echo "  Notfall: ALLOW_MAIN_COMMIT=1 git commit ..."
+  exit 1
+fi
+npm run --silent check
