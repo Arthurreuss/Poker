@@ -28,7 +28,7 @@
 | M5 | [WP-021](work-packages/WP-021.md) | Backups und Betrieb | done | WP-003, WP-009 |
 | M5 | [WP-022](work-packages/WP-022.md) | Rechtliches und Security-Check | in-progress | WP-014 |
 | M5 | [WP-023](work-packages/WP-023.md) | Go-Live: main auf poker.arthur-reuss.de | todo | WP-003, WP-012, WP-020, WP-021, WP-022, WP-024 |
-| M4 | [WP-024](work-packages/WP-024.md) | Feedback-Button | in-progress | WP-010, WP-014 |
+| M4 | [WP-024](work-packages/WP-024.md) | Feedback-Button | done | WP-010, WP-014 |
 <!-- END GENERATED -->
 
 ## Meilensteine
