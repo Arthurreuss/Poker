@@ -160,3 +160,9 @@ Format: Kontext → Entscheidung → Konsequenzen. Status: `akzeptiert`, `offen`
   - Ist an einem laufenden Tisch 10 Minuten lang kein Spieler verbunden, wird die Runde abgebrochen, ohne Punkte (wie D-019).
   - Pro User ist nur eine Verbindung aktiv: Die neuere übernimmt, die ältere wird mit Close-Code 4001 getrennt und zeigt einen Hinweis.
 - **Konsequenzen:** Der Abbruch verwaister Runden wird in WP-015 umgesetzt. Hände abgebrochener Runden bleiben in der Historie, zählen aber nicht in Statistiken (WP-019).
+
+## D-023: Zweite Domain `poker.deinemudda.win` neben `poker.arthur-reuss.de`
+- **Status:** akzeptiert
+- **Kontext:** Arthur hat eine zweite Domain gekauft. Wer sie eingibt, soll sie auch in der Adresszeile sehen, also keine Weiterleitung.
+- **Entscheidung:** Beide Domains liefern die App über denselben Tunnel aus (zweiter Public Hostname → `web:8080`). `PUBLIC_ORIGIN` darf mehrere, kommagetrennte Origins enthalten. Der WebSocket-Origin-Check (D-014) akzeptiert jede davon. Die erste ist die Hauptadresse (Smoke-Test, Status). Alles andere bleibt relativ (eine Origin pro Aufruf).
+- **Konsequenzen:** Login, PWA-Installation und lokale Einstellungen gelten pro Domain getrennt; Accounts und Punkte sind gemeinsam. Impressum und Datenschutz gelten für beide Domains. HSTS muss pro Domain in Cloudflare eingeschaltet werden.

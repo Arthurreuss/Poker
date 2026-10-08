@@ -10,7 +10,7 @@ const config = loadConfig(process.env);
 const db = createPgDatabase(config.databaseUrl);
 const app = buildApp({
   db,
-  publicOrigin: config.publicOrigin,
+  publicOrigin: config.publicOrigins,
   trustProxy: config.trustProxy,
   logger: true,
 });

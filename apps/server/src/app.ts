@@ -16,7 +16,8 @@ import { CLOSE_ACCOUNT_DELETED, registerWebSocket, type Authenticate } from './w
 export interface AppOptions {
   db: Database;
   /** Erlaubte Origin für WebSocket-Upgrades (D-014). */
-  publicOrigin: string;
+  /** Erlaubte Browser-Origin(s) für den WebSocket (D-014, D-023). */
+  publicOrigin: string | readonly string[];
   /** `true`/`false` oder Pino-Optionen (Tests fangen damit Logs ab). */
   logger?: FastifyServerOptions['logger'];
   /** Proxy-Header vertrauen – nur in prod (D-014), siehe `loadConfig`. */

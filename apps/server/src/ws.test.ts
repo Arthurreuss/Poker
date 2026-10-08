@@ -83,6 +83,21 @@ describe('WebSocket /ws: Upgrade', () => {
     expect(await rejectedStatus(`${url}/ws`, 'https://evil.example', 'poker_session=user-1')).toBe(403);
   });
 
+  it('erlaubt mehrere Origins (zweite Domain, D-023)', async () => {
+    const second = 'https://poker.zweite.example';
+    app = buildApp({
+      db: fakeDb,
+      publicOrigin: [ORIGIN, second],
+      game: { repository: new InMemoryTableRepository(), authenticate: fakeAuthenticate, handPauseMs: 0 },
+    });
+    await app.listen({ host: '127.0.0.1', port: 0 });
+    const url = `ws://127.0.0.1:${String((app.server.address() as AddressInfo).port)}`;
+    // 401 = Origin akzeptiert, erst die (fehlende) Session scheitert.
+    expect(await rejectedStatus(`${url}/ws`, second)).toBe(401);
+    expect(await rejectedStatus(`${url}/ws`, ORIGIN)).toBe(401);
+    expect(await rejectedStatus(`${url}/ws`, 'https://evil.example', 'poker_session=user-1')).toBe(403);
+  });
+
   it('lehnt ein Upgrade ohne Origin mit 403 ab', async () => {
     const url = await start();
     expect(await rejectedStatus(`${url}/ws`, undefined, 'poker_session=user-1')).toBe(403);

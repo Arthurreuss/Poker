@@ -81,6 +81,15 @@ Poker bekommt einen **eigenen** Tunnel mit eigenem `cloudflared`-Container im Pr
 8. `npm run prod:tunnel:up`, dann `npm run prod:logs` – cloudflared meldet „Registered tunnel connection“; im Dashboard steht der Tunnel auf **Healthy**.
 9. https://poker.arthur-reuss.de öffnen; Prüfen gegen die echte Domain: `SMOKE_URL=https://poker.arthur-reuss.de npm run prod:smoke`.
 
+**Weitere Domain (D-023, z. B. `poker.deinemudda.win`):** Ein Tunnel bedient beliebig viele Hostnamen.
+1. Domain in Cloudflare hinzufügen („Add a site“) und beim Registrar die Nameserver auf Cloudflare umstellen; warten, bis die Domain „Active“ ist.
+2. Im **bestehenden** Tunnel unter **Public Hostname** → **Add**: Subdomain `poker`, Domain `deinemudda.win`, Service `HTTP` → `web:8080`.
+3. In `.env.prod` die Origin anhängen: `PUBLIC_ORIGIN=https://poker.arthur-reuss.de,https://poker.deinemudda.win` (kommagetrennt, ohne Slash; die erste bleibt die Hauptadresse für Smoke-Test und Status).
+4. `npm run prod:tunnel:up` (Server neu starten, damit er die Origins liest); prüfen: `SMOKE_URL=https://poker.deinemudda.win SMOKE_ORIGIN=https://poker.deinemudda.win npm run prod:smoke`.
+5. HSTS/„Always Use HTTPS“ (Security-Checkliste) auch für die neue Domain einschalten.
+
+Login, Homescreen-App und Einstellungen gelten pro Domain getrennt (Cookies und Speicher hängen am Host); Accounts und Punkte sind dieselben.
+
 Tunnel stoppen: `npm run prod:down` (stoppt die ganze prod-Umgebung). Token erneuern: im Dashboard „Refresh token“, `.env.prod` aktualisieren, `npm run prod:tunnel:up`.
 
 ## Backup

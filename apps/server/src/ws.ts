@@ -16,8 +16,8 @@ export const HEARTBEAT_INTERVAL_MS = 30_000;
 export type Authenticate = (cookieHeader: string | undefined) => Promise<AuthUser | null>;
 
 export interface WebSocketOptions {
-  /** Erlaubte Origin des Browsers, z. B. `https://poker.arthur-reuss.de` (D-014). */
-  publicOrigin: string;
+  /** Erlaubte Origin(s) des Browsers, z. B. `https://poker.arthur-reuss.de` (D-014, D-023). */
+  publicOrigin: string | readonly string[];
   authenticate: Authenticate;
   game: GameServer;
   /** Abstand der Pings; Clients ohne Pong bis zum nächsten Ping werden getrennt. */
@@ -46,6 +46,7 @@ export interface WebSocketControl {
 /** Hängt den WebSocket-Server an den HTTP-Server der Fastify-App (Upgrade auf `/ws`). */
 export function registerWebSocket(app: FastifyInstance, options: WebSocketOptions): WebSocketControl {
   const { publicOrigin, authenticate, game, heartbeatIntervalMs = HEARTBEAT_INTERVAL_MS } = options;
+  const allowedOrigins = new Set(typeof publicOrigin === 'string' ? [publicOrigin] : publicOrigin);
   const wss = new WebSocketServer({ noServer: true, maxPayload: MAX_MESSAGE_BYTES });
   const alive = new WeakMap<WebSocket, boolean>();
   const userOf = new WeakMap<WebSocket, number>();
@@ -58,7 +59,7 @@ export function registerWebSocket(app: FastifyInstance, options: WebSocketOption
       reject(socket, 404, 'Not Found');
       return;
     }
-    if (req.headers.origin !== publicOrigin) {
+    if (req.headers.origin === undefined || !allowedOrigins.has(req.headers.origin)) {
       app.log.warn({ origin: req.headers.origin }, 'WebSocket: Origin abgelehnt');
       reject(socket, 403, 'Forbidden');
       return;
