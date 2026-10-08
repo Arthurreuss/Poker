@@ -15,7 +15,7 @@ import {
 } from '../docs.mjs';
 
 const wpText = ({ id = 'WP-001', status = 'todo', depends = '[]', body = '- [ ] a' } = {}) =>
-  `---\nid: ${id}\ntitle: Test\nstatus: ${status}\ndepends: ${depends}\n---\n\n${body}\n`;
+  `---\nid: ${id}\ntitle: Test\nmilestone: M1\nstatus: ${status}\ndepends: ${depends}\n---\n\n${body}\n`;
 const wp = (opts = {}) => parseWorkPackage(`${opts.id ?? 'WP-001'}.md`, wpText(opts));
 
 test('parseFrontmatter liest Werte und Listen', () => {
@@ -39,13 +39,22 @@ test('done mit offenen Checkboxen ist ein Fehler', () => {
 
 test('Abhängigkeiten müssen existieren und für in-progress done sein', () => {
   assert.match(validateWorkPackages([wp({ depends: '[WP-009]' })])[0], /existiert nicht/);
-  const errors = validateWorkPackages([wp({ id: 'WP-001' }), wp({ id: 'WP-002', status: 'in-progress', depends: '[WP-001]' })]);
+  const errors = validateWorkPackages([
+    wp({ id: 'WP-001' }),
+    wp({ id: 'WP-002', status: 'in-progress', depends: '[WP-001]' }),
+  ]);
   assert.match(errors[0], /nicht done/);
 });
 
-test('maximal ein WP in-progress', () => {
-  const errors = validateWorkPackages([wp({ id: 'WP-001', status: 'in-progress' }), wp({ id: 'WP-002', status: 'in-progress' })]);
-  assert.match(errors[0], /Zu viele/);
+test('maximal fünf WPs in-progress', () => {
+  const active = (n) => Array.from({ length: n }, (_, i) => wp({ id: `WP-00${i + 1}`, status: 'in-progress' }));
+  assert.deepEqual(validateWorkPackages(active(5)), []);
+  assert.match(validateWorkPackages(active(6))[0], /Zu viele/);
+});
+
+test('milestone ist Pflicht', () => {
+  const text = wpText().replace('milestone: M1\n', '');
+  assert.match(parseWorkPackage('WP-001.md', text).errors[0], /milestone/);
 });
 
 test('PROGRESS-Tabelle: Sync erzeugt Stand, den der Check akzeptiert', () => {
@@ -68,7 +77,8 @@ test('Entscheidungs-IDs fortlaufend', () => {
 test('Links: relative Ziele müssen existieren, Code und URLs ignoriert', () => {
   const exists = (p) => p === 'docs/da.md';
   const files = {
-    'docs/a.md': '[ok](da.md#x) [web](https://x.de) [anker](#y) `[code](weg.md)`\n```\n[block](weg.md)\n```\n[kaputt](fehlt.md)',
+    'docs/a.md':
+      '[ok](da.md#x) [web](https://x.de) [anker](#y) `[code](weg.md)`\n```\n[block](weg.md)\n```\n[kaputt](fehlt.md)',
   };
   assert.deepEqual(checkLinks(files, exists), ['docs/a.md: kaputter Link → fehlt.md']);
 });

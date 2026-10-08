@@ -1,0 +1,13 @@
+# Override für scripts/test-restore.sh: isolierte Kopie der prod-Umgebung (Projekt poker-restoretest),
+# damit der Restore-Test echte prod-Daten nie anfasst – eigenes Volume, eigenes Server-Image, keine Host-Ports.
+services:
+  server:
+    image: poker-restoretest-server
+    ports: !reset []
+  web:
+    image: poker-restoretest-web
+    ports: !reset []
+
+volumes:
+  db:
+    name: poker-restoretest-db

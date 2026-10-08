@@ -3,13 +3,46 @@
   "private": true,
   "type": "module",
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
+  "workspaces": [
+    "packages/engine",
+    "apps/server",
+    "apps/web"
+  ],
   "scripts": {
     "setup": "git config core.hooksPath .githooks",
-    "test": "node --test scripts/test/",
+    "dev:up": "docker compose -f compose.dev.yml -p poker-dev up -d --build --renew-anon-volumes",
+    "dev:down": "docker compose -f compose.dev.yml -p poker-dev down",
+    "dev:logs": "docker compose -f compose.dev.yml -p poker-dev logs -f",
+    "prod:up": "sh scripts/prod.sh up",
+    "prod:down": "sh scripts/prod.sh down",
+    "prod:logs": "sh scripts/prod.sh logs",
+    "prod:tunnel:up": "sh scripts/prod.sh tunnel-up",
+    "prod:smoke": "sh scripts/prod.sh smoke",
+    "prod:setup": "bash scripts/prod-worktree-setup.sh",
+    "prod:backup": "bash scripts/backup-now.sh",
+    "prod:restore": "bash scripts/restore.sh",
+    "prod:status": "bash scripts/status.sh",
+    "prod:test-restore": "bash scripts/test-restore.sh",
+    "release": "bash scripts/release.sh",
+    "typecheck": "npm run typecheck --workspaces",
+    "lint": "eslint --max-warnings=0 .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "node --test \"scripts/test/**/*.test.mjs\" && vitest run",
     "docs:check": "node scripts/docs.mjs check",
     "docs:sync": "node scripts/docs.mjs sync",
-    "check": "npm run docs:check && npm test"
+    "check": "npm run docs:check && npm run format:check && npm run typecheck && npm run lint && npm test"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^22.20.5",
+    "eslint": "^10.12.0",
+    "globals": "^17.13.0",
+    "prettier": "^3.9.9",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.71.1",
+    "vitest": "^5.0.3"
   }
 }

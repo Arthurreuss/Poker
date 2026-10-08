@@ -1,6 +1,7 @@
 ---
 id: WP-XXX
 title: Kurzer Titel
+milestone: M1
 status: todo
 depends: []
 ---

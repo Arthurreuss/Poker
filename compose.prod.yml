@@ -1,0 +1,127 @@
+# Prod-Umgebung für main (D-002, D-005, D-006, D-014). Start: npm run prod:up (Projektname poker-prod).
+# Werte aus .env.prod (gitignored, Vorlage .env.prod.example). Host-Ports nur an 127.0.0.1 (4320/4321);
+# öffentlich nur über den Cloudflare-Tunnel (Dienst cloudflared, Profil "tunnel": npm run prod:tunnel:up).
+# Betrieb: docs/OPERATIONS.md
+name: poker-prod
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-poker}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD in .env.prod setzen}
+      POSTGRES_DB: ${POSTGRES_DB:-poker}
+    # Kein Host-Port: die Prod-DB ist nur im internen Netz erreichbar (D-010).
+    volumes:
+      - db:/var/lib/postgresql/data
+    networks: [backend]
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  server:
+    build:
+      context: .
+      dockerfile: docker/server.Dockerfile
+    image: poker-prod-server
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 4321
+      DATABASE_URL: postgres://${POSTGRES_USER:-poker}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-poker}
+      PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:?PUBLIC_ORIGIN in .env.prod setzen}
+    # Nur zum Debuggen vom Host aus; der normale Weg geht über web (/api, /ws).
+    ports:
+      - '127.0.0.1:${SERVER_PORT:-4321}:4321'
+    networks: [backend, frontend]
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO /dev/null http://127.0.0.1:4321/api/health || exit 1']
+      interval: 15s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: docker/web.Dockerfile
+    image: poker-prod-web
+    environment:
+      API_UPSTREAM: server:4321
+    ports:
+      - '127.0.0.1:${WEB_PORT:-4320}:8080'
+    networks: [frontend]
+    depends_on:
+      server:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO /dev/null http://127.0.0.1:8080/ || exit 1']
+      interval: 15s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    restart: unless-stopped
+
+  # Tägliches pg_dump (WP-021) in einen Host-Ordner außerhalb von Docker-Volumes. BACKUP_DIR setzen die
+  # npm-Skripte (scripts/lib/prod-env.sh, Standard ~/poker-backups). Aufbewahrung 7 täglich / 4 wöchentlich /
+  # 6 monatlich, Unterordner last/ daily/ weekly/ monthly/. Manuell: npm run prod:backup.
+  backup:
+    image: prodrigestivill/postgres-backup-local:16
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_USER: ${POSTGRES_USER:-poker}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-poker}
+      # Plain-SQL-Dump, gzip-komprimiert (.sql.gz); Restore: npm run prod:restore.
+      POSTGRES_EXTRA_OPTS: -Z6
+      SCHEDULE: ${BACKUP_SCHEDULE:-@daily}
+      TZ: ${BACKUP_TZ:-Europe/Berlin}
+      BACKUP_KEEP_DAYS: 7
+      BACKUP_KEEP_WEEKS: 4
+      BACKUP_KEEP_MONTHS: 6
+      HEALTHCHECK_PORT: 8080
+    volumes:
+      - ${BACKUP_DIR:?BACKUP_DIR fehlt – prod über npm run prod:* starten (setzt ~/poker-backups)}:/backups
+    networks: [backend]
+    depends_on:
+      db:
+        condition: service_healthy
+    # go-cron meldet über HTTP, ob der Scheduler läuft und der letzte Lauf geklappt hat.
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -fsS -o /dev/null "http://localhost:$$HEALTHCHECK_PORT/" || exit 1']
+      interval: 60s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  # Eigener Tunnel für Poker (D-014) – unabhängig vom Jarvis-Tunnel. Public Hostname im
+  # Cloudflare-Dashboard: poker.arthur-reuss.de → http://web:8080. Nur mit Profil "tunnel".
+  cloudflared:
+    image: cloudflare/cloudflared:2026.9.3
+    command: ['tunnel', '--no-autoupdate', 'run']
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:-}
+    networks: [frontend]
+    depends_on:
+      web:
+        condition: service_healthy
+    profiles: [tunnel]
+    restart: unless-stopped
+
+networks:
+  # internal: kein Zugang nach außen, nur server ↔ db.
+  backend:
+    internal: true
+  frontend:
+
+volumes:
+  db:
+    name: poker-prod-db

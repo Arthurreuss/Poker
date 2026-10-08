@@ -1,0 +1,5 @@
+node_modules/
+package-lock.json
+.claude/
+# Markdown wird nicht formatiert: PROGRESS.md enthält eine generierte Tabelle (docs:sync).
+*.md

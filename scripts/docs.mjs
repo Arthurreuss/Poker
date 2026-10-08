@@ -7,7 +7,7 @@ import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const STATUSES = ['todo', 'in-progress', 'review', 'done', 'blocked'];
-export const MAX_IN_PROGRESS = 1;
+export const MAX_IN_PROGRESS = 5;
 export const WP_DIR = 'docs/work-packages';
 export const PROGRESS_FILE = 'docs/PROGRESS.md';
 export const DECISIONS_FILE = 'docs/DECISIONS.md';
@@ -23,7 +23,11 @@ export function parseFrontmatter(text) {
     if (!kv) continue;
     let value = kv[2].trim();
     if (value.startsWith('[') && value.endsWith(']')) {
-      value = value.slice(1, -1).split(',').map((s) => s.trim()).filter(Boolean);
+      value = value
+        .slice(1, -1)
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
     }
     data[kv[1]] = value;
   }
@@ -34,18 +38,19 @@ export function parseWorkPackage(filename, text) {
   const errors = [];
   const fm = parseFrontmatter(text);
   if (!fm) return { file: filename, errors: [`${filename}: Frontmatter fehlt`] };
-  const { id, title, status } = fm.data;
+  const { id, title, status, milestone } = fm.data;
   const depends = Array.isArray(fm.data.depends) ? fm.data.depends : [];
   const expectedId = filename.replace(/\.md$/, '');
   if (id !== expectedId) errors.push(`${filename}: id "${id}" passt nicht zum Dateinamen`);
   if (!title) errors.push(`${filename}: title fehlt`);
+  if (!/^M\d+$/.test(milestone ?? '')) errors.push(`${filename}: milestone fehlt oder ungültig (z. B. M1)`);
   if (!STATUSES.includes(status)) {
     errors.push(`${filename}: status "${status}" ungültig (erlaubt: ${STATUSES.join(', ')})`);
   }
   if (!Array.isArray(fm.data.depends)) errors.push(`${filename}: depends fehlt (leere Liste: [])`);
   const done = (fm.body.match(/^\s*- \[x\]/gim) || []).length;
   const open = (fm.body.match(/^\s*- \[ \]/gm) || []).length;
-  return { file: filename, id, title, status, depends, done, open, errors };
+  return { file: filename, id, title, status, milestone, depends, done, open, errors };
 }
 
 export function validateWorkPackages(wps) {
@@ -74,9 +79,9 @@ export function renderProgressTable(wps) {
     .sort((a, b) => a.id.localeCompare(b.id))
     .map((wp) => {
       const deps = wp.depends.length ? wp.depends.join(', ') : '—';
-      return `| [${wp.id}](work-packages/${wp.file}) | ${wp.title} | ${wp.status} | ${deps} | ${wp.done}/${wp.done + wp.open} |`;
+      return `| ${wp.milestone} | [${wp.id}](work-packages/${wp.file}) | ${wp.title} | ${wp.status} | ${deps} |`;
     });
-  return ['| ID | Titel | Status | Abhängig von | Kriterien |', '|---|---|---|---|---|', ...rows].join('\n');
+  return ['| MS | ID | Titel | Status | Abhängig von |', '|---|---|---|---|---|', ...rows].join('\n');
 }
 
 export function replaceGenerated(progressText, table) {
@@ -98,7 +103,10 @@ export function checkDecisions(text) {
   const ids = [...text.matchAll(/^## D-(\d{3}):/gm)].map((m) => Number(m[1]));
   const errors = [];
   ids.forEach((n, i) => {
-    if (n !== i + 1) errors.push(`${DECISIONS_FILE}: D-${String(n).padStart(3, '0')} an Position ${i + 1} (erwartet fortlaufend ab D-001)`);
+    if (n !== i + 1)
+      errors.push(
+        `${DECISIONS_FILE}: D-${String(n).padStart(3, '0')} an Position ${i + 1} (erwartet fortlaufend ab D-001)`,
+      );
   });
   return errors;
 }

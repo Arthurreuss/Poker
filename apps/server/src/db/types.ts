@@ -1,0 +1,97 @@
+// Handgeschriebene Zeilentypen für Query-Ergebnisse, Spalten 1:1 wie in migrations/*.sql (snake_case).
+// Abbildung durch `pg`: integer/smallint → number, timestamptz → Date, jsonb → geparstes JSON,
+// text[] → string[], bytea → Buffer. Ändert eine Migration eine Tabelle, wird der Typ hier im selben Commit angepasst.
+
+export type TableStatus = 'open' | 'running' | 'closed';
+export type RoundStatus = 'running' | 'finished' | 'aborted';
+export type Street = 'preflop' | 'flop' | 'turn' | 'river';
+export type HandActionType = 'small_blind' | 'big_blind' | 'fold' | 'check' | 'call' | 'bet' | 'raise';
+
+/** Beliebiger JSON-Wert, wie `pg` ihn für jsonb-Spalten liefert. */
+export type Json = string | number | boolean | null | Json[] | { [key: string]: Json };
+
+export interface UserRow {
+  id: number;
+  /** `null` nur bei anonymisierten Accounts (`deleted_at` gesetzt). */
+  username: string | null;
+  password_hash: string | null;
+  is_admin: boolean;
+  created_at: Date;
+  deleted_at: Date | null;
+}
+
+export interface SessionRow {
+  /** SHA-256 des Session-Tokens (32 Byte). */
+  token_hash: Buffer;
+  user_id: number;
+  created_at: Date;
+  expires_at: Date;
+}
+
+export interface TableRow {
+  id: number;
+  created_by: number;
+  name: string;
+  is_public: boolean;
+  invite_code: string;
+  max_seats: number;
+  starting_stack: number;
+  small_blind: number;
+  big_blind: number;
+  blind_structure: { [key: string]: Json };
+  turn_time_seconds: number;
+  time_bank_seconds: number;
+  status: TableStatus;
+  created_at: Date;
+  closed_at: Date | null;
+}
+
+export interface RoundRow {
+  id: number;
+  table_id: number;
+  started_at: Date;
+  finished_at: Date | null;
+  status: RoundStatus;
+}
+
+export interface RoundPlayerRow {
+  round_id: number;
+  user_id: number;
+  /** Sitzindex 0–8. */
+  seat: number;
+  /** 1 = Sieger; `null` solange die Runde läuft oder bei Abbruch. */
+  placement: number | null;
+  points: number | null;
+}
+
+export interface HandRow {
+  id: number;
+  round_id: number;
+  hand_number: number;
+  button_seat: number;
+  small_blind: number;
+  big_blind: number;
+  /** Karten-Strings der Engine, z. B. `["As", "Td", "2c"]`. */
+  board: string[];
+  players: Json[];
+  result: Json | null;
+  started_at: Date;
+  finished_at: Date | null;
+}
+
+export interface HandActionRow {
+  hand_id: number;
+  seq: number;
+  user_id: number;
+  street: Street;
+  action: HandActionType;
+  amount: number;
+  is_all_in: boolean;
+  created_at: Date;
+}
+
+export interface SchemaMigrationRow {
+  version: string;
+  checksum: string;
+  applied_at: Date;
+}
