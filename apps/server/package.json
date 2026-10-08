@@ -7,15 +7,20 @@
   "dependencies": {
     "@poker/engine": "*",
     "fastify": "^5.12.5",
-    "pg": "^8.23.1"
+    "pg": "^8.23.1",
+    "ws": "^8.22.0"
   },
   "scripts": {
     "dev": "tsx watch --clear-screen=false src/main.ts",
+    "build": "node build.mjs",
+    "start": "node dist/server.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
   "devDependencies": {
     "@types/pg": "^8.23.1",
+    "@types/ws": "^8.18.2",
+    "esbuild": "^0.28.2",
     "tsx": "^4.23.15"
   }
 }

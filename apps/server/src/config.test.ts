@@ -11,6 +11,7 @@ describe('loadConfig', () => {
       databaseUrl: 'postgres://u:p@db/x',
       publicOrigin: 'http://example.test',
       nodeEnv: 'production',
+      trustProxy: true,
     });
   });
 
@@ -18,6 +19,7 @@ describe('loadConfig', () => {
     const config = loadConfig(base);
     expect(config.host).toBe('127.0.0.1');
     expect(config.nodeEnv).toBe('development');
+    expect(config.trustProxy).toBe(false);
   });
 
   it.each(['PORT', 'DATABASE_URL', 'PUBLIC_ORIGIN'])('wirft, wenn %s fehlt', (name) => {

@@ -8,6 +8,8 @@ export interface ServerConfig {
   /** Öffentliche Origin der App, z. B. für den Origin-Check beim WebSocket-Upgrade (D-014). */
   publicOrigin: string;
   nodeEnv: string;
+  /** Proxy-Header (`X-Forwarded-For`/`-Proto`) nur in prod vertrauen (D-014). */
+  trustProxy: boolean;
 }
 
 export type Env = Record<string, string | undefined>;
@@ -26,12 +28,14 @@ export function loadConfig(env: Env): ServerConfig {
   if (!Number.isInteger(port) || port < 1 || port > 65535) {
     throw new Error(`Umgebungsvariable PORT ist ungültig: ${rawPort}`);
   }
+  const nodeEnv = env['NODE_ENV'] ?? 'development';
   return {
     // Ohne HOST nur lokal binden; der Container setzt HOST=0.0.0.0.
     host: env['HOST'] ?? '127.0.0.1',
     port,
     databaseUrl: required(env, 'DATABASE_URL'),
     publicOrigin: required(env, 'PUBLIC_ORIGIN'),
-    nodeEnv: env['NODE_ENV'] ?? 'development',
+    nodeEnv,
+    trustProxy: nodeEnv === 'production',
   };
 }

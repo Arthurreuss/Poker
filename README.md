@@ -29,9 +29,18 @@ DATABASE_URL=postgres://poker:poker@localhost:4312/poker npm test
 ```
 Nach Änderungen an Abhängigkeiten `npm run dev:up` erneut ausführen (baut das Image neu).
 
+## Prod lokal starten
+```sh
+cp .env.prod.example .env.prod   # POSTGRES_PASSWORD setzen (gitignored)
+npm run prod:up                  # Projekt poker-prod unter http://localhost:4320 (läuft parallel zu dev)
+npm run prod:smoke               # Health + WebSocket prüfen
+npm run prod:down
+```
+Release, Tunnel-Einrichtung und Fehlersuche: [docs/OPERATIONS.md](docs/OPERATIONS.md).
+
 | Branch | Umgebung |
 |---|---|
 | `dev` | lokal testen, http://localhost:4310 |
-| `main` | Release, später öffentlich über Cloudflare Tunnel |
+| `main` | Release (`npm run release`), lokal http://localhost:4320, öffentlich über Cloudflare Tunnel unter poker.arthur-reuss.de |
 
 Arbeitsweise, Stand und Entscheidungen: [CLAUDE.md](CLAUDE.md) → [docs/WORKFLOW.md](docs/WORKFLOW.md), [docs/PROGRESS.md](docs/PROGRESS.md), [docs/DECISIONS.md](docs/DECISIONS.md).
