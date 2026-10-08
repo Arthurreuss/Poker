@@ -1,8 +1,11 @@
 import Fastify, { type FastifyInstance, type FastifyServerOptions } from 'fastify';
 import { loadAuthConfig, type AuthConfig } from './auth/config';
 import { authRoutes } from './auth/routes';
+import { getUserFromCookieHeader } from './auth/session';
 import type { Database } from './db';
-import { registerWebSocket } from './ws';
+import { GameServer, type GameServerOptions } from './game/game-server';
+import { createPgTableRepository } from './game/pg-repository';
+import { registerWebSocket, type Authenticate } from './ws';
 
 export interface AppOptions {
   db: Database;
@@ -16,6 +19,21 @@ export interface AppOptions {
   heartbeatIntervalMs?: number;
   /** Standard: `loadAuthConfig(process.env)`. */
   auth?: AuthConfig;
+  /**
+   * Game-Server (WP-011). Standard: Tische in Postgres (`createPgTableRepository(db)`), echte Uhr, `cryptoRng`,
+   * Pause nach jeder Hand `DEFAULT_HAND_PAUSE_MS`. Tests übergeben z. B. In-Memory-Repository und Pause 0.
+   */
+  game?: Partial<Omit<GameServerOptions, 'log'>> & {
+    /** Standard: Session aus dem Cookie per `getUserFromCookieHeader(db, …)`. */
+    authenticate?: Authenticate;
+  };
+}
+
+declare module 'fastify' {
+  interface FastifyInstance {
+    /** Game-Server mit allen Tischen im Speicher (WP-011). */
+    game: GameServer;
+  }
 }
 
 export interface HealthResponse {
@@ -31,8 +49,12 @@ export function buildApp({
   trustProxy = false,
   heartbeatIntervalMs,
   auth = loadAuthConfig(process.env),
+  game: gameOptions = {},
 }: AppOptions): FastifyInstance {
   const app = Fastify({ logger, trustProxy });
+  const { authenticate = (cookie) => getUserFromCookieHeader(db, cookie), ...rest } = gameOptions;
+  const game = new GameServer({ repository: createPgTableRepository(db), ...rest, log: app.log });
+  app.decorate('game', game);
 
   app.addHook('onClose', async () => {
     await db.close();
@@ -40,6 +62,8 @@ export function buildApp({
 
   registerWebSocket(app, {
     publicOrigin,
+    authenticate,
+    game,
     ...(heartbeatIntervalMs === undefined ? {} : { heartbeatIntervalMs }),
   });
 

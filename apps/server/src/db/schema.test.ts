@@ -169,20 +169,18 @@ describe.skipIf(testDatabaseUrl === undefined)('Schema (Test-DB)', () => {
   });
 
   describe('Constraints', () => {
-    it('Sitz und Platzierung sind pro Runde eindeutig', async () => {
+    it('Sitz ist pro Runde eindeutig, Platzierung darf geteilt sein (0002, WP-008)', async () => {
       const { roundId } = await seedRound();
       const carol = await insertUser('carol');
       await expectPgError(
         s.pool.query('INSERT INTO round_players (round_id, user_id, seat) VALUES ($1, $2, 0)', [roundId, carol.id]),
         UNIQUE_VIOLATION,
       );
-      await expectPgError(
-        s.pool.query('INSERT INTO round_players (round_id, user_id, seat, placement) VALUES ($1, $2, 2, 1)', [
-          roundId,
-          carol.id,
-        ]),
-        UNIQUE_VIOLATION,
-      );
+      // Geteilter Platz 2 (gleichzeitig ausgeschieden mit gleichem Stack).
+      await s.pool.query('INSERT INTO round_players (round_id, user_id, seat, placement) VALUES ($1, $2, 2, 2)', [
+        roundId,
+        carol.id,
+      ]);
     });
 
     it('Statuswerte und Zeitpunkte müssen zusammenpassen', async () => {
