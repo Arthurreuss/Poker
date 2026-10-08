@@ -205,14 +205,22 @@ export class Table {
   }
 
   /**
-   * „Nochmal“ (D-020): nach Rundenende startet der Ersteller eine neue Runde am selben Tisch mit denselben
-   * Sitzen. Stacks, Zeitbanken und Blind-Level beginnen von vorn; die Runde bekommt eine neue Runden-ID.
+   * „Nochmal“ (D-020, D-024): nach Rundenende startet der Ersteller eine neue Runde am selben Tisch. Es spielen
+   * nur Spieler mit, die gerade verbunden sind (den Tisch beobachten); getrennte stehen vorher automatisch auf.
+   * Stacks, Zeitbanken und Blind-Level beginnen von vorn; die Runde bekommt eine neue Runden-ID.
    */
   async rematch(userId: number): Promise<TableResult> {
     if (this.status !== 'finished') return err('ROUND_NOT_FINISHED', 'Die Runde ist noch nicht beendet');
     if (userId !== this.createdBy.id) return err('NOT_CREATOR', 'Nur der Ersteller kann eine neue Runde starten');
-    if (this.seats.size < 2) return err('NOT_ENOUGH_PLAYERS', 'Mindestens 2 Spieler müssen sitzen');
-    return this.beginRound('finished');
+    const away = [...this.seats].filter(([, user]) => !this.isConnected(user.id));
+    if (this.seats.size - away.length < 2) {
+      return err('NOT_ENOUGH_PLAYERS', 'Mindestens 2 verbundene Spieler müssen sitzen');
+    }
+    for (const [seat] of away) this.seats.delete(seat);
+    const result = await this.beginRound('finished');
+    // Bei Erfolg hat beginRound den neuen Zustand schon gesendet; sonst die geänderten Sitze nachreichen.
+    if (!result.ok && away.length > 0 && !this.closed) this.deps.onChange(this);
+    return result;
   }
 
   private async beginRound(previous: 'open' | 'finished'): Promise<TableResult> {

@@ -1,5 +1,6 @@
 // Rangliste (WP-019): Punkte, Runden, Siege. Lädt bei jedem Aufruf und wenn die App wieder in den Vordergrund
 // kommt neu – so ist sie nach einem Rundenende aktuell, ohne Push (ARCHITECTURE.md, „Statistiken“).
+// Nur Spieler mit mindestens einer beendeten Runde (D-024); der Server filtert, die Seite zur Sicherheit auch.
 import { Link } from 'react-router';
 import { fetchLeaderboard } from '../api/stats';
 import { useAuth } from '../auth/AuthContext';
@@ -24,9 +25,10 @@ export function LeaderboardPage() {
         </div>
       )}
       <ResourceView resource={resource}>
-        {(players) =>
-          players.length === 0 ? (
-            <p className={styles.muted}>Noch keine Spieler.</p>
+        {(all) => {
+          const players = all.filter((p) => p.rounds > 0);
+          return players.length === 0 ? (
+            <p className={styles.muted}>Noch keine beendeten Runden.</p>
           ) : (
             <table className={styles.table}>
               <thead>
@@ -63,8 +65,8 @@ export function LeaderboardPage() {
                 })}
               </tbody>
             </table>
-          )
-        }
+          );
+        }}
       </ResourceView>
       <p className={styles.muted}>
         Punkte je Runde: Platz k von n Spielern bekommt n − k, der Sieger 1 extra. Gleiche Punkte = gleicher Platz.

@@ -62,6 +62,31 @@ describe('Rangliste', () => {
     expect(screen.getByRole('link', { name: 'anna' })).toHaveAttribute('href', '/players/anna');
   });
 
+  it('zeigt keine Spieler ohne beendete Runde (D-024)', async () => {
+    mockApi({
+      ...ME,
+      'GET /api/leaderboard': json(200, {
+        players: [...BOARD, { rank: 4, userId: 11, name: 'neu', points: 0, rounds: 0, wins: 0 }],
+      }),
+    });
+    renderApp('/leaderboard');
+    const rows = await screen.findAllByRole('row');
+    expect(rows).toHaveLength(BOARD.length + 1);
+    expect(screen.queryByText('neu')).toBeNull();
+  });
+
+  it('ohne beendete Runden: Hinweis statt leerer Tabelle', async () => {
+    mockApi({
+      ...ME,
+      'GET /api/leaderboard': json(200, {
+        players: [{ rank: 1, userId: 11, name: 'neu', points: 0, rounds: 0, wins: 0 }],
+      }),
+    });
+    renderApp('/leaderboard');
+    expect(await screen.findByText('Noch keine beendeten Runden.')).toBeInTheDocument();
+    expect(screen.queryByRole('table')).toBeNull();
+  });
+
   it('lädt neu, wenn die App wieder in den Vordergrund kommt (z. B. nach Rundenende)', async () => {
     let calls = 0;
     mockApi({
@@ -95,6 +120,7 @@ const ROUND: RoundSummary = {
   finishedAt: '2026-10-08T19:00:00Z',
   handCount: 12,
   viewerParticipated: true,
+  isPublic: true,
   players: [
     { name: 'anna', seat: 0, placement: 1, points: 4, isViewer: false },
     { name: PLAYER.username, seat: 1, placement: 2, points: 2, isViewer: true },
@@ -135,7 +161,7 @@ describe('Profil', () => {
     expect(links[1]).toHaveTextContent('abgebrochen, ohne Punkte');
   });
 
-  it('fremdes Profil: Runden ohne eigene Teilnahme ohne Link; unbekannter Spieler → Fehler', async () => {
+  it('fremdes Profil: öffentliche Runden ohne eigene Teilnahme mit Link; unbekannter Spieler → Fehler', async () => {
     mockApi({
       ...ME,
       'GET /api/players/anna/stats': json(404, { error: 'not_found', message: 'Spieler nicht gefunden' }),
@@ -144,9 +170,33 @@ describe('Profil', () => {
     renderApp('/players/anna');
     await screen.findByRole('heading', { level: 1, name: 'Spieler anna' });
     expect(await screen.findByRole('alert')).toHaveTextContent('Spieler nicht gefunden');
-    expect(await screen.findByText('Freitag')).toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: /Freitag/ })).toBeNull();
+    expect(await screen.findByRole('link', { name: /Freitag/ })).toHaveAttribute('href', '/rounds/31');
     expect(screen.getByText('anna: Platz 1. · 4 Punkte')).toBeInTheDocument();
+  });
+
+  it('Profil ohne beendete Runde: Platz „–“ (D-024)', async () => {
+    const stats: PlayerStats = {
+      player: { id: 11, name: 'neu' },
+      rank: null,
+      points: 0,
+      rounds: 0,
+      wins: 0,
+      hands: {
+        hands: 0,
+        vpip: { count: 0, of: 0 },
+        pfr: { count: 0, of: 0 },
+        wtsd: { count: 0, of: 0 },
+        wsd: { count: 0, of: 0 },
+      },
+    };
+    mockApi({
+      ...ME,
+      'GET /api/players/neu/stats': json(200, stats),
+      'GET /api/rounds/recent?player=neu': json(200, { rounds: [] }),
+    });
+    renderApp('/players/neu');
+    const tiles = await screen.findByRole('region', { name: 'Rangliste' });
+    expect(tiles).toHaveTextContent('–Platz0Punkte0Runden');
   });
 });
 
@@ -353,15 +403,27 @@ describe('Runde und Hand', () => {
     });
   });
 
-  it('Runde ohne Teilnahme: Hinweis des Servers', async () => {
+  it('öffentliche Runde ohne Teilnahme: Ergebnis ja, Hände nein (D-024)', async () => {
+    mockApi({
+      ...ME,
+      'GET /api/rounds/31': json(200, { round: { ...ROUND, viewerParticipated: false }, hands: null }),
+    });
+    renderApp('/rounds/31');
+    const result = await screen.findByRole('region', { name: 'Ergebnis' });
+    expect(within(result).getAllByRole('listitem')).toHaveLength(4);
+    expect(screen.getByText('Die Hände sehen nur die Teilnehmer der Runde.')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /#/ })).toBeNull();
+  });
+
+  it('private Runde ohne Teilnahme: Hinweis des Servers', async () => {
     mockApi({
       ...ME,
       'GET /api/rounds/40': json(403, {
         error: 'forbidden',
-        message: 'Die Hände einer Runde können nur ihre Teilnehmer nachlesen',
+        message: 'Das Ergebnis eines privaten Tisches sehen nur seine Teilnehmer',
       }),
     });
     renderApp('/rounds/40');
-    expect(await screen.findByRole('alert')).toHaveTextContent('nur ihre Teilnehmer');
+    expect(await screen.findByRole('alert')).toHaveTextContent('nur seine Teilnehmer');
   });
 });

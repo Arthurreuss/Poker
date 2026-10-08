@@ -45,6 +45,10 @@ const NOT_PARTICIPANT: StatsErrorResponse = {
   error: 'forbidden',
   message: 'Die Hände einer Runde können nur ihre Teilnehmer nachlesen',
 };
+const PRIVATE_ROUND: StatsErrorResponse = {
+  error: 'forbidden',
+  message: 'Das Ergebnis eines privaten Tisches sehen nur seine Teilnehmer',
+};
 
 export const statsRoutes: FastifyPluginAsync<StatsPluginOptions> = (app, { db }) => {
   // Session prüfen wie beim WebSocket-Handshake (eigener Cookie-Parser, das Cookie-Plugin ist im Auth-Plugin
@@ -94,7 +98,11 @@ export const statsRoutes: FastifyPluginAsync<StatsPluginOptions> = (app, { db })
     if (id === null) return send(reply, 404, NOT_FOUND_ROUND);
     const round = await loadRoundSummary(db, id, viewer.id);
     if (round === null) return send(reply, 404, NOT_FOUND_ROUND);
-    if (!round.viewerParticipated) return send(reply, 403, NOT_PARTICIPANT);
+    // D-024: Ergebnis öffentlicher Tische für alle Eingeloggten, privater nur für Teilnehmer; Hände immer nur
+    // für Teilnehmer (`hands: null`).
+    if (!round.viewerParticipated) {
+      return round.isPublic ? { round, hands: null } : send(reply, 403, PRIVATE_ROUND);
+    }
     const hands = await loadRoundHistory(db, id);
     const names = await loadNames(db, hands);
     return { round, hands: hands.map((h) => toHandSummary(h, names, viewer.id)) };
