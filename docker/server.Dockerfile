@@ -31,7 +31,7 @@ FROM node:22-alpine AS runtime
 ENV NODE_ENV=production
 WORKDIR /app
 COPY --from=deps --chown=root:root /app/node_modules ./node_modules
-COPY --from=build --chown=root:root /app/apps/server/dist/server.mjs ./server.mjs
+COPY --from=build --chown=root:root /app/apps/server/dist/ ./
 # SQL-Migrationen laufen beim Start (D-015); der gebündelte Server findet sie über MIGRATIONS_DIR.
 COPY --chown=root:root apps/server/migrations ./migrations
 ENV MIGRATIONS_DIR=/app/migrations

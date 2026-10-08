@@ -6,7 +6,11 @@ import { buildApp } from './app';
 import type { Database } from './db';
 
 const ORIGIN = 'https://poker.example.test';
-const fakeDb: Database = { ping: () => Promise.resolve(), close: () => Promise.resolve() };
+const fakeDb: Database = {
+  ping: () => Promise.resolve(),
+  query: () => Promise.reject(new Error('nicht verwendet')),
+  close: () => Promise.resolve(),
+};
 
 let app: FastifyInstance | undefined;
 

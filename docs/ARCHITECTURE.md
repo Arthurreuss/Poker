@@ -8,13 +8,14 @@ npm-Workspaces-Monorepo (D-004). Alle Workspaces sind TypeScript (ESM, `strict`)
 | Workspace | Paket | Zweck |
 |---|---|---|
 | `packages/engine` | `@poker/engine` | reine Poker-Logik, keine I/O-Abhängigkeiten |
-| `apps/server` | `@poker/server` | Game-Server: Fastify mit `GET /api/health` (prüft die DB per `pg`) und Platzhalter-WebSocket `/ws` (`ws`); importiert `@poker/engine` |
+| `apps/server` | `@poker/server` | Game-Server: Fastify mit `GET /api/health` (prüft die DB per `pg`), Auth-Endpunkten (`/api/register`, `/login`, `/logout`, `/me`) und Platzhalter-WebSocket `/ws` (`ws`); importiert `@poker/engine` |
 | `apps/web` | `@poker/web` | Frontend: React + Vite, derzeit Platzhalterseite mit Health-Anzeige (PWA folgt) |
 
 ### Server (`apps/server/src`)
 - `config.ts` – `loadConfig(env)`: Konfiguration **nur** aus Umgebungsvariablen (D-014): `PORT`, `DATABASE_URL`, `PUBLIC_ORIGIN` (Pflicht), `HOST` (Standard `127.0.0.1`, im Container `0.0.0.0`), `NODE_ENV` (Standard `development`). Abgeleitet: `trustProxy` = `NODE_ENV === 'production'` (Proxy-Header nur in prod vertrauen, D-014).
-- `db.ts` – `Database`-Schnittstelle (`ping`, `close`) und `createPgDatabase(url)` mit `pg.Pool`.
-- `app.ts` – `buildApp({ db, publicOrigin, trustProxy })` baut die Fastify-App ohne `listen`; Tests nutzen `app.inject()` und können eine Fake-DB übergeben. `GET /api/health` → `200 { status: "ok", db: "ok" }` bzw. `503 { status: "error", db: "error" }`; die Route loggt nur Warnungen (kein Request-Log pro Healthcheck).
+- `db.ts` – `Database`-Schnittstelle (`ping`, `query`, `close`; `Queryable` = nur `query`, passt auch auf `pg.Pool`) und `createPgDatabase(url | poolConfig)` mit `pg.Pool`.
+- `app.ts` – `buildApp({ db, publicOrigin, trustProxy, auth? })` baut die Fastify-App ohne `listen`; Tests nutzen `app.inject()` und können eine Fake-DB übergeben. `GET /api/health` → `200 { status: "ok", db: "ok" }` bzw. `503 { status: "error", db: "error" }`; die Route loggt nur Warnungen. Registriert das Auth-Plugin (`auth/routes.ts`, siehe „Auth“); `auth` ist optional eine `AuthConfig` (Standard: aus `process.env`).
+- `auth/` – Registrierung, Login, Sessions, Rate-Limit (Abschnitt „Auth“); `cli/` – Admin-Skripte.
 - `ws.ts` – `registerWebSocket(app, { publicOrigin })`: **Platzhalter** bis WP-011. `ws`-Server (`noServer`) am `upgrade`-Event des HTTP-Servers, nur Pfad `/ws` (sonst 404). `Origin` muss exakt `PUBLIC_ORIGIN` sein, sonst `403` (D-014). Nach dem Verbinden sendet er `{"type":"hello","placeholder":true}` und echot jede Nachricht (max. 64 KiB). Heartbeat: Ping alle 30 s, Clients ohne Pong bis zum nächsten Ping werden getrennt. Beim Schließen der App werden offene Verbindungen beendet. Integrationstests mit echten Verbindungen in `ws.test.ts`.
 - `main.ts` – Einstiegspunkt: Config laden, App bauen, `listen`, sauberes Beenden bei SIGTERM/SIGINT.
 - `build.mjs` (neben `src/`) – Prod-Build `npm run build -w @poker/server`: esbuild bündelt `src/main.ts` samt `@poker/engine` zu `dist/server.mjs` (ESM, Node 22, keine Source-Maps); npm-Abhängigkeiten bleiben extern.
@@ -159,6 +160,49 @@ calculatePots(players: { id, totalBet, status }[]) → { pots: { amount, eligibl
 - `docker/dev.Dockerfile` (`node:22-alpine`) installiert die Abhängigkeiten per `npm ci` **im Image** (Linux-Binaries). Das Repo wird nach `/app` gebunden (Hot-Reload), ein anonymes Volume über `/app/node_modules` verhindert, dass die macOS-`node_modules` des Hosts im Container landen. `dev:up` nutzt `--renew-anon-volumes`, damit nach Abhängigkeitsänderungen das frische `node_modules` aus dem Image verwendet wird.
 - Hot-Reload: Server per `tsx watch` mit Polling (`CHOKIDAR_USEPOLLING=true`, Dateievents kommen über den macOS-Bind-Mount bei tsx nicht an); Web per Vite-HMR über Dateievents, Polling optional (`WEB_WATCH_POLLING=true`).
 - Alle Werte mit Defaults in `compose.dev.yml`, überschreibbar per `.env` (Vorlage `.env.example`, `.env` ist gitignored).
+
+## Auth
+Accounts mit Benutzername + Passwort, offene Registrierung (D-011). Code in `apps/server/src/auth/`, eingebunden als gekapseltes Fastify-Plugin `authRoutes` (`routes.ts`).
+
+### Endpunkte
+| Methode und Pfad | Body | Erfolg | Fehler |
+|---|---|---|---|
+| `POST /api/register` | `{ username, password }` | `201 { user }` + Session-Cookie (direkt eingeloggt) | `400` ungültige Eingabe, `409 username_taken`, `429` |
+| `POST /api/login` | `{ username, password }` | `200 { user }` + Session-Cookie | `400` Felder fehlen/zu lang, `401 invalid_credentials`, `429` |
+| `POST /api/logout` | – | `204`, Session gelöscht, Cookie geleert (auch ohne Session) | – |
+| `GET /api/me` | – | `200 { user }` | `401 unauthorized` (Cookie fehlt, unbekannt oder abgelaufen; ein ungültiges Cookie wird geleert) |
+
+`user` = `{ id, username, isAdmin }`. Fehler haben immer die Form `{ error, message }` (`error` ist ein fester Code, `message` deutscher Text für die UI).
+
+### Ablauf
+- **Validierung** (`validation.ts`, ohne I/O): Benutzername 3–20 Zeichen aus `[A-Za-z0-9_-]`, eindeutig ohne Rücksicht auf Groß-/Kleinschreibung (Unique-Index auf `lower(username)`; Kollision → `409`). Die Schreibweise der Registrierung bleibt erhalten, Login ist case-insensitive. Passwort 8–128 Zeichen.
+- **Passwörter** (`password.ts`): argon2id über `@node-rs/argon2` (Prebuilds inkl. musl für `node:22-alpine`, keine Install-Skripte), Parameter nach OWASP: 19 MiB, `t=2`, `p=1`. In der DB steht nur der PHC-String (`$argon2id$v=19$m=19456,t=2,p=1$…`).
+- **Login ohne Hinweis auf existierende Namen:** falsches Passwort, unbekannter Name und ein Name, der die Regeln verletzt, ergeben dieselbe Antwort (`401 invalid_credentials`). Bei unbekanntem Namen wird gegen einen Dummy-Hash mit denselben Parametern geprüft, damit die Laufzeit ähnlich ist.
+- **Sessions** (`session.ts`): Token = 32 Zufallsbytes, base64url (43 Zeichen). Die DB speichert nur `sha256(token)` in `sessions.token_hash`; wer die DB liest, kann keine Session übernehmen. Ablauf nach `SESSION_TTL_DAYS` (Standard 30) ab Login, ohne gleitende Verlängerung. Beim Login werden abgelaufene Sessions des Users gelöscht; Logout löscht die Session. Eine Session gilt nur, solange `expires_at > now()` und der Account nicht gelöscht ist (`deleted_at`).
+- **Cookie** `poker_session`: `HttpOnly`, `SameSite=Lax`, `Path=/`, `Expires` = Session-Ablauf, `Secure` nur bei `NODE_ENV=production` (D-014; in dev läuft alles über `http://localhost`). `SameSite=Lax` verhindert, dass fremde Seiten POSTs mit dem Cookie auslösen.
+- **Logging:** Request-Bodies und Header (inkl. `Cookie`) werden nicht geloggt (Fastify-Standard-Serializer loggen nur Methode, URL, Host, IP); das Auth-Plugin hat einen eigenen Fehler-Handler, der nur Fehlerobjekte loggt. Ein Test fängt die Logs ab und prüft, dass weder Passwort noch Token vorkommen.
+
+### Rate-Limit
+`@fastify/rate-limit`, nur für `POST /api/login` und `POST /api/register` (je Route ein eigener Zähler, im Speicher des Prozesses). Standard: 10 Anfragen pro 60 s und Client-IP, danach `429 rate_limited`. Gezählt werden alle Anfragen, nicht nur Fehlversuche. Schlüssel: in prod (`NODE_ENV=production`) `CF-Connecting-IP` (Cloudflare, D-014), sonst/fallback `request.ip` – in dev wird der Header ignoriert, sonst ließe sich das Limit per Header umgehen.
+
+### Konfiguration (`auth/config.ts`, `loadAuthConfig(env)`)
+| Variable | Standard | Wirkung |
+|---|---|---|
+| `NODE_ENV` | `development` | `production` → Cookie `Secure`, Client-IP aus `CF-Connecting-IP` |
+| `SESSION_TTL_DAYS` | `30` | Lebensdauer einer Session |
+| `AUTH_RATE_LIMIT_MAX` | `10` | Anfragen pro Fenster und IP; `0` schaltet das Limit ab |
+| `AUTH_RATE_LIMIT_WINDOW_SECONDS` | `60` | Fensterlänge |
+
+Tests übergeben `buildApp({ db, auth })` eine eigene `AuthConfig` (z. B. Limit aus, `max: 3`, prod-Flags).
+
+### Session im WebSocket-Handshake
+`getUserFromCookieHeader(db, request.headers.cookie)` (exportiert aus `session.ts` und dem Paket-Index) liest das Token aus einem rohen `Cookie`-Header (eigener kleiner Parser, unabhängig vom Fastify-Cookie-Plugin) und liefert `AuthUser | null` – gedacht für das WebSocket-Upgrade (WP-011), wo der Browser das Cookie automatisch mitschickt (gleiche Origin, D-014). `getUserFromSessionToken(db, token)` ist die Variante mit bereits extrahiertem Token.
+
+### Admin
+Admin-Flag `users.is_admin` (in `/api/me` als `isAdmin`). CLI-Skripte in `src/cli/` mit Kernlogik in `auth/admin.ts` (getestet): `admin:reset-password` setzt ein neues Passwort und löscht in derselben SQL-Anweisung alle Sessions des Users, `admin:make-admin` setzt/entzieht das Flag. Aufrufe: README, Abschnitt „Admin“.
+
+### Tests
+`auth/auth.unit.test.ts` (ohne DB: Validierung, Token/Hashing, argon2id-Parameter, Config, Client-IP) und `auth/auth.db.test.ts` (Integration gegen die Test-DB über `app.inject()`: alle Endpunkte inkl. Fehlerfälle, Cookie-Flags dev/prod, Ablauf, Rate-Limit, Logs, `getUserFromCookieHeader`, Admin-Funktionen). `npm run test:db -w @poker/server` führt alle Server-Tests mit Test-DB aus.
 
 ## Datenmodell
 Postgres 16 (D-010). Schema in `apps/server/migrations/*.sql`, Runner und Zeilentypen in `apps/server/src/db/`.

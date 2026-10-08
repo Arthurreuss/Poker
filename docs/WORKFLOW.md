@@ -21,7 +21,7 @@ todo → in-progress → review → done
        blocked (mit Grund im WP-Log)
 ```
 - **todo**: definiert, Akzeptanzkriterien stehen, Abhängigkeiten bekannt.
-- **in-progress**: es wird daran gearbeitet. Höchstens **drei** WPs gleichzeitig, und nur aus verschiedenen Strängen (siehe Parallele Sessions).
+- **in-progress**: es wird daran gearbeitet. Höchstens **fünf** WPs gleichzeitig, und nur, wenn sie sich nicht behindern (siehe Parallele Sessions).
 - **review**: alle Kriterien aus Sicht des Bearbeiters erfüllt, Mensch schaut drüber.
 - **done**: alle Checkboxen abgehakt, Tests grün, Doku aktuell, gemerged.
 - **blocked**: Grund + was zum Entblocken nötig ist steht im WP-Log.
@@ -53,7 +53,7 @@ Ein WP darf erst `in-progress` werden, wenn alle WPs in `depends` `done` sind.
 `npm run check` (auch als Pre-Commit-Hook) prüft automatisch:
 - WP-Frontmatter gültig, ID passt zum Dateinamen, Status erlaubt, `depends` existieren.
 - `done`-WPs haben keine offenen Checkboxen; `in-progress` nur, wenn Abhängigkeiten `done` sind.
-- Höchstens drei WPs `in-progress`.
+- Höchstens fünf WPs `in-progress`.
 - Jedes WP hat einen Meilenstein (`milestone: M1` …).
 - Die generierte Tabelle in PROGRESS.md entspricht den WP-Dateien.
 - Relative Links in allen Markdown-Dateien zeigen auf existierende Dateien.

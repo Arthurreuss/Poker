@@ -7,7 +7,7 @@ import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const STATUSES = ['todo', 'in-progress', 'review', 'done', 'blocked'];
-export const MAX_IN_PROGRESS = 3;
+export const MAX_IN_PROGRESS = 5;
 export const WP_DIR = 'docs/work-packages';
 export const PROGRESS_FILE = 'docs/PROGRESS.md';
 export const DECISIONS_FILE = 'docs/DECISIONS.md';

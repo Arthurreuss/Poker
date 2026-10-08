@@ -1,4 +1,6 @@
-import Fastify, { type FastifyInstance } from 'fastify';
+import Fastify, { type FastifyInstance, type FastifyServerOptions } from 'fastify';
+import { loadAuthConfig, type AuthConfig } from './auth/config';
+import { authRoutes } from './auth/routes';
 import type { Database } from './db';
 import { registerWebSocket } from './ws';
 
@@ -6,11 +8,14 @@ export interface AppOptions {
   db: Database;
   /** Erlaubte Origin für WebSocket-Upgrades (D-014). */
   publicOrigin: string;
-  logger?: boolean;
+  /** `true`/`false` oder Pino-Optionen (Tests fangen damit Logs ab). */
+  logger?: FastifyServerOptions['logger'];
   /** Proxy-Header vertrauen – nur in prod (D-014), siehe `loadConfig`. */
   trustProxy?: boolean;
   /** Nur für Tests: kürzerer Heartbeat. */
   heartbeatIntervalMs?: number;
+  /** Standard: `loadAuthConfig(process.env)`. */
+  auth?: AuthConfig;
 }
 
 export interface HealthResponse {
@@ -25,6 +30,7 @@ export function buildApp({
   logger = false,
   trustProxy = false,
   heartbeatIntervalMs,
+  auth = loadAuthConfig(process.env),
 }: AppOptions): FastifyInstance {
   const app = Fastify({ logger, trustProxy });
 
@@ -47,6 +53,8 @@ export function buildApp({
       return reply.code(503).send({ status: 'error', db: 'error' });
     }
   });
+
+  void app.register(authRoutes, { db, config: auth });
 
   return app;
 }

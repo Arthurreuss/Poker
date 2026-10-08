@@ -1,4 +1,4 @@
-// Prod-Build des Servers (WP-003): ein ESM-Bundle dist/server.mjs.
+// Prod-Build des Servers (WP-003): ESM-Bundles dist/server.mjs und dist/cli/*.mjs (Admin-Skripte, WP-010).
 // Workspace-Pakete (@poker/*, exportieren TypeScript-Quellen) werden eingebettet,
 // npm-Abhängigkeiten bleiben extern und kommen per `npm ci --omit=dev` ins Runtime-Image.
 // Keine Source-Maps, nicht minifiziert (lesbare Stacktraces).
@@ -9,8 +9,13 @@ const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 
 const external = Object.keys(pkg.dependencies ?? {}).filter((name) => !name.startsWith('@poker/'));
 
 await build({
-  entryPoints: [new URL('./src/main.ts', import.meta.url).pathname],
-  outfile: new URL('./dist/server.mjs', import.meta.url).pathname,
+  entryPoints: {
+    server: new URL('./src/main.ts', import.meta.url).pathname,
+    'cli/reset-password': new URL('./src/cli/reset-password.ts', import.meta.url).pathname,
+    'cli/make-admin': new URL('./src/cli/make-admin.ts', import.meta.url).pathname,
+  },
+  outdir: new URL('./dist', import.meta.url).pathname,
+  outExtension: { '.js': '.mjs' },
   bundle: true,
   platform: 'node',
   format: 'esm',

@@ -46,10 +46,10 @@ test('Abhängigkeiten müssen existieren und für in-progress done sein', () => 
   assert.match(errors[0], /nicht done/);
 });
 
-test('maximal drei WPs in-progress', () => {
+test('maximal fünf WPs in-progress', () => {
   const active = (n) => Array.from({ length: n }, (_, i) => wp({ id: `WP-00${i + 1}`, status: 'in-progress' }));
-  assert.deepEqual(validateWorkPackages(active(3)), []);
-  assert.match(validateWorkPackages(active(4))[0], /Zu viele/);
+  assert.deepEqual(validateWorkPackages(active(5)), []);
+  assert.match(validateWorkPackages(active(6))[0], /Zu viele/);
 });
 
 test('milestone ist Pflicht', () => {

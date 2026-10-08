@@ -14,11 +14,11 @@
 | M2 | [WP-007](work-packages/WP-007.md) | Engine: Side Pots und Showdown | done | WP-005, WP-006 |
 | M2 | [WP-008](work-packages/WP-008.md) | Engine: Freezeout-Runde mit Blind-Leveln und Punkten | in-progress | WP-007 |
 | M3 | [WP-009](work-packages/WP-009.md) | Datenbankschema und Migrationen | done | WP-002 |
-| M3 | [WP-010](work-packages/WP-010.md) | Accounts: Registrierung, Login, Sessions | in-progress | WP-009 |
+| M3 | [WP-010](work-packages/WP-010.md) | Accounts: Registrierung, Login, Sessions | done | WP-009 |
 | M3 | [WP-011](work-packages/WP-011.md) | Game-Server: WebSocket-Protokoll und Tische | todo | WP-008, WP-010 |
 | M3 | [WP-012](work-packages/WP-012.md) | Zeitlimit, Zeitbank und Reconnect | todo | WP-011 |
 | M3 | [WP-013](work-packages/WP-013.md) | Persistenz: Runden und Hand-Historie | todo | WP-011 |
-| M4 | [WP-014](work-packages/WP-014.md) | Web-Grundgerüst: PWA, Routing, Login | todo | WP-002, WP-010 |
+| M4 | [WP-014](work-packages/WP-014.md) | Web-Grundgerüst: PWA, Routing, Login | in-progress | WP-002, WP-010 |
 | M4 | [WP-015](work-packages/WP-015.md) | Lobby: Tische erstellen und beitreten | todo | WP-011, WP-014 |
 | M4 | [WP-016](work-packages/WP-016.md) | Tischansicht Hochformat | todo | WP-014 |
 | M4 | [WP-017](work-packages/WP-017.md) | Tischansicht Querformat und Umschalter | todo | WP-016 |
@@ -46,11 +46,12 @@
 - Strang-Zusammenführung bei WP-011 (Engine + Accounts) und WP-018 (Server + UI).
 
 ## Nächster Schritt
-Parallel in Arbeit: WP-008 (Freezeout-Runde), WP-010 (Accounts), WP-021 (Backups/Betrieb + Prod-Worktree D-017). Danach WP-014, WP-011.
+Parallel in Arbeit (max. 5): WP-008 (Freezeout-Runde), WP-014 (Web-Grundgerüst), WP-021 (Backups/Betrieb + Prod-Worktree D-017). Danach WP-011, WP-016, WP-024, WP-022.
 
 ## Log
 Neueste Einträge oben. Pro Session 1–3 Zeilen.
 
+- 2026-10-08: WP-010 done – Registrierung/Login/Sessions (argon2id, httpOnly-Cookie, Rate-Limit), Admin-CLIs auch im Prod-Image gebündelt. Merge-Fix mit WP-003 (`buildApp`-Optionen). Limit paralleler WPs auf 5 erhöht (Arthur). WP-014 gestartet.
 - 2026-10-08: WP-007 done – Side Pots, Showdown wird in `applyAction` direkt aufgelöst (keine Phase `showdown` mehr), Property-Test über 1.500 Hände. Flush-Text nennt alle fünf Karten (Arthur). D-017 Prod-Worktree, WP-024 Feedback-Button neu. WP-008 gestartet.
 - 2026-10-08: WP-003 done – `poker-prod` (nginx 4320, Server, Postgres, cloudflared-Profil), Release-/Smoke-Skripte, docs/OPERATIONS.md. Merge-Fix: Prod-Image enthält Migrationen (`MIGRATIONS_DIR`); Prod-Lauf mit Smoke-Test und Migration verifiziert. D-016: keine Antes.
 - 2026-10-08: WP-009 done – eigener Migrations-Runner (D-015), Schema mit 7 Tabellen, 27 DB-Tests (`npm run test:db -w @poker/server`). WP-010 gestartet.
