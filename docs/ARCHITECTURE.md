@@ -90,20 +90,21 @@ potTotal(state) → number
 | `players[].holeCards` | zwei Karten |
 | `deck`, `burned`, `board` | Restdeck (oben = Index 0), verbrannte Karten, Gemeinschaftskarten |
 | `street` | `preflop` → `flop` (3) → `turn` (1) → `river` (1); vor jeder Straße wird eine Karte verbrannt |
-| `phase` | `betting` → `showdown` oder `complete` |
+| `phase` | `betting` → `complete` |
 | `toActId` | wer am Zug ist (`null` außerhalb von `betting`) |
 | `currentBet` | zu bringender Straßeneinsatz (preflop mindestens der Big Blind, auch wenn der BB All-in für weniger ist) |
 | `minRaise` | Größe des letzten vollständigen Bets/Raises der Straße, mindestens Big Blind |
 | `log[]` | Protokoll: `{ street, playerId, type, amount, to, allIn }`, `type` ∈ ante, smallBlind, bigBlind, fold, check, call, bet, raise (All-in wird als call/bet/raise mit `allIn: true` protokolliert) |
-| `payouts` | Auszahlungen bei `complete`, sonst `null` |
+| `payouts` | Auszahlungen bei `complete` (je Spieler, nach Sitz, nur > 0, inkl. zurückgegebener eigener Einsätze), sonst `null` |
+| `showdown` | Showdown-Ergebnis (Pots, Gewinner, gezeigte Karten), nur bei `complete` nach Showdown, sonst `null` – siehe „Engine: Pots und Showdown“ |
 
-Chip-Erhaltung: Solange `phase !== 'complete'`, gilt Σ`stack` + Σ`totalBet` = Σ`startStack`; bei `complete` ist alles ausgezahlt (Σ`stack` = Σ`startStack`).
+Chip-Erhaltung: Solange `phase !== 'complete'`, gilt Σ`stack` + Σ`totalBet` = Σ`startStack`; bei `complete` ist alles ausgezahlt (Σ`stack` = Σ`startStack`, `totalBet` bleibt als Protokoll stehen, Σ`payouts` = Σ`totalBet`). `status` beschreibt bei `complete` nur den Verlauf der Hand (ein `allIn`-Gewinner hat danach wieder Chips).
 
 ### Phasen
 - `betting`: Setzrunde läuft. Preflop beginnt der Spieler links vom Big Blind, postflop der erste aktive links vom Button (Heads-up damit: Button/SB preflop zuerst, postflop zuletzt). Gefoldete und All-in-Spieler werden übersprungen.
 - Eine Setzrunde endet, wenn jeder aktive Spieler gehandelt und den `currentBet` gebracht hat – oder wenn nur noch ein aktiver Spieler übrig ist, der keinen tatsächlichen Einsatz mehr callen muss. Kann danach höchstens ein Spieler handeln, läuft das Board automatisch bis zum River durch.
-- `complete`: alle bis auf einen haben gefoldet; der bekommt `potTotal` (inkl. eigenem nicht gecallten Einsatz), `payouts` ist gesetzt.
-- `showdown`: River-Setzrunde beendet bzw. Board durchgelaufen, mindestens zwei Spieler übrig. **Übergabe an WP-007:** Pots aus `totalBet` bilden (inkl. Rückgabe nicht gecallter Beträge), Hände vergleichen, `payouts` setzen.
+- `complete` (Fold-out): alle bis auf einen haben gefoldet; der bekommt `potTotal` (inkl. eigenem nicht gecallten Einsatz), `payouts` ist gesetzt, `showdown` ist `null`.
+- `complete` (Showdown): River-Setzrunde beendet bzw. Board durchgelaufen, mindestens zwei Spieler übrig. Der Showdown wird im selben `applyAction`- (bzw. `startHand`-)Aufruf aufgelöst; es gibt keinen Zwischenzustand. Details: „Engine: Pots und Showdown“.
 
 ### Aktionssemantik (`Action`)
 - `fold` – immer erlaubt (auch wenn Check möglich wäre). `check` – nur ohne offenen Einsatz. `call` – bringt `min(currentBet − streetBet, stack)`; mit zu kleinem Stack ein All-in-Call.
@@ -112,6 +113,32 @@ Chip-Erhaltung: Solange `phase !== 'complete'`, gilt Σ`stack` + Σ`totalBet` = 
 - No-Limit: Mindest-Bet = Big Blind; Mindest-Raise auf `currentBet + minRaise`; Maximum = `streetBet + stack`. Weniger als das Minimum geht nur per `allIn`. Ein All-in, das um mindestens `minRaise` erhöht, ist ein voller Raise und setzt `minRaise` neu; sonst ist es unvollständig (`currentBet` steigt, `minRaise` bleibt).
 - Wiedereröffnung (TDA): Ein Spieler darf erhöhen, wenn er in dieser Straße noch nicht gehandelt hat oder seit seiner letzten Aktion insgesamt um mindestens `minRaise` erhöht wurde. Wer nur einem unvollständigen All-in-Raise gegenübersteht, darf nur callen oder folden. Erhöhen ist außerdem nicht erlaubt, wenn kein Gegner mehr handeln kann.
 - `legalActions(state)` liefert `{ playerId, toCall, actions }` mit `fold`, `check` oder `call { amount }`, ggf. `bet`/`raise { min, max }` (als „to“-Beträge) und `allIn { amount, to }`. Jede angebotene Aktion wird von `applyAction` akzeptiert (Property-Test).
+
+## Engine: Pots und Showdown
+Quelle: `packages/engine/src/showdown.ts` (Typen in `hand-state.ts`), öffentlich über `index.ts`.
+
+```
+calculatePots(players: { id, totalBet, status }[]) → { pots: { amount, eligibleIds }[], uncalled: { playerId, amount } | null }
+```
+
+- **Integration:** Endet eine Setzrunde nach dem River (oder läuft das Board bei All-in automatisch durch) mit mindestens zwei Spielern, löst `applyAction`/`startHand` den Showdown sofort auf. Aufrufer bekommen also nur `betting` oder `complete` (mit `payouts`) zurück und müssen keine zweite Funktion aufrufen. Begründung: Server und Rundenlogik (WP-008) haben genau einen Übergang „Aktion → nächster Zustand“, Fehlerfälle wie „Showdown vergessen“ sind ausgeschlossen. Ein verzögertes Aufdecken in der Anzeige ist Sache von Server/Client und braucht nur `showdown`.
+- **Pots (`calculatePots`)** aus `totalBet` **aller** Spieler (inkl. Ante und gefoldeter Einsätze):
+  1. *Nicht gecallter Überschuss:* Der höchste Gesamteinsatz minus den zweithöchsten (über alle Spieler) geht an den Einzahler zurück (`uncalled`). WP-006 erstattet nichts; beim Fold-out bekommt der Übriggebliebene ohnehin alles, dort gibt es keine separate Rückgabe.
+  2. *Pot-Grenzen* sind die (verschiedenen) Gesamteinsätze der nicht gefoldeten Spieler, aufsteigend. Pot i enthält von jedem Spieler den Anteil seines Einsatzes zwischen Grenze i−1 und i. Berechtigt sind die nicht gefoldeten Spieler, deren Einsatz mindestens Grenze i erreicht. Erster Pot = Main Pot, danach Side Pots.
+  3. Gefoldete Einsätze bleiben als tote Chips in den Pots. Ein Pot mit nur einem Berechtigten (z. B. Einsatz eines Gefoldeten über dem kürzeren All-in) geht ohne Handvergleich an diesen.
+  - Während der Hand liefert `calculatePots(state.players)` den aktuellen Stand für die Anzeige (`uncalled` ist dann ein noch offener Einsatz).
+- **Vergabe je Pot:** Hände (Hole Cards + Board, `determineWinners`) der Berechtigten in Sitzreihenfolge ab dem ersten Sitz links vom Button vergleichen. Split gleichmäßig; ungerade Chips gehen einzeln nacheinander an die Gewinner in dieser Reihenfolge (TDA). `payouts` = Summe aus Rückgabe und Pot-Anteilen je Spieler, Stacks werden gutgeschrieben, `phase = 'complete'`.
+- **`showdown` (`ShowdownSummary`):**
+
+| Feld | Bedeutung |
+|---|---|
+| `uncalled` | zurückgegebener, nicht gecallter Betrag oder `null` (in `payouts` enthalten) |
+| `pots[]` | `{ amount, eligibleIds, winnerIds, winningHand, shares }`; `winnerIds`/`shares` in Vergabereihenfolge ab links vom Button, `winningHand` = `{ category, value, cards, description }` oder `null` (nur ein Berechtigter) |
+| `reveals[]` | alle nicht gefoldeten Spieler in Zeigereihenfolge: `{ playerId, shownCards, hand }`; `shownCards` = Hole Cards oder `null` (darf mucken) |
+| `allHandsShown` | All-in-Situation – alle Hände werden aufgedeckt |
+
+- **Zeigen und Mucken (TDA):** Gab es auf dem River einen Bet/Raise, zeigt der letzte Aggressor zuerst, sonst der erste nicht gefoldete Spieler links vom Button; danach im Uhrzeigersinn. Ist ein nicht gefoldeter Spieler All-in, werden alle Hände aufgedeckt. Sonst muss zeigen, wer in einem umkämpften Pot mindestens so gut ist wie die bisher gezeigten Hände dieses Pots (der Erste immer, Gewinner damit immer); alle anderen mucken automatisch (`shownCards: null`). `hand` ist für alle bewertet – der Server darf für Mucker weder `hand` noch Hole Cards an Clients senden (D-003).
+- **Tests:** `showdown.test.ts` (Tabellen: `calculatePots`; ganze Hände Stacks + Aktionen → Pots, Gewinner, Auszahlungen, Stacks; Zeigereihenfolge), `showdown.property.test.ts` (1.500 seeded Hände, 2–9 Spieler: Chip-Erhaltung, keine negativen Stacks, Σ Pots + Rückgabe = Σ `totalBet`, Pots nur an Berechtigte, Gewinner zeigen).
 
 ## Docker-Entwicklungsumgebung (dev)
 `compose.dev.yml`, Compose-Projekt `poker-dev` (D-002, D-005). Start/Stopp über `npm run dev:up` / `dev:down`, Logs `dev:logs`.

@@ -122,7 +122,7 @@ describe('startHand', () => {
     // A ist der einzige handlungsfähige Spieler: nur Call/Fold, kein Raise.
     expect(legalActions(s)?.actions.map((a) => a.type)).toEqual(['fold', 'call']);
     const done = act(s, 'A', call);
-    expect(done.phase).toBe('showdown');
+    expect(done.phase).toBe('complete');
     expect(done.board).toHaveLength(5);
   });
 
@@ -134,7 +134,7 @@ describe('startHand', () => {
 
   it('Heads-up, Big Blind für weniger als den Small Blind All-in → Board läuft sofort durch', () => {
     const s = headsUp([1000, 30]);
-    expect(s.phase).toBe('showdown');
+    expect(s.phase).toBe('complete');
     expect(s.board).toHaveLength(5);
     expect(s.burned).toHaveLength(3);
     expect(s.toActId).toBeNull();
@@ -221,13 +221,13 @@ describe('Heads-up', () => {
       ['B', check],
       ['A', check],
     ]);
-    expect(s.phase).toBe('showdown');
+    expect(s.phase).toBe('complete');
     expect(s.board).toHaveLength(5);
     expect(s.burned).toHaveLength(3);
     expect(s.deck).toHaveLength(52 - 4 - 8);
     expect(player(s, 'A').totalBet).toBe(200);
     expect(player(s, 'B').totalBet).toBe(200);
-    expect(s.payouts).toBeNull(); // Pot-Aufteilung: WP-007
+    expect(s.showdown).not.toBeNull(); // Showdown direkt aufgelöst (WP-007)
   });
 
   it('Small Blind foldet → Big Blind gewinnt ohne Showdown', () => {
@@ -404,10 +404,11 @@ describe('No-Limit-Regeln', () => {
       { type: 'allIn', amount: 400, to: 500 },
     ]);
     s = act(s, 'C', call);
-    expect(player(s, 'C')).toMatchObject({ stack: 0, status: 'allIn', totalBet: 500 });
-    expect(s.phase).toBe('showdown'); // A ist allein handlungsfähig und hat C überdeckt
+    expect(player(s, 'C')).toMatchObject({ status: 'allIn', totalBet: 500 });
+    expect(s.phase).toBe('complete'); // A ist allein handlungsfähig und hat C überdeckt
     expect(s.board).toHaveLength(5);
-    expect(player(s, 'A').totalBet).toBe(1000); // nicht gecallte 500 gibt WP-007 zurück
+    expect(player(s, 'A').totalBet).toBe(1000);
+    expect(s.showdown?.uncalled).toEqual({ playerId: 'A', amount: 500 }); // nicht gecallt → zurück
   });
 
   it('alle All-in preflop → Board läuft automatisch bis zum River', () => {
@@ -416,13 +417,13 @@ describe('No-Limit-Regeln', () => {
       ['B', allIn],
       ['C', call],
     ]);
-    expect(s.phase).toBe('showdown');
+    expect(s.phase).toBe('complete');
     expect(s.street).toBe('river');
     expect(s.board).toHaveLength(5);
     expect(s.burned).toHaveLength(3);
     expect(s.players.map((x) => x.totalBet)).toEqual([1000, 2000, 2000]);
-    expect(player(s, 'C')).toMatchObject({ status: 'active', stack: 1000 });
-    expect(chipSum(s)).toBe(6000);
+    expect(player(s, 'C')).toMatchObject({ status: 'active' });
+    expect(s.players.reduce((sum, x) => sum + x.stack, 0)).toBe(6000);
   });
 
   it('nur noch ein handlungsfähiger Spieler auf dem Flop → Board läuft durch', () => {
@@ -433,7 +434,7 @@ describe('No-Limit-Regeln', () => {
       ['C', allIn],
       ['A', call],
     ]);
-    expect(s.phase).toBe('showdown');
+    expect(s.phase).toBe('complete');
     expect(s.board).toHaveLength(5);
   });
 
