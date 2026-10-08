@@ -1,0 +1,109 @@
+.shell {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-md);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text);
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.headerEnd {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.menuButton {
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--color-surface-2);
+  border-radius: var(--radius-pill);
+  background: transparent;
+}
+
+/* Schmal: Menü klappt unter der Kopfzeile auf. */
+.nav {
+  display: none;
+  flex-basis: 100%;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding-bottom: var(--space-2);
+}
+
+.nav[data-open='true'] {
+  display: flex;
+}
+
+.link {
+  display: block;
+  padding: var(--space-3) var(--space-4);
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text);
+  text-align: left;
+  text-decoration: none;
+}
+
+.link:hover {
+  background: var(--color-surface-2);
+}
+
+.active {
+  color: var(--color-accent);
+}
+
+/* Breit: Menü immer sichtbar in der Kopfzeile. */
+@media (min-width: 720px) {
+  .menuButton {
+    display: none;
+  }
+
+  .nav,
+  .nav[data-open='true'] {
+    display: flex;
+    flex-basis: auto;
+    flex-direction: row;
+    order: 1;
+    padding-bottom: 0;
+  }
+
+  .headerEnd {
+    order: 2;
+    margin-left: 0;
+  }
+
+  .brand {
+    margin-right: auto;
+  }
+
+  .link {
+    padding: var(--space-2) var(--space-3);
+  }
+}
+
+.main {
+  flex: 1;
+  width: 100%;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: var(--space-5) var(--space-4);
+}

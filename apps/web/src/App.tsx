@@ -1,17 +1,76 @@
-import { useEffect, useState } from 'react';
-import { appTitle, fetchHealth, healthLabel, type HealthState } from './health';
+// Routen der App (WP-014). Übersicht: docs/ARCHITECTURE.md, Abschnitt „Frontend“.
+import { BrowserRouter, Route, Routes } from 'react-router';
+import { AuthProvider } from './auth/AuthContext';
+import { RedirectIfAuthenticated, RequireAdmin, RequireAuth } from './auth/guards';
+import { AppShell } from './layout/AppShell';
+import { AdminPage } from './pages/AdminPage';
+import { LeaderboardPage } from './pages/LeaderboardPage';
+import { LobbyPage } from './pages/LobbyPage';
+import { LoginPage } from './pages/LoginPage';
+import { NotFoundPage } from './pages/NotFoundPage';
+import { RegisterPage } from './pages/RegisterPage';
+import { SettingsPage } from './pages/SettingsPage';
+import { TablePage } from './pages/TablePage';
+
+/** Alle Routen ohne Router – Tests betten sie in einen `MemoryRouter`. */
+export function AppRoutes() {
+  return (
+    <Routes>
+      <Route
+        path="/login"
+        element={
+          <RedirectIfAuthenticated>
+            <LoginPage />
+          </RedirectIfAuthenticated>
+        }
+      />
+      <Route
+        path="/register"
+        element={
+          <RedirectIfAuthenticated>
+            <RegisterPage />
+          </RedirectIfAuthenticated>
+        }
+      />
+      {/* Tisch ohne App-Shell: volle Fläche, eigenes Tisch-Menü (WP-016/017/018). */}
+      <Route
+        path="/table/:id"
+        element={
+          <RequireAuth>
+            <TablePage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        element={
+          <RequireAuth>
+            <AppShell />
+          </RequireAuth>
+        }
+      >
+        <Route index element={<LobbyPage />} />
+        <Route path="leaderboard" element={<LeaderboardPage />} />
+        <Route path="settings" element={<SettingsPage />} />
+        <Route
+          path="admin/*"
+          element={
+            <RequireAdmin>
+              <AdminPage />
+            </RequireAdmin>
+          }
+        />
+        <Route path="*" element={<NotFoundPage />} />
+      </Route>
+    </Routes>
+  );
+}
 
 export function App() {
-  const [health, setHealth] = useState<HealthState>({ kind: 'loading' });
-
-  useEffect(() => {
-    void fetchHealth().then(setHealth);
-  }, []);
-
   return (
-    <main>
-      <h1>{appTitle(import.meta.env.MODE)}</h1>
-      <p data-health={health.kind}>{healthLabel(health)}</p>
-    </main>
+    <AuthProvider>
+      <BrowserRouter>
+        <AppRoutes />
+      </BrowserRouter>
+    </AuthProvider>
   );
 }
