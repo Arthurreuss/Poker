@@ -15,6 +15,7 @@ describe('GET /api/health ohne Datenbank', () => {
     let closed = false;
     const unreachable: Database = {
       ping: () => Promise.reject(new Error('connection refused')),
+      query: () => Promise.reject(new Error('connection refused')),
       close: () => {
         closed = true;
         return Promise.resolve();

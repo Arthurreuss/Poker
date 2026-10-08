@@ -1,9 +1,14 @@
-import Fastify, { type FastifyInstance } from 'fastify';
+import Fastify, { type FastifyInstance, type FastifyServerOptions } from 'fastify';
+import { loadAuthConfig, type AuthConfig } from './auth/config';
+import { authRoutes } from './auth/routes';
 import type { Database } from './db';
 
 export interface AppOptions {
   db: Database;
-  logger?: boolean;
+  /** `true`/`false` oder Pino-Optionen (Tests fangen damit Logs ab). */
+  logger?: FastifyServerOptions['logger'];
+  /** Standard: `loadAuthConfig(process.env)`. */
+  auth?: AuthConfig;
 }
 
 export interface HealthResponse {
@@ -12,7 +17,7 @@ export interface HealthResponse {
 }
 
 /** Baut die Fastify-App ohne `listen` – Tests nutzen `app.inject()`. */
-export function buildApp({ db, logger = false }: AppOptions): FastifyInstance {
+export function buildApp({ db, logger = false, auth = loadAuthConfig(process.env) }: AppOptions): FastifyInstance {
   const app = Fastify({ logger });
 
   app.addHook('onClose', async () => {
@@ -28,6 +33,8 @@ export function buildApp({ db, logger = false }: AppOptions): FastifyInstance {
       return reply.code(503).send({ status: 'error', db: 'error' });
     }
   });
+
+  void app.register(authRoutes, { db, config: auth });
 
   return app;
 }

@@ -23,7 +23,8 @@ npm run dev:down       # stoppen (DB-Volume poker-dev-db bleibt)
 - Health: http://localhost:4310/api/health (über den Vite-Proxy) bzw. http://localhost:4311/api/health
 - Postgres: `localhost:4312`, Benutzer/Passwort/DB `poker` (nur dev)
 
-Der DB-Integrationstest läuft nur mit gesetzter `DATABASE_URL` (sonst übersprungen):
+DB-Integrationstests (Schema, Migrationen, Auth) gegen die Test-DB `poker_test`: `npm run test:db -w @poker/server`.
+Der Health-Integrationstest läuft nur mit gesetzter `DATABASE_URL` (sonst übersprungen):
 ```sh
 DATABASE_URL=postgres://poker:poker@localhost:4312/poker npm test
 ```
@@ -33,5 +34,22 @@ Nach Änderungen an Abhängigkeiten `npm run dev:up` erneut ausführen (baut das
 |---|---|
 | `dev` | lokal testen, http://localhost:4310 |
 | `main` | Release, später öffentlich über Cloudflare Tunnel |
+
+## Admin
+Kein Passwort-Reset per Mail (D-011) – Passwörter setzt ein Admin per CLI zurück. Die Skripte brauchen `DATABASE_URL` und laufen mit `tsx` (dev-Abhängigkeit). Benutzernamen sind case-insensitive.
+```sh
+# dev, vom Host aus (Postgres auf localhost:4312)
+export DATABASE_URL=postgres://poker:poker@localhost:4312/poker
+
+# Neues Zufallspasswort erzeugen und einmalig ausgeben; beendet alle Sessions des Users
+npm run admin:reset-password -w @poker/server -- <benutzername>
+# … oder ein bestimmtes Passwort über stdin setzen (nicht als Argument → landet nicht in der Shell-History)
+printf '%s\n' 'neues-passwort' | npm run admin:reset-password -w @poker/server -- <benutzername>
+
+# Admin-Flag setzen bzw. entziehen
+npm run admin:make-admin -w @poker/server -- <benutzername>
+npm run admin:make-admin -w @poker/server -- <benutzername> --revoke
+```
+Im dev-Container geht es auch ohne `DATABASE_URL` (ist dort gesetzt): `docker compose -p poker-dev exec server npm run admin:reset-password -w @poker/server -- <benutzername>`. Exit-Code `1` bei unbekanntem User oder ungültigem Passwort, `2` bei falschem Aufruf.
 
 Arbeitsweise, Stand und Entscheidungen: [CLAUDE.md](CLAUDE.md) → [docs/WORKFLOW.md](docs/WORKFLOW.md), [docs/PROGRESS.md](docs/PROGRESS.md), [docs/DECISIONS.md](docs/DECISIONS.md).
