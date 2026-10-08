@@ -9,10 +9,13 @@ import {
   type HoleCardsView,
   type PlayerSeatView,
   type PotView,
+  type SeatReactionView,
   type SeatStatus,
   type SeatView,
   type TableView,
 } from '../table/types';
+import { REACTIONS } from '../reactions/reactions';
+import type { ReactionBubble } from './tableGame';
 import { turnClockDisplay, type TurnClock } from './turnClock';
 
 const EMPTY: SeatView = { kind: 'empty' };
@@ -129,6 +132,7 @@ export function toTableView(server: ServerTableView, options: AdaptOptions = {})
       status,
       connected: s.connected,
       holeCards,
+      avatar: s.avatar,
     };
     seats[s.seat] = seat;
   }
@@ -221,4 +225,11 @@ export function heroHandContext(server: ServerTableView): HeroHandContext | null
     bigBlind: hand.bigBlind,
     canAct: me.status === 'active',
   };
+}
+
+/** Eingeblendete Reaktionen (Store) → View-Model; nur Sitze, an denen gerade jemand sitzt (WP-032). */
+export function toReactionViews(bubbles: readonly ReactionBubble[], view: TableView): SeatReactionView[] {
+  return bubbles
+    .filter((b) => view.seats[b.seat]?.kind === 'player')
+    .map((b) => ({ id: b.id, seat: b.seat, emoji: REACTIONS[b.reaction].emoji, label: REACTIONS[b.reaction].label }));
 }

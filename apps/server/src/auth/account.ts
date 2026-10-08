@@ -22,8 +22,8 @@ export function displayNameSql(usernameColumn: string): string {
 export const DETACHED_USER_TABLES = ['feedback'] as const;
 
 /**
- * Anonymisiert einen aktiven Account in **einer** SQL-Anweisung (atomar): `username`, `password_hash` → `NULL`,
- * `is_admin` → `false`, `deleted_at` setzen; alle Sessions löschen; Zeilen in {@link DETACHED_USER_TABLES}
+ * Anonymisiert einen aktiven Account in **einer** SQL-Anweisung (atomar): `username`, `password_hash`, `avatar` → `NULL`,
+ * `is_admin` → `false`, `banned_at` → `NULL` (WP-028), `deleted_at` setzen; alle Sessions löschen; Zeilen in {@link DETACHED_USER_TABLES}
  * vom Account lösen. Runden, Hände und Aktionen behalten die `user_id` (Anzeige: {@link DELETED_USER_NAME}).
  * Liefert `false`, wenn es keinen aktiven Account mit dieser ID gibt.
  */
@@ -38,7 +38,8 @@ export async function anonymizeAccount(db: Queryable, userId: number): Promise<b
   );
   const { rows } = await db.query<{ count: number }>(
     `WITH u AS (UPDATE users
-                   SET username = NULL, password_hash = NULL, is_admin = false, deleted_at = now()
+                   SET username = NULL, password_hash = NULL, is_admin = false, banned_at = NULL, avatar = NULL,
+                       deleted_at = now()
                  WHERE id = $1 AND deleted_at IS NULL
              RETURNING id),
           s AS (DELETE FROM sessions WHERE user_id IN (SELECT id FROM u))${detach.join('')}

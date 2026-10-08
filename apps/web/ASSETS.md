@@ -8,6 +8,7 @@ Alle Grafiken, Schriften und Sounds der Web-App mit Herkunft und Lizenz (D-008: 
 | `public/icons/icon-192.png`, `icon-512.png` | aus demselben SVG gerendert (`@resvg/resvg-js`) | Projekt-eigen |
 | `public/icons/icon-maskable-512.png` | wie oben, vollflächig ohne Rundung (Maskable-Safe-Zone eingehalten) | Projekt-eigen |
 | `public/icons/apple-touch-icon.png` | wie oben, 180 × 180 px, vollflächig | Projekt-eigen |
+| `public/og-image.png` | Vorschaubild für Messenger-Links (Open Graph, 1200 × 630 px, WP-030): eigenes SVG (Tisch, Karten, Chips, Pik-Logo, Text in Systemschrift), erzeugt von `scripts/generate-og-image.mjs` | Projekt-eigen |
 
 Sounds (WP-031): keine Audiodateien. Alle Klänge am Tisch (Karten, Chips, Check, Fold, „Du bist dran“, Gewinn) werden zur Laufzeit per Web Audio API aus Rauschen und einfachen Tönen synthetisiert (`src/sound/synth.ts`) – Projekt-eigen, keine fremden Assets.
 
@@ -16,5 +17,7 @@ Schriften: keine eigenen – `--font-sans` nutzt die Systemschrift des Geräts.
 Werkzeug: `@resvg/resvg-js` (MPL-2.0) wird nur als Entwicklungswerkzeug zum Rendern genutzt und nicht ausgeliefert.
 
 Karten, Chips und Marker der Tischansicht (WP-016): siehe [src/table/ASSETS.md](src/table/ASSETS.md).
+
+Avatare (WP-032): siehe [src/avatars/ASSETS.md](src/avatars/ASSETS.md).
 
 Neue Assets hier mit Herkunft und Lizenz ergänzen.

@@ -1,0 +1,81 @@
+/*
+ * Avatar an der Plakette, Emoji-Reaktionen über dem Sitz und Ecke für den Reaktions-Knopf (WP-032).
+ * Eigene Datei neben table.css, damit parallele Änderungen an table.css nicht kollidieren.
+ */
+.pt-root {
+  --pt-avatar: calc(8 * var(--u));
+}
+
+/*
+ * Avatar als Abzeichen an der oberen äußeren Ecke der Plakette (gegenüber Dealer-Button/Blind-Marker).
+ * Liegt fast ganz über der Plakette, damit Randplätze im Viewport bleiben und der Text seine Breite behält.
+ */
+.pt-plate .pt-plate-avatar {
+  position: absolute;
+  top: calc(var(--pt-avatar) * -0.55);
+  z-index: 1;
+  width: var(--pt-avatar);
+  height: var(--pt-avatar);
+  border: calc(0.4 * var(--u)) solid rgb(255 255 255 / 0.25);
+  box-sizing: border-box;
+  background: var(--pt-surface);
+  box-shadow: var(--pt-shadow);
+}
+.pt-plate .pt-plate-avatar--left {
+  left: calc(-0.8 * var(--u));
+}
+.pt-plate .pt-plate-avatar--right {
+  right: calc(-0.8 * var(--u));
+}
+
+/* Emoji-Reaktion: kurz über der Plakette (über den eigenen Karten), Name und Stack bleiben frei. */
+.pt-reaction {
+  position: absolute;
+  left: 0;
+  top: calc(var(--pt-plate-h) / -2);
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(11 * var(--u));
+  height: calc(11 * var(--u));
+  transform: translate(-50%, -100%);
+  border-radius: 50%;
+  background: var(--pt-surface);
+  border: calc(0.4 * var(--u)) solid rgb(255 255 255 / 0.2);
+  box-shadow: var(--pt-shadow);
+  font-size: max(18px, calc(6.4 * var(--u)));
+  line-height: 1;
+  pointer-events: none;
+}
+.pt-seat--hero .pt-reaction {
+  top: calc(var(--pt-hero-plate-h) / -2);
+}
+/* Nur Einblenden; das Ausblenden übernimmt der Store nach REACTION_DISPLAY_MS (Element wird entfernt). */
+@media (prefers-reduced-motion: no-preference) {
+  .pt-reaction {
+    animation: pt-reaction-pop 0.35s ease-out both;
+  }
+}
+@keyframes pt-reaction-pop {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -70%) scale(0.5);
+  }
+  70% {
+    opacity: 1;
+    transform: translate(-50%, -105%) scale(1.1);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -100%) scale(1);
+  }
+}
+
+/* Reaktions-Knopf oben rechts, Gegenstück zum Tisch-Menü oben links. */
+.pt-react-slot {
+  position: absolute;
+  right: calc(1.5 * var(--u));
+  top: calc(1 * var(--u));
+  z-index: 10;
+}

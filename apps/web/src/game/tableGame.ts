@@ -5,8 +5,10 @@ import type { Action } from '@poker/engine';
 import type {
   ErrorCode,
   PublicUser,
+  ReactionId,
   ServerMessage,
   StandingView,
+  TableClosedMessage,
   TableView as ServerTableView,
 } from '@poker/engine/protocol';
 import { preActionValid, resolvePreAction, type PreAction, type PreActionKind } from '../table/actions/logic';
@@ -32,13 +34,27 @@ export interface TableGameSnapshot {
   readonly error: GameError | null;
   /** Server kennt den Tisch nicht (mehr) bzw. er ist privat. */
   readonly notFound: boolean;
-  /** Server hat den Tisch geschlossen (`table.closed`, z. B. verwaiste Runde abgebrochen, D-022). */
-  readonly closed: 'abandoned' | null;
+  /** Server hat den Tisch geschlossen (`table.closed`: verwaiste Runde abgebrochen, D-022, oder Admin, WP-028). */
+  readonly closed: TableClosedMessage['reason'] | null;
   /** Eine Aktion für diesen Stand (`handNumber/actionSeq`) ist unterwegs. */
   readonly pendingAction: boolean;
   /** Gewählte Vorab-Aktion (gilt für Hand und Straße der Wahl, verfällt bei Änderungen). */
   readonly preAction: PreAction | null;
+  /** Gerade eingeblendete Emoji-Reaktionen, höchstens eine je Sitz (WP-032). */
+  readonly reactions: readonly ReactionBubble[];
 }
+
+/** Emoji-Reaktion über einem Sitz (WP-032), solange sie eingeblendet ist. */
+export interface ReactionBubble {
+  /** Laufende Nummer (React-Key: dieselbe Reaktion erneut startet die Animation neu). */
+  readonly id: number;
+  readonly seat: number;
+  readonly userId: number;
+  readonly reaction: ReactionId;
+}
+
+/** So lange bleibt eine Reaktion über dem Platz stehen. */
+export const REACTION_DISPLAY_MS = 3000;
 
 type Listener = () => void;
 
@@ -66,6 +82,8 @@ export class TableGameStore {
   private unsubscribe: (() => void)[] = [];
   private pendingKey: string | null = null;
   private errorId = 0;
+  private reactionId = 0;
+  private readonly reactionTimers = new Set<ReturnType<typeof setTimeout>>();
 
   constructor(
     readonly connection: GameConnection,
@@ -83,6 +101,7 @@ export class TableGameStore {
       closed: null,
       pendingAction: false,
       preAction: null,
+      reactions: [],
     };
   }
 
@@ -114,6 +133,8 @@ export class TableGameStore {
   stop(): void {
     for (const off of this.unsubscribe) off();
     this.unsubscribe = [];
+    for (const timer of this.reactionTimers) clearTimeout(timer);
+    this.reactionTimers.clear();
     this.connection.unwatchTable(this.tableId);
   }
 
@@ -154,6 +175,11 @@ export class TableGameStore {
   /** „Nochmal“ (D-020): nur Ersteller, nur nach Rundenende; Erfolg = neuer `table.state` mit `running`. */
   rematch(): boolean {
     return this.send({ type: 'table.rematch', tableId: this.tableId });
+  }
+
+  /** Emoji-Reaktion senden (WP-032); der Server begrenzt auf eine pro `REACTION_COOLDOWN_MS`. */
+  react(reaction: ReactionId): boolean {
+    return this.send({ type: 'table.react', tableId: this.tableId, reaction });
   }
 
   /** Tisch verlassen: nicht mehr beobachten (vor dem Start steht man dabei auch auf). */
@@ -247,6 +273,9 @@ export class TableGameStore {
         this.connection.unwatchTable(this.tableId);
         this.update({ closed: message.reason, table: null, pendingAction: false, preAction: null, standings: null });
         return;
+      case 'table.reaction':
+        if (message.tableId === this.tableId) this.showReaction(message);
+        return;
       // Für den Tisch ohne Bedeutung (Lobby, Handshake, Heartbeat). Bewusst ohne `default`, damit neue
       // Server-Nachrichten hier auffallen.
       case 'welcome':
@@ -259,6 +288,18 @@ export class TableGameStore {
       default:
         message satisfies never;
     }
+  }
+
+  /** Reaktion einblenden (ersetzt eine noch sichtbare am selben Sitz) und nach `REACTION_DISPLAY_MS` entfernen. */
+  private showReaction({ seat, userId, reaction }: { seat: number; userId: number; reaction: ReactionId }): void {
+    this.reactionId += 1;
+    const bubble: ReactionBubble = { id: this.reactionId, seat, userId, reaction };
+    this.update({ reactions: [...this.snapshot.reactions.filter((r) => r.seat !== seat), bubble] });
+    const timer = setTimeout(() => {
+      this.reactionTimers.delete(timer);
+      this.update({ reactions: this.snapshot.reactions.filter((r) => r.id !== bubble.id) });
+    }, REACTION_DISPLAY_MS);
+    this.reactionTimers.add(timer);
   }
 
   /** Nach jedem Zustand: verfallene Vorab-Aktion verwerfen bzw. am Zug genau einmal auslösen. */

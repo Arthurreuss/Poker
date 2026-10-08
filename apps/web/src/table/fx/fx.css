@@ -5,7 +5,8 @@
 .fx-layer {
   position: absolute;
   inset: 0;
-  z-index: 5;
+  /* Über Plaketten (2) und Markern (3), unter den Emoji-Reaktionen (5, WP-032). */
+  z-index: 4;
   pointer-events: none;
   overflow: visible;
 }

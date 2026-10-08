@@ -6,6 +6,7 @@ import {
   type OrientationPreference,
 } from '../../settings/orientation';
 import { TableFx } from '../fx/TableFx';
+import { ReactionPicker } from '../../reactions/ReactionPicker';
 import { TableScreen } from '../TableScreen';
 import { FX_DEMO } from './fxDemo';
 import { MOCK_STATES, mockById } from './mocks';
@@ -134,6 +135,7 @@ export function TableDevPage() {
           preference={preference}
           onPreferenceChange={setPreference}
           actionBar={<div className="pt-dev-action">Platz für die Aktionsleiste (WP-018)</div>}
+          reactionPicker={mock.view.heroSeat === null ? undefined : <ReactionPicker onReact={() => true} />}
         />
       </div>
     </div>

@@ -1,7 +1,9 @@
 import { useAnimationsPreference } from '../settings/animations';
+import { AvatarPicker } from '../settings/AvatarPicker';
 import { DeleteAccount } from '../settings/DeleteAccount';
 import { SoundSettings } from '../settings/SoundSettings';
 import { ORIENTATION_LABELS, ORIENTATION_PREFERENCES, useOrientationPreference } from '../settings/orientation';
+import { ReactionsSetting } from '../settings/ReactionsSetting';
 import styles from './Page.module.css';
 import { PlaceholderPage } from './PlaceholderPage';
 
@@ -10,6 +12,7 @@ export function SettingsPage() {
   const [animations, setAnimations] = useAnimationsPreference();
   return (
     <PlaceholderPage title="Einstellungen">
+      <AvatarPicker />
       <fieldset className={styles.panel}>
         <legend>Ausrichtung am Tisch</legend>
         {ORIENTATION_PREFERENCES.map((value) => (
@@ -46,6 +49,7 @@ export function SettingsPage() {
         </p>
       </fieldset>
       <SoundSettings />
+      <ReactionsSetting />
       <DeleteAccount />
     </PlaceholderPage>
   );

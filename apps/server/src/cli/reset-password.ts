@@ -3,9 +3,8 @@
 //   npm run admin:reset-password -w @poker/server -- <benutzername>
 // Ohne Eingabe auf stdin wird ein zufälliges Passwort erzeugt und einmalig ausgegeben;
 // mit `echo 'neues-passwort' | npm run …` wird das Passwort von stdin gelesen (nie als Argument → Shell-History).
-import { randomBytes } from 'node:crypto';
 import { text } from 'node:stream/consumers';
-import { resetPassword } from '../auth/admin';
+import { generatePassword, resetPassword } from '../auth/admin';
 import { createPgDatabase } from '../db';
 
 const [username] = process.argv.slice(2);
@@ -18,7 +17,7 @@ if (username === undefined || databaseUrl === undefined) {
 
 const fromStdin = process.stdin.isTTY ? '' : (await text(process.stdin)).replace(/\r?\n$/, '');
 const generated = fromStdin === '';
-const password = generated ? randomBytes(12).toString('base64url') : fromStdin;
+const password = generated ? generatePassword() : fromStdin;
 
 const db = createPgDatabase(databaseUrl);
 try {

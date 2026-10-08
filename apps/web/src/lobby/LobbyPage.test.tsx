@@ -160,6 +160,8 @@ describe('Lobby', () => {
   it('Teilen über das Teilen-Menü des Geräts (Web Share API)', async () => {
     const share = vi.fn(() => Promise.resolve());
     Object.defineProperty(navigator, 'share', { value: share, configurable: true });
+    // Touch-Gerät: nur dort wird das Teilen-Menü angeboten (WP-030).
+    vi.stubGlobal('matchMedia', (query: string) => ({ matches: query === '(pointer: coarse)', media: query }));
     onTestFinished(() => {
       Reflect.deleteProperty(navigator, 'share');
     });

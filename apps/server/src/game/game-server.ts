@@ -8,10 +8,13 @@ import {
   CLOSE_REPLACED,
   CLOSE_UNSUPPORTED_VERSION,
   PROTOCOL_VERSION,
+  REACTION_COOLDOWN_MS,
   parseClientMessage,
+  type AvatarId,
   type ClientMessage,
   type ErrorCode,
   type PublicUser,
+  type ReactionId,
   type ServerMessage,
   type TableSettings,
   type TableSettingsInput,
@@ -78,12 +81,26 @@ export interface GameServerOptions {
   generateInviteCode?: () => string;
 }
 
+/** Ergebnis von {@link GameServer.closeTableByAdmin}. */
+export interface AdminClosedTable {
+  tableId: number;
+  /** Status vor dem Schließen. */
+  status: 'open' | 'running' | 'finished';
+  roundId: number | null;
+  /** Belegte Plätze vor dem Schließen. */
+  seated: number;
+  /** Eine laufende Runde wurde ohne Punkte abgebrochen. */
+  roundAborted: boolean;
+}
+
 export interface GameClient {
   readonly id: number;
   readonly user: PublicUser;
 }
 
 interface Client extends GameClient {
+  /** Avatar des Users (WP-032); wird beim Hinsetzen an den Tisch übergeben. */
+  avatar: AvatarId | null;
   conn: Connection;
   hello: boolean;
   lobby: boolean;
@@ -103,6 +120,10 @@ export class GameServer {
   private readonly lobbyClients = new Set<Client>();
   /** Aktive Verbindung (nach `hello`) je User – höchstens eine (WP-012: die neuere übernimmt). */
   private readonly activeByUser = new Map<number, Client>();
+  /** Alle offenen Verbindungen (für Avatar-Änderungen, WP-032). */
+  private readonly clients = new Set<Client>();
+  /** Zeitpunkt der letzten Emoji-Reaktion je User (Rate-Limit, WP-032). */
+  private readonly lastReactionAt = new Map<number, number>();
   /** Zuletzt an die Lobby gesendeter Eintrag je Tisch (JSON), um nur Änderungen zu schicken. */
   private readonly lobbyCache = new Map<number, string>();
   /** Geplantes Aufräumen von Tischen ohne Beobachter (WP-015). */
@@ -136,22 +157,36 @@ export class GameServer {
   // Verbindungen
   // -------------------------------------------------------------------------
 
-  connect(user: PublicUser, conn: Connection): GameClient {
+  connect(user: PublicUser & { avatar?: AvatarId | null }, conn: Connection): GameClient {
     const client: Client = {
       id: this.nextClientId++,
       user: { id: user.id, username: user.username },
+      avatar: user.avatar ?? null,
       conn,
       hello: false,
       lobby: false,
       tables: new Set(),
       replaced: false,
     };
+    this.clients.add(client);
     return client;
+  }
+
+  /**
+   * Avatar eines Users geändert (WP-032, `PUT /api/me/avatar`): gilt ab sofort für seine Verbindungen und an
+   * allen Tischen, an denen er sitzt (neuer `table.state` an deren Beobachter).
+   */
+  setAvatar(userId: number, avatar: AvatarId | null): void {
+    for (const client of this.clients) if (client.user.id === userId) client.avatar = avatar;
+    for (const table of this.tables.values()) {
+      if (table.setAvatar(userId, avatar)) this.broadcastState(table);
+    }
   }
 
   /** Verbindung ist weg (oder abgelöst): Lobby/Tische abmelden. Mehrfacher Aufruf ist harmlos. */
   disconnect(gameClient: GameClient): void {
     const client = gameClient as Client;
+    this.clients.delete(client);
     if (this.activeByUser.get(client.user.id) === client) this.activeByUser.delete(client.user.id);
     this.lobbyClients.delete(client);
     for (const tableId of [...client.tables]) {
@@ -183,6 +218,33 @@ export class GameServer {
   /** Tisch im Speicher (für WP-012/WP-013 und Tests). */
   getTable(tableId: number): Table | undefined {
     return this.tables.get(tableId);
+  }
+
+  /**
+   * Admin schließt einen Tisch (WP-028): laufende Runde ohne Punkte abbrechen (wie D-019), Tisch in der DB schließen,
+   * alle Beobachter mit `table.closed` (`reason: 'admin'`) informieren und den Tisch aus Speicher und Lobby nehmen.
+   * `null`, wenn der Tisch nicht (mehr) im Speicher ist. Liefert den Zustand vor dem Schließen (fürs Protokoll).
+   */
+  closeTableByAdmin(tableId: number): AdminClosedTable | null {
+    const table = this.tables.get(tableId);
+    if (table === undefined) return null;
+    const closed: AdminClosedTable = {
+      tableId,
+      status: table.status,
+      roundId: table.roundId,
+      seated: table.seats.size,
+      roundAborted: table.status === 'running',
+    };
+    table.terminate();
+    this.broadcast(tableId, { type: 'table.closed', tableId, reason: 'admin' });
+    for (const c of this.tableClients.get(tableId) ?? []) c.tables.delete(tableId);
+    this.remove(table);
+    return closed;
+  }
+
+  /** Tische im Speicher (z. B. für Admin-Übersichten). */
+  tableIds(): number[] {
+    return [...this.tables.keys()];
   }
 
   /** Wartet auf alle eingereihten Hooks/DB-Schreibvorgänge aller Tische. */
@@ -247,7 +309,7 @@ export class GameServer {
         return OK;
       }
       case 'table.sit':
-        return this.withTable(client, msg.tableId, (t) => t.sit(client.user, msg.seat));
+        return this.withTable(client, msg.tableId, (t) => t.sit(client.user, msg.seat, client.avatar));
       case 'table.stand':
         return this.withTable(client, msg.tableId, (t) => t.stand(client.user.id));
       case 'table.start':
@@ -256,7 +318,26 @@ export class GameServer {
         return this.withTable(client, msg.tableId, (t) => t.rematch(client.user.id));
       case 'table.action':
         return this.withTable(client, msg.tableId, (t) => t.act(client.user.id, msg.handNumber, msg.seq, msg.action));
+      case 'table.react':
+        return this.withTable(client, msg.tableId, (t) => this.react(client, t, msg.reaction));
     }
+  }
+
+  /**
+   * Emoji-Reaktion (WP-032): nur Spieler mit Sitz, höchstens eine pro {@link REACTION_COOLDOWN_MS} und User
+   * (abgelehnte Versuche zählen nicht). Geht an alle Beobachter des Tisches, auch den Absender.
+   */
+  private react(client: Client, table: Table, reaction: ReactionId): TableResult {
+    const seat = table.seatOf(client.user.id);
+    if (seat === null) return err('NOT_SEATED', 'Nur Spieler am Tisch können reagieren');
+    const now = this.clock.now();
+    const last = this.lastReactionAt.get(client.user.id);
+    if (last !== undefined && now - last < REACTION_COOLDOWN_MS) {
+      return err('RATE_LIMITED', 'Nicht so schnell – höchstens eine Reaktion alle 2 Sekunden');
+    }
+    this.lastReactionAt.set(client.user.id, now);
+    this.broadcast(table.id, { type: 'table.reaction', tableId: table.id, seat, userId: client.user.id, reaction });
+    return OK;
   }
 
   /**

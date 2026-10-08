@@ -1,5 +1,6 @@
 // Feedback-Endpunkte als gekapseltes Fastify-Plugin (WP-024): `POST /api/feedback` für eingeloggte Spieler,
-// `GET /api/admin/feedback` und `PATCH /api/admin/feedback/:id` nur für Admins.
+// `GET /api/admin/feedback` und `PATCH /api/admin/feedback/:id` nur für Admins (geprüft vom allgemeinen Admin-Guard,
+// admin/guard.ts, WP-028).
 // Formate und Rate-Limit: docs/ARCHITECTURE.md, Abschnitt „Datenmodell“ → „Feedback“.
 import rateLimit from '@fastify/rate-limit';
 import type { FastifyError, FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
@@ -40,7 +41,6 @@ export interface FeedbackErrorResponse {
 }
 
 const UNAUTHORIZED: FeedbackErrorResponse = { error: 'unauthorized', message: 'Nicht angemeldet' };
-const FORBIDDEN: FeedbackErrorResponse = { error: 'forbidden', message: 'Nur für Admins' };
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -57,12 +57,6 @@ export const feedbackRoutes: FastifyPluginAsync<FeedbackPluginOptions> = async (
   async function requireUser(request: FastifyRequest, reply: FastifyReply): Promise<void> {
     request.feedbackUser = await getUserFromCookieHeader(db, request.headers.cookie);
     if (request.feedbackUser === null) await reply.code(401).send(UNAUTHORIZED);
-  }
-
-  async function requireAdmin(request: FastifyRequest, reply: FastifyReply): Promise<void> {
-    await requireUser(request, reply);
-    if (reply.sent) return;
-    if (request.feedbackUser?.isAdmin !== true) await reply.code(403).send(FORBIDDEN);
   }
 
   // Pro User gezählt; erst nach der Session-Prüfung (preHandler), damit nur Eingeloggte zählen.
@@ -112,7 +106,7 @@ export const feedbackRoutes: FastifyPluginAsync<FeedbackPluginOptions> = async (
     },
   );
 
-  app.get('/api/admin/feedback', { onRequest: requireAdmin }, async (request, reply) => {
+  app.get('/api/admin/feedback', async (request, reply) => {
     const query = request.query as Record<string, unknown>;
     const status = query['status'];
     if (status !== undefined && status !== 'all' && !isFeedbackStatus(status)) {
@@ -137,7 +131,7 @@ export const feedbackRoutes: FastifyPluginAsync<FeedbackPluginOptions> = async (
     return { feedback, counts } satisfies FeedbackListResponse;
   });
 
-  app.patch('/api/admin/feedback/:id', { onRequest: requireAdmin }, async (request, reply) => {
+  app.patch('/api/admin/feedback/:id', async (request, reply) => {
     const id = Number((request.params as { id: string }).id);
     const body = request.body as { status?: unknown } | null | undefined;
     const status = body?.status;

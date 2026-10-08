@@ -38,6 +38,7 @@ prod läuft aus einem eigenen Git-Worktree auf `main` (`~/code/Arthurreuss/poker
 npm run prod:setup               # einmalig: Prod-Worktree anlegen, dann dort .env.prod anlegen (POSTGRES_PASSWORD setzen)
 npm run prod:up                  # Projekt poker-prod unter http://localhost:4320 (läuft parallel zu dev)
 npm run prod:smoke               # Health + WebSocket prüfen
+npm run prod:e2e                 # Browser-Test: zwei Test-Konten spielen eine Runde (WP-020)
 npm run prod:status              # Container, letztes Backup, Health
 npm run prod:down
 ```
@@ -59,7 +60,7 @@ npm run admin:reset-password -w @poker/server -- <benutzername>
 # … oder ein bestimmtes Passwort über stdin setzen (nicht als Argument → landet nicht in der Shell-History)
 printf '%s\n' 'neues-passwort' | npm run admin:reset-password -w @poker/server -- <benutzername>
 
-# Admin-Flag setzen bzw. entziehen
+# Admin-Flag setzen bzw. entziehen (nur per CLI, D-029; steht wie Reset im Admin-Protokoll)
 npm run admin:make-admin -w @poker/server -- <benutzername>
 npm run admin:make-admin -w @poker/server -- <benutzername> --revoke
 

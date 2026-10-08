@@ -46,8 +46,9 @@ describe('PokerTable – Karten', () => {
     render(<PokerTable view={mock('six-flop')} />);
     const hero = within(seatEl(0));
     expect(hero.getByTestId('hole-cards').dataset['kind']).toBe('visible');
-    expect(hero.getAllByRole('img').map((c) => c.getAttribute('aria-label'))).toEqual(['Herz Dame', 'Kreuz Dame']);
-    expect(hero.getAllByRole('img')[0]?.className).toContain('pt-card--hero');
+    const heroCards = within(hero.getByTestId('hole-cards'));
+    expect(heroCards.getAllByRole('img').map((c) => c.getAttribute('aria-label'))).toEqual(['Herz Dame', 'Kreuz Dame']);
+    expect(heroCards.getAllByRole('img')[0]?.className).toContain('pt-card--hero');
 
     const lena = within(seatEl(1));
     expect(lena.getAllByRole('img').map((c) => c.getAttribute('aria-label'))).toEqual([
@@ -175,5 +176,28 @@ describe('PokerTable – reine Darstellung', () => {
   it('gleicher Zustand ergibt gleiches Markup', () => {
     const view = mock('nine-allin');
     expect(renderToStaticMarkup(<PokerTable view={view} />)).toBe(renderToStaticMarkup(<PokerTable view={view} />));
+  });
+});
+
+describe('PokerTable – Avatare und Reaktionen (WP-032)', () => {
+  it('Avatar an der Plakette, gegenüber dem Marker; ohne Avatar keiner', () => {
+    render(<PokerTable view={mock('six-flop')} />);
+    const avatarOf = (seat: number) => within(seatEl(seat)).queryByTestId('avatar');
+    expect(avatarOf(0)?.dataset['avatar']).toBe('fox');
+    expect(avatarOf(0)?.getAttribute('class')).toContain('pt-plate-avatar--left');
+    expect(avatarOf(7)?.getAttribute('class')).toContain('pt-plate-avatar--right'); // Marker links (TR/R)
+    expect(avatarOf(2)).toBeNull();
+  });
+
+  it('Reaktionen über dem jeweiligen Sitz, Reaktions-Knopf nur mit Inhalt', () => {
+    const { rerender } = render(
+      <PokerTable view={mock('six-flop')} reactionPicker={<button type="button">R</button>} />,
+    );
+    expect(within(seatEl(4)).getByRole('img', { name: 'Mia: Lachen' })).toHaveTextContent('😂');
+    expect(within(seatEl(1)).queryByTestId('reaction')).toBeNull();
+    expect(screen.getByTestId('react-slot')).toHaveTextContent('R');
+    rerender(<PokerTable view={{ ...mock('six-flop'), reactions: [] }} />);
+    expect(screen.queryByTestId('reaction')).toBeNull();
+    expect(screen.queryByTestId('react-slot')).toBeNull();
   });
 });

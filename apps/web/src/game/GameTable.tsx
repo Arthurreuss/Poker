@@ -2,15 +2,19 @@
 // Aktionsleiste, Showdown, Rundenende und Verbindungshinweis. Layout (Hoch/Quer) macht `TableScreen`.
 import { useCallback, useMemo } from 'react';
 import { Link } from 'react-router';
+import type { ReactionId } from '@poker/engine/protocol';
 import { useFeedbackDialog } from '../feedback';
 import { DATENSCHUTZ_PATH, IMPRESSUM_PATH } from '../legal/LegalFooter';
+import { invitePath, tablePath } from '../lobby/invite';
 import { InviteShare } from '../lobby/InviteShare';
+import { ReactionPicker } from '../reactions/ReactionPicker';
 import { useAnimationsPreference } from '../settings/animations';
+import { useReactionsPreference } from '../settings/reactions';
 import { cx } from '../styles/cx';
 import { useTableSounds } from '../sound/tableSounds';
 import { TableFx } from '../table/fx/TableFx';
 import { TableScreen } from '../table/TableScreen';
-import { toTableView } from './adapter';
+import { toReactionViews, toTableView } from './adapter';
 import { ConnectionBanner, ErrorToast, GameActionArea, RoundResultDialog, TableClosedNotice } from './GamePanels';
 import { useNow } from './hooks';
 import { useHandReveal } from './presentation';
@@ -28,17 +32,26 @@ export interface GameTableProps {
 
 export function GameTable({ snapshot, store, onLeave }: GameTableProps) {
   const [animations] = useAnimationsPreference();
+  const [reactionsOn] = useReactionsPreference();
   const table = snapshot.table;
   const turnClock = table === null ? null : readTurnClock(table, snapshot.receivedAtMs);
   const now = useNow(turnClock !== null, 200);
   // WP-031: Runout Straße für Straße, Ergebnis danach; Showdown vor dem Rundenende-Dialog.
   const { reveal, resultShown } = useHandReveal(table?.round?.hand ?? null);
   const roundEnd = useRoundEndHold(table?.status ?? null, resultShown);
-  const view = useMemo(
+  const baseView = useMemo(
     () => (table === null ? null : toTableView(table, { turnClock, nowMs: now, reveal })),
     // `turnClock` wird je Render neu berechnet; er hängt nur von `table` und der Empfangszeit ab.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [table, snapshot.receivedAtMs, now, reveal],
+  );
+  // Reaktionen nur, wenn eingeschaltet (WP-032); senden dürfen nur Spieler mit Platz.
+  const view = useMemo(
+    () =>
+      baseView === null || !reactionsOn
+        ? baseView
+        : { ...baseView, reactions: toReactionViews(snapshot.reactions, baseView) },
+    [baseView, reactionsOn, snapshot.reactions],
   );
   useTableSounds(view);
   const dismissError = useCallback(() => {
@@ -53,7 +66,9 @@ export function GameTable({ snapshot, store, onLeave }: GameTableProps) {
   const rematch = useCallback(() => {
     store.rematch();
   }, [store]);
+  const react = useCallback((reaction: ReactionId) => store.react(reaction), [store]);
   const feedback = useFeedbackDialog({ tableId: store.tableId });
+  const canReact = reactionsOn && table !== null && table.you.seat !== null;
 
   return (
     <div
@@ -64,7 +79,7 @@ export function GameTable({ snapshot, store, onLeave }: GameTableProps) {
     >
       <ConnectionBanner status={snapshot.connection} hasState={table !== null} onReconnect={reconnect} />
       {snapshot.closed !== null ? (
-        <TableClosedNotice onBack={onLeave} />
+        <TableClosedNotice reason={snapshot.closed} onBack={onLeave} />
       ) : table === null || view === null ? (
         <div className="gp-center">
           {snapshot.notFound ? (
@@ -81,16 +96,19 @@ export function GameTable({ snapshot, store, onLeave }: GameTableProps) {
           <TableScreen
             view={view}
             overlay={<TableFx view={view} enabled={animations} />}
+            reactionPicker={canReact ? <ReactionPicker onReact={react} /> : undefined}
             actionBar={<GameActionArea snapshot={snapshot} store={store} showResult={resultShown} />}
             menuItems={
               <div className="gp-menu-items">
                 <p className="gp-menu-info">{table.settings.name}</p>
-                {!table.settings.isPublic && (
-                  <div className="gp-menu-invite" aria-label="Einladen" role="group">
-                    <p className="gp-menu-heading">Einladen</p>
-                    <InviteShare inviteCode={table.inviteCode} tableName={table.settings.name} />
-                  </div>
-                )}
+                {/* Öffentlich: Link direkt zum Tisch; privat: Einladungslink (WP-030). */}
+                <div className="gp-menu-invite" aria-label="Einladen" role="group">
+                  <p className="gp-menu-heading">Einladen</p>
+                  <InviteShare
+                    path={table.settings.isPublic ? tablePath(table.id) : invitePath(table.inviteCode)}
+                    tableName={table.settings.name}
+                  />
+                </div>
                 <button type="button" className="gp-btn gp-btn--muted gp-btn--block" onClick={feedback.open}>
                   Feedback senden
                 </button>

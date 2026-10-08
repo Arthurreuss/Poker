@@ -182,8 +182,8 @@ Format: Kontext → Entscheidung → Konsequenzen. Status: `akzeptiert`, `offen`
 ## D-025: Speicherdauern (Datenschutz)
 - **Status:** akzeptiert
 - **Kontext:** Die Datenschutzerklärung (WP-022) braucht feste Speicherdauern.
-- **Entscheidung:** Server-Logs (enthalten IP-Adressen) werden höchstens 14 Tage aufbewahrt. Erledigtes Feedback wird 30 Tage nach dem Erledigen gelöscht, jedes Feedback spätestens 1 Jahr nach dem Absenden. Backups liegen nur lokal auf dem Mac (Aufbewahrung 7/4/6). Cloudflare ist Auftragsverarbeiter (DPA im Dashboard akzeptiert).
-- **Konsequenzen:** Umsetzung in WP-022: Request-Logs mit IP schreiben server und nginx in Dateien, die der Dienst `logrotate` täglich rotiert und nach 12 Tagen löscht; Container-Logs enthalten keine IPs und rotieren nach Größe. Ein Server-Job löscht Feedback nach den Fristen. Der Backup-Ordner wird nicht in Time Machine oder eine Cloud gesichert (sonst gälten längere Fristen).
+- **Entscheidung:** Server-Logs (enthalten IP-Adressen) werden höchstens 14 Tage aufbewahrt. Erledigtes Feedback wird 30 Tage nach dem Erledigen gelöscht, jedes Feedback spätestens 1 Jahr nach dem Absenden. Einträge im Admin-Protokoll (WP-028, D-029) werden 1 Jahr nach dem Anlegen gelöscht. Backups liegen nur lokal auf dem Mac (Aufbewahrung 7/4/6). Cloudflare ist Auftragsverarbeiter (DPA im Dashboard akzeptiert).
+- **Konsequenzen:** Umsetzung in WP-022: Request-Logs mit IP schreiben server und nginx in Dateien, die der Dienst `logrotate` täglich rotiert und nach 12 Tagen löscht; Container-Logs enthalten keine IPs und rotieren nach Größe. Ein Server-Job löscht Feedback nach den Fristen, ein zweiter das Admin-Protokoll (WP-028). Der Backup-Ordner wird nicht in Time Machine oder eine Cloud gesichert (sonst gälten längere Fristen).
 
 ## D-026: Spiel-UI-Details (Abnahme WP-018)
 - **Status:** akzeptiert
@@ -203,3 +203,45 @@ Format: Kontext → Entscheidung → Konsequenzen. Status: `akzeptiert`, `offen`
   - Jedes Aufdecken wird in der Datenbank protokolliert (wer, welcher Tisch/welche Hand, welcher Spieler, wann).
   - Die Mitspieler sehen davon nichts: kein Hinweis am Tisch, keine Anzeige im Spiel.
 - **Konsequenzen:** Ein Admin hat am Tisch einen Informationsvorteil; Admin-Rechte nur an Vertrauenspersonen vergeben. Das Protokoll macht Missbrauch im Nachhinein nachvollziehbar. Die Datenschutzerklärung nennt das Protokoll als Admin-Protokoll.
+
+## D-028: E2E-Smoke-Test gegen prod über einen lokalen Origin-Proxy (WP-020)
+- **Status:** akzeptiert
+- **Kontext:** Der Release soll nach dem prod-Start einen Browser-Test fahren (zwei Spieler, eine Runde). Der WebSocket nimmt nur Origins aus `PUBLIC_ORIGIN` an (D-014, D-023) – ein Browser auf `http://localhost:4320` schickt `Origin: http://localhost:4320` und wird mit `403` abgelehnt. Playwright kann den `Origin` des Browser-WebSockets nicht per Header überschreiben. Optionen: (a) Test über die echte Domain, (b) Host-Mapping im Browser, (c) zusätzliche Origin `http://localhost:4320` in `.env.prod`, (d) lokaler Proxy, der nur den `Origin`-Header ersetzt.
+- **Entscheidung:** (d). `scripts/e2e-origin-proxy.mjs` (ohne Abhängigkeiten) läuft während des Tests auf `localhost:4318`, reicht HTTP und WebSocket-Upgrade unverändert an `http://127.0.0.1:4320` (nginx → Server → DB) weiter und ersetzt nur einen vorhandenen `Origin` durch die erste `PUBLIC_ORIGIN`. Der Browser nutzt `localhost`, damit Chromium die `Secure`-Cookies von prod auch über http annimmt.
+  - (a) hängt an Tunnel, Internet und Cloudflare (Release ohne `TUNNEL_TOKEN` ginge nicht) – bleibt als Option per `E2E_BASE_URL=https://poker.arthur-reuss.de npm run prod:e2e`.
+  - (b) scheitert am Schema: gemappt wäre die Origin `http://poker.arthur-reuss.de`, erlaubt ist nur `https://…`; lokales TLS wäre mehr Aufwand als der Proxy.
+  - (c) bräuchte eine Konfigurationsänderung in prod und lockert den Origin-Check (wenn auch nur für eine lokale Adresse).
+- **Konsequenzen:** Der E2E-Test prüft die frisch gebauten prod-Container, aber nicht Cloudflare/Tunnel (das deckt `prod:status` mit Tunnel ab). Ein Lauf legt zwei Konten `e2e_…` an und spielt an einem **privaten** Tisch „E2E-Test …“ (Beitritt per Einladungslink, nicht in der Lobby); die Konten werden danach per `DELETE /api/me` gelöscht (anonymisiert, WP-022). Übrig bleibt eine Runde in der Datenbank, die nach D-024 nur Teilnehmer sehen – und die gibt es nicht mehr. Geprüft auf dev mit einem dritten Konto: `/api/rounds/<id>` und `/api/hands/<id>` → `403`, `/api/rounds/recent` leer, `?player=e2e_…` und `/api/players/e2e_…/stats` → `404` (gelöschte Konten), Rangliste ohne die Konten. Sichtbar bleibt nur, dass es die Runden-ID gibt (fortlaufende Nummer, `403` statt `404`). Port 4318 ist für den Proxy reserviert (D-006, Standard, per `E2E_PROXY_PORT` änderbar).
+
+## D-029: Rollenmodell und Admin-Protokoll (WP-028)
+- **Status:** akzeptiert
+- **Kontext:** Admins sollen Spieler sperren, Sessions beenden, Passwörter zurücksetzen und Tische schließen können (WP-028); WP-033 protokolliert zusätzlich das Aufdecken von Karten (D-027). Missbrauch muss nachvollziehbar sein, gleichzeitig gelten Datenschutz und Speicherdauern (D-025).
+- **Entscheidung:**
+  - Zwei Rollen: Spieler und Admin (`users.is_admin`). Keine feineren Rechte. Das Admin-Flag setzt/entzieht nur die CLI (`admin:make-admin`), es gibt keine API dafür – damit kann sich auch kein Admin selbst oder gegenseitig entadminen.
+  - Ein allgemeiner Server-Guard prüft jede Anfrage auf `/api/admin/*` an der Wurzel der App (ohne Session 401, ohne Flag 403), auch für unbekannte Pfade. Die Prüfung im Browser (`RequireAdmin`) ist nur Komfort.
+  - Sperre über `users.banned_at`: beendet alle Sessions und WebSockets (Close-Code 4002), Login meldet die Sperre nur bei richtigem Passwort (`403 account_banned`). Admins und man selbst sind nicht sperrbar.
+  - Passwort-Reset durch Admin erzeugt ein Zufallspasswort, das genau einmal in der Antwort steht und nirgends gespeichert oder protokolliert wird.
+  - Admin schließt einen Tisch: laufende Runde wird wie bei D-019 ohne Punkte abgebrochen.
+  - Jede Admin-Aktion (API, CLI, später WebSocket) steht in `admin_audit_log` (wer, Aktion als `bereich.aktion`, Ziel-User/-Tisch, Details als JSON, Quelle, Zeitpunkt); Nutzeraktionen atomar in derselben SQL-Anweisung. Lesende Admin-Zugriffe werden nicht protokolliert. Details enthalten keine Namen oder Passwörter, Freitext nur als Begründung (`reason`).
+  - Konto-Löschung: Einträge bleiben, verlieren aber per Trigger den Bezug zum gelöschten Account (Admin wie Ziel); die Begründung wird bei gelöschtem Ziel entfernt. Speicherdauer 1 Jahr (D-025).
+- **Konsequenzen:** WP-029 (Dashboard) baut nur auf diese API; WP-033 schreibt `table.reveal_cards` mit `writeAudit`. Ein gesperrter Spieler kann sich unter neuem Namen neu registrieren (offene Registrierung, D-011) – bewusst hingenommen. Die Datenschutzerklärung nennt Sperre und Admin-Protokoll.
+
+## D-030: Avatare und Emoji-Reaktionen (WP-032)
+- **Status:** akzeptiert
+- **Kontext:** Spieler sollen ein Profilbild wählen und am Tisch reagieren können, ohne Upload, Chat oder neue Datenschutzrisiken.
+- **Entscheidung:**
+  - Feste Auswahl von 24 eigenen SVG-Avataren (`users.avatar`, Migration 0008); ohne Avatar zeigen Rangliste/Profil den Anfangsbuchstaben, der Tisch kein Abzeichen. Avatare stehen nur in `seats[]`, nicht in `PublicUser`.
+  - Acht feste Emoji-Reaktionen über `table.react`/`table.reaction`; flüchtig (nicht gespeichert, nicht geloggt, nicht in `table.state`), nur sitzende Spieler senden, Zuschauer sehen sie; Server-Limit 1 pro 2 s je User (`RATE_LIMITED`).
+  - Ein Schalter pro Gerät: Reaktionen aus = weder sehen noch senden; Standard an.
+  - Protokoll bleibt Version 1 (nur Ergänzungen; Server und Web werden zusammen ausgeliefert).
+- **Konsequenzen:** Kontolöschung setzt den Avatar zurück; die Datenschutzerklärung nennt Avatar und Reaktionen.
+
+## D-031: Showdown-Darstellung, Runout-Staffelung und Tisch-Sounds (WP-031)
+- **Status:** vorgeschlagen
+- **Kontext:** Der Server liefert eine fertige Hand (auch einen All-in-Runout) in einem Stand; die letzte Hand einer Runde endete sofort im Rundenende-Dialog, das Board war kaum zu sehen. Animationen und Sounds sollen lebendig wirken, ohne die Server-Wahrheit (D-003) oder die CSP (D-014) zu verletzen.
+- **Entscheidung:**
+  - Animationen und Sounds werden rein aus dem Unterschied zweier `TableView`s abgeleitet; Animationen per Web Animations API, keine `<style>`-Elemente, keine Eingabesperre, aus bei „Animationen“ aus bzw. `prefers-reduced-motion`.
+  - Der Client deckt einen All-in-Runout Straße für Straße auf (0,9 s je Straße, Ergebnis 0,7 s danach) und hält bis dahin Gewinner und Auszahlung zurück – auch bei ausgeschalteten Animationen. Der Server verlängert die Pause bis zur nächsten Hand um `DEFAULT_RUNOUT_PAUSE_MS` = 1 s je Runout-Straße.
+  - Endet die Runde live, bleibt der Rundenende-Dialog 5 s nach dem sichtbaren Ergebnis verborgen; ein Tipp oder eine Taste überspringt die Pause.
+  - Sounds werden per Web Audio synthetisiert (keine Audiodateien, keine Lizenzfragen); Ton standardmäßig an (70 %), Vibration an, wo verfügbar; Einstellung nur im Gerät (`poker.sound`).
+- **Konsequenzen:** Der dargestellte Stand kann bis ca. 3,4 s hinter dem Server liegen, nur bei fertigen Händen; Eingaben sind dann ohnehin nicht möglich. Ein neuer Stand einer anderen Hand beendet die Staffelung sofort. Der Spieltest gegen einen älteren Dev-Server deckt die Server-Pause nicht ab.

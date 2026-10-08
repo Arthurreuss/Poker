@@ -1,0 +1,58 @@
+/* Reaktions-Knopf und -Leiste (WP-032); nutzt die Tisch-Tokens (--pt-*) aus table.css. */
+.root {
+  position: relative;
+}
+
+.toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--pt-menu-size, 40px);
+  height: var(--pt-menu-size, 40px);
+  padding: 0;
+  border: 1px solid rgb(255 255 255 / 0.15);
+  border-radius: var(--pt-radius-md, 8px);
+  background: var(--pt-surface, #1c2530);
+  color: var(--pt-text, #fff);
+  box-shadow: var(--pt-shadow, none);
+  font-size: calc(var(--pt-menu-size, 40px) * 0.55);
+  line-height: 1;
+  cursor: pointer;
+}
+.toggle[aria-expanded='true'] {
+  border-color: var(--pt-accent, #f2c14e);
+}
+.toggle:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  display: grid;
+  grid-template-columns: repeat(4, 44px);
+  gap: 4px;
+  padding: 6px;
+  border-radius: var(--pt-radius-md, 8px);
+  border: 1px solid rgb(255 255 255 / 0.15);
+  background: var(--pt-surface, #1c2530);
+  box-shadow: var(--pt-shadow, none);
+}
+
+.option {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--pt-radius-sm, 6px);
+  background: var(--pt-surface-2, #273341);
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+}
+.option:hover,
+.option:focus-visible {
+  outline: 1px solid var(--pt-accent, #f2c14e);
+}

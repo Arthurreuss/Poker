@@ -18,6 +18,10 @@ export interface UserRow {
   is_admin: boolean;
   created_at: Date;
   deleted_at: Date | null;
+  /** Gesperrt seit (WP-028); `null` = nicht gesperrt. */
+  banned_at: Date | null;
+  /** Avatar-ID aus `AVATAR_IDS` (WP-032, Migration 0008); `null` = keiner bzw. gelöschter Account. */
+  avatar: string | null;
 }
 
 export interface SessionRow {
@@ -126,4 +130,19 @@ export interface FeedbackRow {
   created_at: Date;
   /** 0006 (WP-022): Zeitpunkt des Erledigens, nur bei `status = 'done'` gesetzt (Löschfrist, D-025). */
   done_at: Date | null;
+}
+
+/** Admin-Protokoll (WP-028, Migration 0007). */
+export interface AdminAuditLogRow {
+  /** bigint → von `pg` als String geliefert. */
+  id: string;
+  /** `null` = über die CLI ausgeführt oder Account des Admins gelöscht. */
+  admin_id: number | null;
+  /** z. B. `user.ban`, siehe `AuditAction` in admin/audit.ts. */
+  action: string;
+  target_user_id: number | null;
+  target_table_id: number | null;
+  details: { [key: string]: Json };
+  source: 'api' | 'cli' | 'ws';
+  created_at: Date;
 }

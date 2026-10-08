@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react';
 import './table.css';
+import './seat-extras.css';
 import './fx/fx.css';
 import { Card, winHighlight } from './Card';
 import { formatChips } from './format';
@@ -20,6 +21,8 @@ export interface PokerTableProps {
   readonly menu?: ReactNode;
   /** Ebene über der Tischfläche, z. B. Animationen (`TableFx`, WP-031); nimmt keine Eingaben an. */
   readonly overlay?: ReactNode;
+  /** Reaktions-Knopf oben rechts (WP-032); ohne Inhalt bleibt die Ecke frei. */
+  readonly reactionPicker?: ReactNode;
 }
 
 function at(x: number, y: number): CSSProperties {
@@ -65,6 +68,7 @@ function TableSeat({ placed, view, fourColor }: { placed: PlacedSeat; view: Tabl
   const toAct = view.toActSeat === seat;
   const marker = seatMarker(view, seat);
   const winner = view.winnerSeats?.includes(seat) ?? false;
+  const reaction = view.reactions?.find((r) => r.seat === seat);
   return (
     <div
       className={`pt-seat${isHero ? ' pt-seat--hero' : ''} pt-seat--${player.status}${winner ? ' pt-seat--winner' : ''}`}
@@ -88,7 +92,20 @@ function TableSeat({ placed, view, fourColor }: { placed: PlacedSeat; view: Tabl
         timeRemaining={toAct ? view.timeRemaining : undefined}
         timeBankSeconds={toAct ? view.timeBankSeconds : undefined}
         isHero={isHero}
+        avatar={player.avatar}
+        avatarSide={slot.markerSide === 'left' ? 'right' : 'left'}
       />
+      {reaction !== undefined && (
+        <span
+          key={reaction.id}
+          className="pt-reaction"
+          role="img"
+          aria-label={`${player.name}: ${reaction.label}`}
+          data-testid="reaction"
+        >
+          {reaction.emoji}
+        </span>
+      )}
       {marker !== null && (
         <DealerButton kind={marker} className={`pt-seat-marker pt-seat-marker--${slot.markerSide}`} />
       )}
@@ -109,6 +126,7 @@ export function PokerTable({
   layout = 'portrait',
   menu,
   overlay,
+  reactionPicker,
 }: PokerTableProps) {
   const placed = placeSeats(view, layout);
   return (
@@ -145,6 +163,11 @@ export function PokerTable({
         <div className="pt-menu-slot" data-testid="menu-slot">
           {menu}
         </div>
+        {reactionPicker !== undefined && reactionPicker !== null && (
+          <div className="pt-react-slot" data-testid="react-slot">
+            {reactionPicker}
+          </div>
+        )}
       </div>
     </div>
   );

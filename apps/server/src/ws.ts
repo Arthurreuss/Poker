@@ -37,9 +37,16 @@ function toText(data: RawData): string {
 
 /** Schließcode, wenn der Account gelöscht wurde (WP-022): Policy Violation; ein Reconnect scheitert mit 401. */
 export const CLOSE_ACCOUNT_DELETED = 1008;
+/**
+ * Schließcode, wenn ein Admin die Sessions beendet oder das Passwort zurückgesetzt hat (WP-028): ebenfalls Policy
+ * Violation – der Client verbindet neu, scheitert mit 401 und führt zur Anmeldung.
+ */
+export const CLOSE_SESSIONS_REVOKED = 1008;
+/** Konto gesperrt (WP-028), Code aus dem Protokoll (4002). */
+export { CLOSE_ACCOUNT_BANNED } from '@poker/engine/protocol';
 
 export interface WebSocketControl {
-  /** Schließt alle offenen Verbindungen eines Users (z. B. nach dem Löschen des Kontos). */
+  /** Schließt alle offenen Verbindungen eines Users (z. B. nach dem Löschen des Kontos oder einer Sperre). */
   closeUserConnections(userId: number, code: number, reason: string): void;
 }
 
@@ -88,7 +95,7 @@ export function registerWebSocket(app: FastifyInstance, options: WebSocketOption
     ws.on('pong', () => alive.set(ws, true));
 
     const client = game.connect(
-      { id: user.id, username: user.username },
+      { id: user.id, username: user.username, avatar: user.avatar },
       {
         send(message: ServerMessage) {
           if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(message));
