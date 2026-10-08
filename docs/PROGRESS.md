@@ -12,10 +12,10 @@
 | M2 | [WP-005](work-packages/WP-005.md) | Engine: Handbewertung | done | WP-004 |
 | M2 | [WP-006](work-packages/WP-006.md) | Engine: Setzrunden | done | WP-004 |
 | M2 | [WP-007](work-packages/WP-007.md) | Engine: Side Pots und Showdown | done | WP-005, WP-006 |
-| M2 | [WP-008](work-packages/WP-008.md) | Engine: Freezeout-Runde mit Blind-Leveln und Punkten | in-progress | WP-007 |
+| M2 | [WP-008](work-packages/WP-008.md) | Engine: Freezeout-Runde mit Blind-Leveln und Punkten | done | WP-007 |
 | M3 | [WP-009](work-packages/WP-009.md) | Datenbankschema und Migrationen | done | WP-002 |
 | M3 | [WP-010](work-packages/WP-010.md) | Accounts: Registrierung, Login, Sessions | done | WP-009 |
-| M3 | [WP-011](work-packages/WP-011.md) | Game-Server: WebSocket-Protokoll und Tische | todo | WP-008, WP-010 |
+| M3 | [WP-011](work-packages/WP-011.md) | Game-Server: WebSocket-Protokoll und Tische | in-progress | WP-008, WP-010 |
 | M3 | [WP-012](work-packages/WP-012.md) | Zeitlimit, Zeitbank und Reconnect | todo | WP-011 |
 | M3 | [WP-013](work-packages/WP-013.md) | Persistenz: Runden und Hand-Historie | todo | WP-011 |
 | M4 | [WP-014](work-packages/WP-014.md) | Web-Grundgerüst: PWA, Routing, Login | in-progress | WP-002, WP-010 |
@@ -46,11 +46,12 @@
 - Strang-Zusammenführung bei WP-011 (Engine + Accounts) und WP-018 (Server + UI).
 
 ## Nächster Schritt
-Parallel in Arbeit (max. 5): WP-008 (Freezeout-Runde), WP-014 (Web-Grundgerüst), WP-016 (Tischansicht Hochformat). WP-021 in review (Arthur: Mac-Neustart-Test). Danach WP-011, WP-017, WP-024, WP-022.
+Parallel in Arbeit (max. 5): WP-011 (Game-Server/WebSocket), WP-014 (Web-Grundgerüst), WP-016 (Tischansicht Hochformat). WP-021 in review (Arthur: Mac-Neustart-Test). Danach WP-011, WP-017, WP-024, WP-022.
 
 ## Log
 Neueste Einträge oben. Pro Session 1–3 Zeilen.
 
+- 2026-10-08: WP-008 done – komplette Freezeout-Runde (Blind-Level, Dead Button nach TDA, Platzierungen, Punkte), 760 simulierte Runden. Engine-Reinheit per ESLint abgesichert. Offen: geteilte Plätze vs. DB-Constraint. WP-011 gestartet.
 - 2026-10-08: WP-021 review – tägliche Backups (7/4/6), Restore-Test grün, `prod:status`, Prod-Worktree + Release-Skript (D-017). Offen: Neustart-Test durch Arthur.
 - 2026-10-08: WP-010 done – Registrierung/Login/Sessions (argon2id, httpOnly-Cookie, Rate-Limit), Admin-CLIs auch im Prod-Image gebündelt. Merge-Fix mit WP-003 (`buildApp`-Optionen). Limit paralleler WPs auf 5 erhöht (Arthur). WP-014 gestartet.
 - 2026-10-08: WP-007 done – Side Pots, Showdown wird in `applyAction` direkt aufgelöst (keine Phase `showdown` mehr), Property-Test über 1.500 Hände. Flush-Text nennt alle fünf Karten (Arthur). D-017 Prod-Worktree, WP-024 Feedback-Button neu. WP-008 gestartet.
