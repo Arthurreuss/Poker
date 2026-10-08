@@ -5,6 +5,8 @@ import { randomBytes } from 'node:crypto';
 import type { Rng } from '@poker/engine';
 import { cryptoRng } from '@poker/engine/crypto-rng';
 import {
+  CLOSE_REPLACED,
+  CLOSE_UNSUPPORTED_VERSION,
   PROTOCOL_VERSION,
   parseClientMessage,
   type ClientMessage,
@@ -22,8 +24,14 @@ import { Table, type Logger, type TableResult } from './table';
 /** Pause nach jeder Hand (Showdown-Anzeige), bevor die nächste startet. */
 export const DEFAULT_HAND_PAUSE_MS = 4000;
 
-/** Schließcode, wenn der Client eine andere Protokollversion spricht. */
-export const CLOSE_UNSUPPORTED_VERSION = 4000;
+/**
+ * Gnadenfrist für getrennte Spieler am Zug (WP-012): Ein Reload oder kurzer Netzwechsel kostet so keine Hand,
+ * der Tisch wartet aber höchstens so lange (nie länger als Zugzeit + Zeitbank).
+ */
+export const DEFAULT_DISCONNECT_GRACE_MS = 3000;
+
+// Schließcodes leben im Protokoll (der Client braucht sie); hier für bestehende Importe re-exportiert.
+export { CLOSE_REPLACED, CLOSE_UNSUPPORTED_VERSION };
 
 /** Transport einer Verbindung (WebSocket oder Test-Double). */
 export interface Connection {
@@ -40,6 +48,8 @@ export interface GameServerOptions {
   rng?: Rng;
   /** Standard: {@link DEFAULT_HAND_PAUSE_MS}. */
   handPauseMs?: number;
+  /** Standard: {@link DEFAULT_DISCONNECT_GRACE_MS}. */
+  disconnectGraceMs?: number;
   /** Erweiterungspunkte für WP-013 (Hand-Historie). */
   hooks?: GameHooks;
   /** Standard: 12 Zeichen base64url aus 9 Zufallsbytes. */
@@ -56,6 +66,8 @@ interface Client extends GameClient {
   hello: boolean;
   lobby: boolean;
   tables: Set<number>;
+  /** Von einer neueren Verbindung desselben Users abgelöst (WP-012) – Nachrichten werden ignoriert. */
+  replaced: boolean;
 }
 
 const OK: TableResult = { ok: true };
@@ -67,12 +79,15 @@ export class GameServer {
   /** Verbindungen, die einen Tisch beobachten. */
   private readonly tableClients = new Map<number, Set<Client>>();
   private readonly lobbyClients = new Set<Client>();
+  /** Aktive Verbindung (nach `hello`) je User – höchstens eine (WP-012: die neuere übernimmt). */
+  private readonly activeByUser = new Map<number, Client>();
   /** Zuletzt an die Lobby gesendeter Eintrag je Tisch (JSON), um nur Änderungen zu schicken. */
   private readonly lobbyCache = new Map<number, string>();
   private nextClientId = 1;
   private readonly clock: Clock;
   private readonly rng: Rng;
   private readonly handPauseMs: number;
+  private readonly disconnectGraceMs: number;
   private readonly hooks: GameHooks;
   private readonly generateInviteCode: () => string;
 
@@ -80,6 +95,7 @@ export class GameServer {
     this.clock = options.clock ?? systemClock;
     this.rng = options.rng ?? cryptoRng;
     this.handPauseMs = options.handPauseMs ?? DEFAULT_HAND_PAUSE_MS;
+    this.disconnectGraceMs = options.disconnectGraceMs ?? DEFAULT_DISCONNECT_GRACE_MS;
     this.hooks = options.hooks ?? {};
     this.generateInviteCode = options.generateInviteCode ?? (() => randomBytes(9).toString('base64url'));
   }
@@ -96,12 +112,15 @@ export class GameServer {
       hello: false,
       lobby: false,
       tables: new Set(),
+      replaced: false,
     };
     return client;
   }
 
+  /** Verbindung ist weg (oder abgelöst): Lobby/Tische abmelden. Mehrfacher Aufruf ist harmlos. */
   disconnect(gameClient: GameClient): void {
     const client = gameClient as Client;
+    if (this.activeByUser.get(client.user.id) === client) this.activeByUser.delete(client.user.id);
     this.lobbyClients.delete(client);
     for (const tableId of [...client.tables]) {
       this.unwatch(client, tableId, false);
@@ -111,6 +130,7 @@ export class GameServer {
   /** Verarbeitet eine eingehende Textnachricht. Fehler gehen nur an den Absender; Tische laufen weiter. */
   async handle(gameClient: GameClient, text: string): Promise<void> {
     const client = gameClient as Client;
+    if (client.replaced) return;
     const parsed = parseClientMessage(text);
     if (!parsed.ok) {
       this.sendError(client, parsed.code, parsed.message, parsed.requestId, null);
@@ -161,7 +181,12 @@ export class GameServer {
         return OK;
       }
       client.hello = true;
+      this.takeOver(client);
       this.send(client, { type: 'welcome', protocolVersion: PROTOCOL_VERSION, user: { ...client.user } });
+      return OK;
+    }
+    if (msg.type === 'ping') {
+      this.send(client, { type: 'pong', requestId: msg.requestId ?? null, serverNowMs: this.clock.now() });
       return OK;
     }
     if (!client.hello) return err('HELLO_REQUIRED', 'Zuerst hello mit der Protokollversion senden');
@@ -198,6 +223,24 @@ export class GameServer {
     }
   }
 
+  /**
+   * Zwei Verbindungen desselben Users (WP-012): die neuere (zuletzt `hello`) übernimmt. Die ältere wird sofort
+   * von Lobby und Tischen abgemeldet und mit {@link CLOSE_REPLACED} geschlossen; Tische, die die neue Verbindung
+   * per `table.join` wieder beobachtet, sehen den Spieler danach wieder als verbunden.
+   */
+  private takeOver(client: Client): void {
+    const previous = this.activeByUser.get(client.user.id);
+    this.activeByUser.set(client.user.id, client);
+    if (previous === undefined || previous === client) return;
+    previous.replaced = true;
+    this.disconnect(previous);
+    try {
+      previous.conn.close(CLOSE_REPLACED, 'replaced by newer connection');
+    } catch (error) {
+      this.options.log.warn({ err: error }, 'Abgelöste Verbindung konnte nicht geschlossen werden');
+    }
+  }
+
   private async withTable(
     client: Client,
     tableId: number,
@@ -221,6 +264,7 @@ export class GameServer {
       repository: this.options.repository,
       hooks: this.hooks,
       handPauseMs: this.handPauseMs,
+      disconnectGraceMs: this.disconnectGraceMs,
       log: this.options.log,
       onChange: (t) => {
         this.broadcastState(t);

@@ -156,6 +156,7 @@ export function validateTableSettings(input: unknown): Validated<TableSettings> 
 
 const MESSAGE_TYPES: ReadonlySet<string> = new Set<ClientMessageType>([
   'hello',
+  'ping',
   'lobby.subscribe',
   'lobby.unsubscribe',
   'table.create',
@@ -171,6 +172,7 @@ function message(o: Obj, type: ClientMessageType): ClientMessage {
   switch (type) {
     case 'hello':
       return { type, protocolVersion: int(o, 'protocolVersion', 0, MAX_ID) };
+    case 'ping':
     case 'lobby.subscribe':
     case 'lobby.unsubscribe':
       return { type };
