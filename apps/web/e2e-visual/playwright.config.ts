@@ -3,7 +3,8 @@ import { defineConfig, devices } from '@playwright/test';
 // Screenshot-Tests der Tischansicht (WP-016). Ausführen: `npm run test:visual -w @poker/web`.
 // Eigener Vite-Dev-Server auf Port 4316 (D-006, Bereich 4310–4319), bedient table-dev.html.
 // Nicht Teil von `npm run check` (langsam, Baselines sind plattformabhängig).
-const PORT = 4316;
+// PW_PORT: andere Ports für parallele Sessions in Worktrees (Bereich 4310–4329, D-006).
+const PORT = Number(process.env['PW_PORT'] ?? 4316);
 
 export default defineConfig({
   testDir: '.',

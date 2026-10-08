@@ -194,3 +194,12 @@ Format: Kontext → Entscheidung → Konsequenzen. Status: `akzeptiert`, `offen`
   - Lobby und Tisch haben vorerst je eine eigene WebSocket-Verbindung; eine gemeinsame Verbindung für die ganze App ist eine spätere Verbesserung.
   - Die Server-Uhrzeit für den Timer-Abgleich kommt nur aus `table.state` (`serverNowMs`).
 - **Konsequenzen:** Beim Wechsel Lobby → Tisch baut der Browser eine neue Verbindung auf (ca. 100–300 ms).
+
+## D-027: Admin darf verdeckte Karten aufdecken (WP-033)
+- **Status:** akzeptiert
+- **Kontext:** Arthur möchte als Admin am Tisch die verdeckten Karten der Mitspieler per Tipp umdrehen und zurückdrehen können.
+- **Entscheidung:**
+  - Nur Admins (`users.is_admin`) können fremde verdeckte Karten anfordern, nur für den Tisch, an dem sie gerade sitzen. Der Server schickt sie nur auf ausdrückliche Anfrage und nur an diese eine Verbindung, nie im normalen `table.state`.
+  - Jedes Aufdecken wird in der Datenbank protokolliert (wer, welcher Tisch/welche Hand, welcher Spieler, wann).
+  - Die Mitspieler sehen davon nichts: kein Hinweis am Tisch, keine Anzeige im Spiel.
+- **Konsequenzen:** Ein Admin hat am Tisch einen Informationsvorteil; Admin-Rechte nur an Vertrauenspersonen vergeben. Das Protokoll macht Missbrauch im Nachhinein nachvollziehbar. Die Datenschutzerklärung nennt das Protokoll als Admin-Protokoll.

@@ -5,7 +5,8 @@ import { defineConfig, devices } from '@playwright/test';
 // Eigener Vite-Dev-Server auf Port 4317 (D-006), Proxy /api und /ws → 4311. Der Game-Server prüft den
 // Origin gegen PUBLIC_ORIGIN (http://localhost:4310), daher setzt der Proxy diesen Origin (API_PROXY_ORIGIN).
 // Nicht Teil von `npm run check` (braucht Server und Datenbank, legt Test-User `wp018_…` an).
-const PORT = 4317;
+// PW_PORT: andere Ports für parallele Sessions in Worktrees (Bereich 4310–4329, D-006).
+const PORT = Number(process.env['PW_PORT'] ?? 4317);
 const API = process.env['GAME_E2E_API'] ?? 'http://localhost:4311';
 const ORIGIN = process.env['GAME_E2E_ORIGIN'] ?? 'http://localhost:4310';
 

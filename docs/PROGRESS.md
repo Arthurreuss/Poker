@@ -32,11 +32,11 @@
 | M5 | [WP-025](work-packages/WP-025.md) | Zweite Domain poker.deinemudda.win | done | WP-003 |
 | M5 | [WP-026](work-packages/WP-026.md) | Nacharbeiten aus der Abnahme (Tische, Zugang, Rangliste) | done | WP-015, WP-019 |
 | M6 | [WP-027](work-packages/WP-027.md) | Gemeinsame WebSocket-Verbindung für die ganze App | todo | WP-026 |
-| M6 | [WP-028](work-packages/WP-028.md) | Admin-Rolle und Berechtigungen | todo | WP-026 |
+| M6 | [WP-028](work-packages/WP-028.md) | Admin-Rolle und Berechtigungen | in-progress | WP-026 |
 | M6 | [WP-029](work-packages/WP-029.md) | Admin-Dashboard | todo | WP-028 |
-| M6 | [WP-030](work-packages/WP-030.md) | Einladungslink teilen mit Vorschau | todo | WP-026 |
-| M6 | [WP-031](work-packages/WP-031.md) | Sounds und Animationen am Tisch | todo | WP-026 |
-| M6 | [WP-032](work-packages/WP-032.md) | Avatare und Emoji-Reaktionen | todo | WP-026 |
+| M6 | [WP-030](work-packages/WP-030.md) | Einladungslink teilen mit Vorschau | in-progress | WP-026 |
+| M6 | [WP-031](work-packages/WP-031.md) | Sounds und Animationen am Tisch | in-progress | WP-026 |
+| M6 | [WP-032](work-packages/WP-032.md) | Avatare und Emoji-Reaktionen | in-progress | WP-026 |
 | M6 | [WP-033](work-packages/WP-033.md) | Admin: verdeckte Karten aufdecken | todo | WP-028 |
 <!-- END GENERATED -->
 
