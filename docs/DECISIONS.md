@@ -182,8 +182,8 @@ Format: Kontext → Entscheidung → Konsequenzen. Status: `akzeptiert`, `offen`
 ## D-025: Speicherdauern (Datenschutz)
 - **Status:** akzeptiert
 - **Kontext:** Die Datenschutzerklärung (WP-022) braucht feste Speicherdauern.
-- **Entscheidung:** Server-Logs (enthalten IP-Adressen) werden höchstens 14 Tage aufbewahrt. Erledigtes Feedback wird 30 Tage nach dem Erledigen gelöscht, jedes Feedback spätestens 1 Jahr nach dem Absenden. Backups liegen nur lokal auf dem Mac (Aufbewahrung 7/4/6). Cloudflare ist Auftragsverarbeiter (DPA im Dashboard akzeptiert).
-- **Konsequenzen:** Umsetzung in WP-022: Request-Logs mit IP schreiben server und nginx in Dateien, die der Dienst `logrotate` täglich rotiert und nach 12 Tagen löscht; Container-Logs enthalten keine IPs und rotieren nach Größe. Ein Server-Job löscht Feedback nach den Fristen. Der Backup-Ordner wird nicht in Time Machine oder eine Cloud gesichert (sonst gälten längere Fristen).
+- **Entscheidung:** Server-Logs (enthalten IP-Adressen) werden höchstens 14 Tage aufbewahrt. Erledigtes Feedback wird 30 Tage nach dem Erledigen gelöscht, jedes Feedback spätestens 1 Jahr nach dem Absenden. Einträge im Admin-Protokoll (WP-028, D-029) werden 1 Jahr nach dem Anlegen gelöscht. Backups liegen nur lokal auf dem Mac (Aufbewahrung 7/4/6). Cloudflare ist Auftragsverarbeiter (DPA im Dashboard akzeptiert).
+- **Konsequenzen:** Umsetzung in WP-022: Request-Logs mit IP schreiben server und nginx in Dateien, die der Dienst `logrotate` täglich rotiert und nach 12 Tagen löscht; Container-Logs enthalten keine IPs und rotieren nach Größe. Ein Server-Job löscht Feedback nach den Fristen, ein zweiter das Admin-Protokoll (WP-028). Der Backup-Ordner wird nicht in Time Machine oder eine Cloud gesichert (sonst gälten längere Fristen).
 
 ## D-026: Spiel-UI-Details (Abnahme WP-018)
 - **Status:** akzeptiert
@@ -203,3 +203,22 @@ Format: Kontext → Entscheidung → Konsequenzen. Status: `akzeptiert`, `offen`
   - Jedes Aufdecken wird in der Datenbank protokolliert (wer, welcher Tisch/welche Hand, welcher Spieler, wann).
   - Die Mitspieler sehen davon nichts: kein Hinweis am Tisch, keine Anzeige im Spiel.
 - **Konsequenzen:** Ein Admin hat am Tisch einen Informationsvorteil; Admin-Rechte nur an Vertrauenspersonen vergeben. Das Protokoll macht Missbrauch im Nachhinein nachvollziehbar. Die Datenschutzerklärung nennt das Protokoll als Admin-Protokoll.
+
+## D-028: (reserviert für WP-020 – E2E gegen prod)
+- **Status:** Platzhalter
+- **Kontext:** Die Nummer ist auf `dev` bereits von WP-020 belegt; dieser Platzhalter hält nur die Nummerierung in `wp/WP-028` fortlaufend.
+- **Entscheidung:** Beim Merge nach `dev` durch den echten Eintrag aus WP-020 ersetzen.
+- **Konsequenzen:** –
+
+## D-029: Rollenmodell und Admin-Protokoll (WP-028)
+- **Status:** akzeptiert
+- **Kontext:** Admins sollen Spieler sperren, Sessions beenden, Passwörter zurücksetzen und Tische schließen können (WP-028); WP-033 protokolliert zusätzlich das Aufdecken von Karten (D-027). Missbrauch muss nachvollziehbar sein, gleichzeitig gelten Datenschutz und Speicherdauern (D-025).
+- **Entscheidung:**
+  - Zwei Rollen: Spieler und Admin (`users.is_admin`). Keine feineren Rechte. Das Admin-Flag setzt/entzieht nur die CLI (`admin:make-admin`), es gibt keine API dafür – damit kann sich auch kein Admin selbst oder gegenseitig entadminen.
+  - Ein allgemeiner Server-Guard prüft jede Anfrage auf `/api/admin/*` an der Wurzel der App (ohne Session 401, ohne Flag 403), auch für unbekannte Pfade. Die Prüfung im Browser (`RequireAdmin`) ist nur Komfort.
+  - Sperre über `users.banned_at`: beendet alle Sessions und WebSockets (Close-Code 4002), Login meldet die Sperre nur bei richtigem Passwort (`403 account_banned`). Admins und man selbst sind nicht sperrbar.
+  - Passwort-Reset durch Admin erzeugt ein Zufallspasswort, das genau einmal in der Antwort steht und nirgends gespeichert oder protokolliert wird.
+  - Admin schließt einen Tisch: laufende Runde wird wie bei D-019 ohne Punkte abgebrochen.
+  - Jede Admin-Aktion (API, CLI, später WebSocket) steht in `admin_audit_log` (wer, Aktion als `bereich.aktion`, Ziel-User/-Tisch, Details als JSON, Quelle, Zeitpunkt); Nutzeraktionen atomar in derselben SQL-Anweisung. Lesende Admin-Zugriffe werden nicht protokolliert. Details enthalten keine Namen oder Passwörter, Freitext nur als Begründung (`reason`).
+  - Konto-Löschung: Einträge bleiben, verlieren aber per Trigger den Bezug zum gelöschten Account (Admin wie Ziel); die Begründung wird bei gelöschtem Ziel entfernt. Speicherdauer 1 Jahr (D-025).
+- **Konsequenzen:** WP-029 (Dashboard) baut nur auf diese API; WP-033 schreibt `table.reveal_cards` mit `writeAudit`. Ein gesperrter Spieler kann sich unter neuem Namen neu registrieren (offene Registrierung, D-011) – bewusst hingenommen. Die Datenschutzerklärung nennt Sperre und Admin-Protokoll.

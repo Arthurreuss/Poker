@@ -53,13 +53,13 @@ export async function deleteExpiredSessions(db: Queryable, userId: number): Prom
   await db.query('DELETE FROM sessions WHERE user_id = $1 AND expires_at <= now()', [userId]);
 }
 
-/** User zu einem Session-Token; `null`, wenn unbekannt, abgelaufen oder der Account gelöscht ist. */
+/** User zu einem Session-Token; `null`, wenn unbekannt, abgelaufen oder der Account gelöscht oder gesperrt ist. */
 export async function getUserFromSessionToken(db: Queryable, token: string): Promise<AuthUser | null> {
   if (!isWellFormedToken(token)) return null;
   const { rows } = await db.query<{ id: number; username: string; is_admin: boolean }>(
     `SELECT u.id, u.username, u.is_admin
        FROM sessions s JOIN users u ON u.id = s.user_id
-      WHERE s.token_hash = $1 AND s.expires_at > now() AND u.deleted_at IS NULL`,
+      WHERE s.token_hash = $1 AND s.expires_at > now() AND u.deleted_at IS NULL AND u.banned_at IS NULL`,
     [hashSessionToken(token)],
   );
   const row = rows[0];

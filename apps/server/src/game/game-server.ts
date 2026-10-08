@@ -70,6 +70,18 @@ export interface GameServerOptions {
   generateInviteCode?: () => string;
 }
 
+/** Ergebnis von {@link GameServer.closeTableByAdmin}. */
+export interface AdminClosedTable {
+  tableId: number;
+  /** Status vor dem Schließen. */
+  status: 'open' | 'running' | 'finished';
+  roundId: number | null;
+  /** Belegte Plätze vor dem Schließen. */
+  seated: number;
+  /** Eine laufende Runde wurde ohne Punkte abgebrochen. */
+  roundAborted: boolean;
+}
+
 export interface GameClient {
   readonly id: number;
   readonly user: PublicUser;
@@ -173,6 +185,33 @@ export class GameServer {
   /** Tisch im Speicher (für WP-012/WP-013 und Tests). */
   getTable(tableId: number): Table | undefined {
     return this.tables.get(tableId);
+  }
+
+  /**
+   * Admin schließt einen Tisch (WP-028): laufende Runde ohne Punkte abbrechen (wie D-019), Tisch in der DB schließen,
+   * alle Beobachter mit `table.closed` (`reason: 'admin'`) informieren und den Tisch aus Speicher und Lobby nehmen.
+   * `null`, wenn der Tisch nicht (mehr) im Speicher ist. Liefert den Zustand vor dem Schließen (fürs Protokoll).
+   */
+  closeTableByAdmin(tableId: number): AdminClosedTable | null {
+    const table = this.tables.get(tableId);
+    if (table === undefined) return null;
+    const closed: AdminClosedTable = {
+      tableId,
+      status: table.status,
+      roundId: table.roundId,
+      seated: table.seats.size,
+      roundAborted: table.status === 'running',
+    };
+    table.terminate();
+    this.broadcast(tableId, { type: 'table.closed', tableId, reason: 'admin' });
+    for (const c of this.tableClients.get(tableId) ?? []) c.tables.delete(tableId);
+    this.remove(table);
+    return closed;
+  }
+
+  /** Tische im Speicher (z. B. für Admin-Übersichten). */
+  tableIds(): number[] {
+    return [...this.tables.keys()];
   }
 
   /** Wartet auf alle eingereihten Hooks/DB-Schreibvorgänge aller Tische. */

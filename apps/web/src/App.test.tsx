@@ -92,6 +92,7 @@ describe('Login', () => {
 
   it.each([
     [401, 'invalid_credentials', 'Benutzername oder Passwort ist falsch'],
+    [403, 'account_banned', 'Dein Konto ist gesperrt. Bei Fragen wende dich an den Admin.'],
     [429, 'rate_limited', 'Zu viele Versuche – bitte kurz warten'],
   ])('zeigt Serverfehler %i (%s)', async (status, error, message) => {
     mockApi({ 'GET /api/me': unauthorized(), 'POST /api/login': json(status, { error, message }) });

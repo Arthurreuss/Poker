@@ -1,4 +1,6 @@
 import Fastify, { type FastifyInstance, type FastifyServerOptions } from 'fastify';
+import { registerAdminGuard } from './admin/guard';
+import { adminRoutes } from './admin/routes';
 import { loadAuthConfig, type AuthConfig } from './auth/config';
 import { authRoutes } from './auth/routes';
 import { getUserFromCookieHeader } from './auth/session';
@@ -119,6 +121,9 @@ export function buildApp({
     }
   });
 
+  // Vor allen Routen: Admin-Guard für /api/admin/* (WP-028) – gilt für alle Plugins, auch künftige.
+  registerAdminGuard(app, db);
+
   void app.register(authRoutes, {
     db,
     config: auth,
@@ -129,6 +134,13 @@ export function buildApp({
     },
   });
   void app.register(feedbackRoutes, { db, config: feedback });
+  void app.register(adminRoutes, {
+    db,
+    game,
+    closeUserConnections: (userId, code, reason) => {
+      webSocket.closeUserConnections(userId, code, reason);
+    },
+  });
   void app.register(statsRoutes, { db });
 
   return app;

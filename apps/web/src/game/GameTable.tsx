@@ -45,7 +45,7 @@ export function GameTable({ snapshot, store, onLeave }: GameTableProps) {
     <div className={cx('gp-page', 'safe-area', animations && 'pg-anim')} data-testid="game-table">
       <ConnectionBanner status={snapshot.connection} hasState={table !== null} onReconnect={reconnect} />
       {snapshot.closed !== null ? (
-        <TableClosedNotice onBack={onLeave} />
+        <TableClosedNotice reason={snapshot.closed} onBack={onLeave} />
       ) : table === null ? (
         <div className="gp-center">
           {snapshot.notFound ? (

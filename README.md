@@ -59,7 +59,7 @@ npm run admin:reset-password -w @poker/server -- <benutzername>
 # … oder ein bestimmtes Passwort über stdin setzen (nicht als Argument → landet nicht in der Shell-History)
 printf '%s\n' 'neues-passwort' | npm run admin:reset-password -w @poker/server -- <benutzername>
 
-# Admin-Flag setzen bzw. entziehen
+# Admin-Flag setzen bzw. entziehen (nur per CLI, D-029; steht wie Reset im Admin-Protokoll)
 npm run admin:make-admin -w @poker/server -- <benutzername>
 npm run admin:make-admin -w @poker/server -- <benutzername> --revoke
 

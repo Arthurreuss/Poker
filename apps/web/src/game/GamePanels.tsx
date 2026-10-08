@@ -2,7 +2,7 @@
 // (Warten auf Start, Aktionsleiste, Showdown) und Rundenende-Dialog.
 import { useEffect, useId, useRef } from 'react';
 import { Link } from 'react-router';
-import type { StandingView, TableView as ServerTableView } from '@poker/engine/protocol';
+import type { StandingView, TableClosedMessage, TableView as ServerTableView } from '@poker/engine/protocol';
 import { ActionBar } from '../table/actions/ActionBar';
 import { formatChips } from '../table/format';
 import { heroHandContext } from './adapter';
@@ -375,8 +375,14 @@ export function RoundResultDialog({
   );
 }
 
-/** Tisch vom Server geschlossen (verwaiste Runde, D-022): Hinweis, nach kurzer Zeit zurück zur Lobby. */
-export function TableClosedNotice({ onBack }: { onBack: () => void }) {
+/** Tisch vom Server geschlossen (verwaiste Runde, D-022, oder Admin, WP-028): Hinweis, nach kurzer Zeit zur Lobby. */
+export function TableClosedNotice({
+  reason = 'abandoned',
+  onBack,
+}: {
+  reason?: TableClosedMessage['reason'];
+  onBack: () => void;
+}) {
   useEffect(() => {
     const id = setTimeout(onBack, 5000);
     return () => {
@@ -385,7 +391,11 @@ export function TableClosedNotice({ onBack }: { onBack: () => void }) {
   }, [onBack]);
   return (
     <div className="gp-center" role="alert" data-testid="table-closed">
-      <p>Runde abgebrochen – niemand war mehr da.</p>
+      <p>
+        {reason === 'admin'
+          ? 'Ein Admin hat den Tisch geschlossen – die Runde zählt nicht.'
+          : 'Runde abgebrochen – niemand war mehr da.'}
+      </p>
       <button type="button" className="gp-btn gp-btn--primary" onClick={onBack}>
         Zur Lobby
       </button>
