@@ -20,7 +20,7 @@
 | M3 | [WP-013](work-packages/WP-013.md) | Persistenz: Runden und Hand-Historie | todo | WP-011 |
 | M4 | [WP-014](work-packages/WP-014.md) | Web-Grundgerüst: PWA, Routing, Login | in-progress | WP-002, WP-010 |
 | M4 | [WP-015](work-packages/WP-015.md) | Lobby: Tische erstellen und beitreten | todo | WP-011, WP-014 |
-| M4 | [WP-016](work-packages/WP-016.md) | Tischansicht Hochformat | todo | WP-014 |
+| M4 | [WP-016](work-packages/WP-016.md) | Tischansicht Hochformat | in-progress | WP-002 |
 | M4 | [WP-017](work-packages/WP-017.md) | Tischansicht Querformat und Umschalter | todo | WP-016 |
 | M4 | [WP-018](work-packages/WP-018.md) | Spielablauf im UI: Aktionen, Timer, Showdown | todo | WP-011, WP-016 |
 | M4 | [WP-019](work-packages/WP-019.md) | Rangliste und Statistiken | todo | WP-013, WP-014 |
@@ -46,7 +46,7 @@
 - Strang-Zusammenführung bei WP-011 (Engine + Accounts) und WP-018 (Server + UI).
 
 ## Nächster Schritt
-Parallel in Arbeit (max. 5): WP-008 (Freezeout-Runde), WP-014 (Web-Grundgerüst), WP-021 (Backups/Betrieb + Prod-Worktree D-017). Danach WP-011, WP-016, WP-024, WP-022.
+Parallel in Arbeit (max. 5): WP-008 (Freezeout-Runde), WP-014 (Web-Grundgerüst), WP-016 (Tischansicht Hochformat), WP-021 (Backups/Betrieb + Prod-Worktree D-017). Danach WP-011, WP-017, WP-024, WP-022.
 
 ## Log
 Neueste Einträge oben. Pro Session 1–3 Zeilen.

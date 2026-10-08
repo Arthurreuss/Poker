@@ -261,6 +261,23 @@ Host 127.0.0.1:4321 (Debug) ─────────────────�
 - **Proxy-Header:** nginx setzt `X-Forwarded-For` auf `CF-Connecting-IP` (hinter dem Tunnel) bzw. die Peer-Adresse und reicht `X-Forwarded-Proto` von cloudflared durch; der Server vertraut ihnen nur in prod (`trustProxy`).
 - **cloudflared:** eigener Tunnel für Poker, unabhängig vom Jarvis-Tunnel (D-014); `TUNNEL_TOKEN` aus `.env.prod`. Public Hostname `poker.arthur-reuss.de` → `http://web:8080`.
 
+## Design-Tokens (Web)
+Gemeinsamer Vertrag für alle Frontend-WPs (D-008: Anmutung PokerStars, eigene Werte). Definiert in `apps/web/src/styles/tokens.css` (WP-014); Komponenten nutzen nur diese CSS-Variablen.
+
+| Variable | Zweck |
+|---|---|
+| `--color-bg`, `--color-surface`, `--color-surface-2` | Hintergrund dunkel, Flächen (Plaketten, Menüs) |
+| `--color-felt`, `--color-felt-edge` | Tischfilz grün, Tischrand |
+| `--color-text`, `--color-text-muted` | Text hell, Nebentext |
+| `--color-accent` | Akzent gold (aktiver Spieler, Dealer-Button, Hervorhebungen) |
+| `--color-fold`, `--color-call`, `--color-raise` | Aktionsbuttons (rot, grün, gelb/orange) |
+| `--color-danger`, `--color-success` | Fehler, Bestätigung |
+| `--color-card-face`, `--color-card-red`, `--color-card-black` | Kartenfarben |
+| `--radius-sm`, `--radius-md`, `--radius-lg`, `--radius-pill` | Rundungen |
+| `--space-1` … `--space-6` | Abstände (4, 8, 12, 16, 24, 32 px) |
+| `--font-sans`, `--font-size-sm`, `--font-size-md`, `--font-size-lg` | Typografie |
+| `--shadow-md` | Schatten für Plaketten/Karten |
+
 ## Datenfluss
 prod: Browser → `https://poker.arthur-reuss.de` → Cloudflare-Tunnel → `web:8080` (nginx) → statische Dateien bzw. `/api/*`, `/ws` an `server:4321` → `db:5432` (siehe [Prod-Umgebung](#prod-umgebung)). Lokal ohne Tunnel: `http://localhost:4320`.
 
