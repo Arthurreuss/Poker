@@ -16,7 +16,7 @@
 | M3 | [WP-009](work-packages/WP-009.md) | Datenbankschema und Migrationen | done | WP-002 |
 | M3 | [WP-010](work-packages/WP-010.md) | Accounts: Registrierung, Login, Sessions | done | WP-009 |
 | M3 | [WP-011](work-packages/WP-011.md) | Game-Server: WebSocket-Protokoll und Tische | done | WP-008, WP-010 |
-| M3 | [WP-012](work-packages/WP-012.md) | Zeitlimit, Zeitbank und Reconnect | in-progress | WP-011 |
+| M3 | [WP-012](work-packages/WP-012.md) | Zeitlimit, Zeitbank und Reconnect | done | WP-011 |
 | M3 | [WP-013](work-packages/WP-013.md) | Persistenz: Runden und Hand-Historie | in-progress | WP-011 |
 | M4 | [WP-014](work-packages/WP-014.md) | Web-Grundgerüst: PWA, Routing, Login | review | WP-002, WP-010 |
 | M4 | [WP-015](work-packages/WP-015.md) | Lobby: Tische erstellen und beitreten | todo | WP-011, WP-014 |
@@ -25,7 +25,7 @@
 | M4 | [WP-018](work-packages/WP-018.md) | Spielablauf im UI: Aktionen, Timer, Showdown | in-progress | WP-011, WP-016 |
 | M4 | [WP-019](work-packages/WP-019.md) | Rangliste und Statistiken | todo | WP-013, WP-014 |
 | M5 | [WP-020](work-packages/WP-020.md) | E2E-Smoke-Test | todo | WP-015, WP-018 |
-| M5 | [WP-021](work-packages/WP-021.md) | Backups und Betrieb | review | WP-003, WP-009 |
+| M5 | [WP-021](work-packages/WP-021.md) | Backups und Betrieb | done | WP-003, WP-009 |
 | M5 | [WP-022](work-packages/WP-022.md) | Rechtliches und Security-Check | todo | WP-014 |
 | M5 | [WP-023](work-packages/WP-023.md) | Go-Live: main auf poker.arthur-reuss.de | todo | WP-003, WP-012, WP-020, WP-021, WP-022, WP-024 |
 | M4 | [WP-024](work-packages/WP-024.md) | Feedback-Button | todo | WP-010, WP-014 |
