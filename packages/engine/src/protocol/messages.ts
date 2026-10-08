@@ -156,6 +156,18 @@ export interface TableReactMessage extends ClientBase {
   reaction: ReactionId;
 }
 
+/**
+ * Admin deckt die verdeckten Karten eines Mitspielers auf (WP-033, D-027). Nur Admins (Flag aus der Session), nur am
+ * Tisch, an dem sie sitzen, nur während einer laufenden Hand. Antwort `admin.cards` geht nur an diese Verbindung;
+ * die Mitspieler erfahren nichts. Jedes erste Aufdecken eines Platzes pro Hand wird im Admin-Protokoll vermerkt.
+ */
+export interface AdminRevealCardsMessage extends ClientBase {
+  type: 'admin.revealCards';
+  tableId: number;
+  /** Platz des Mitspielers, dessen Karten aufgedeckt werden sollen. */
+  seat: number;
+}
+
 export type ClientMessage =
   | HelloMessage
   | PingMessage
@@ -169,7 +181,8 @@ export type ClientMessage =
   | TableStartMessage
   | TableRematchMessage
   | TableActionMessage
-  | TableReactMessage;
+  | TableReactMessage
+  | AdminRevealCardsMessage;
 
 export type ClientMessageType = ClientMessage['type'];
 
@@ -353,12 +366,19 @@ export type ErrorCode =
   | 'AMOUNT_TOO_SMALL'
   | 'AMOUNT_TOO_LARGE'
   | 'RATE_LIMITED'
+  /** Aktion nur für Admins (WP-033). */
+  | 'FORBIDDEN'
   | 'INTERNAL';
 
 export interface WelcomeMessage {
   type: 'welcome';
   protocolVersion: number;
   user: PublicUser;
+  /**
+   * Admin-Flag der Session (WP-033): schaltet im Client das Aufdecken verdeckter Karten frei. Fehlt = `false`
+   * (additiv, ältere Server). Der Server prüft das Recht bei jeder Anfrage selbst.
+   */
+  isAdmin?: boolean;
 }
 /** Fehler geht nur an den Absender; der Tisch läuft weiter. */
 export interface ErrorMessage {
@@ -432,6 +452,20 @@ export interface TableReactionMessage {
   reaction: ReactionId;
 }
 
+/**
+ * Antwort auf `admin.revealCards` (WP-033, D-027): die verdeckten Karten eines Mitspielers der laufenden Hand. Geht
+ * **nur** an die anfragende Verbindung des Admins, nie an andere und nie in `table.state`. Gilt nur für diese Hand
+ * (`handNumber`); der Client vergisst die Karten, sobald die Hand endet.
+ */
+export interface AdminCardsMessage {
+  type: 'admin.cards';
+  requestId: string | null;
+  tableId: number;
+  handNumber: number;
+  seat: number;
+  cards: Card[];
+}
+
 export type ServerMessage =
   | WelcomeMessage
   | ErrorMessage
@@ -444,6 +478,7 @@ export type ServerMessage =
   | TableLeftMessage
   | RoundFinishedMessage
   | TableClosedMessage
-  | TableReactionMessage;
+  | TableReactionMessage
+  | AdminCardsMessage;
 
 export type ServerMessageType = ServerMessage['type'];

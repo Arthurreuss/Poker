@@ -13,6 +13,14 @@ import type {
 } from '@poker/engine/protocol';
 import { preActionValid, resolvePreAction, type PreAction, type PreActionKind } from '../table/actions/logic';
 import { heroHandContext } from './adapter';
+import {
+  clearPending,
+  EMPTY_REVEAL,
+  receiveRevealedCards,
+  syncReveal,
+  toggleReveal,
+  type AdminRevealState,
+} from './adminReveal';
 import type { ConnectionStatus, GameConnection } from './connection';
 
 export interface GameError {
@@ -40,6 +48,10 @@ export interface TableGameSnapshot {
   readonly pendingAction: boolean;
   /** Gewählte Vorab-Aktion (gilt für Hand und Straße der Wahl, verfällt bei Änderungen). */
   readonly preAction: PreAction | null;
+  /** Admin-Flag der Session laut `welcome` (WP-033). */
+  readonly isAdmin: boolean;
+  /** Vom Admin aufgedeckte Karten der laufenden Hand (WP-033, D-027); nur im Client dieses Admins. */
+  readonly reveal: AdminRevealState;
   /** Gerade eingeblendete Emoji-Reaktionen, höchstens eine je Sitz (WP-032). */
   readonly reactions: readonly ReactionBubble[];
 }
@@ -55,6 +67,9 @@ export interface ReactionBubble {
 
 /** So lange bleibt eine Reaktion über dem Platz stehen. */
 export const REACTION_DISPLAY_MS = 3000;
+
+/** `requestId`-Präfix von `admin.revealCards`, damit Fehler darauf nicht die Aktionsleiste freigeben. */
+const REVEAL_REQUEST = 'reveal:';
 
 type Listener = () => void;
 
@@ -102,6 +117,8 @@ export class TableGameStore {
       pendingAction: false,
       preAction: null,
       reactions: [],
+      isAdmin: connection.isAdmin,
+      reveal: EMPTY_REVEAL,
     };
   }
 
@@ -122,7 +139,12 @@ export class TableGameStore {
       this.connection.onStatus((status) => {
         // Nach einem Abbruch kann eine unterwegs verlorene Aktion nicht mehr bestätigt werden.
         if (status.kind !== 'open') this.pendingKey = null;
-        this.update({ connection: status, user: this.connection.user, pendingAction: this.pendingKey !== null });
+        this.update({
+          connection: status,
+          user: this.connection.user,
+          isAdmin: this.connection.isAdmin,
+          pendingAction: this.pendingKey !== null,
+        });
       }),
     ];
     this.connection.watchTable(this.tableId);
@@ -200,6 +222,25 @@ export class TableGameStore {
     this.update({ preAction: { ...choice, handNumber: ctx.handNumber, street: ctx.street } });
   }
 
+  /**
+   * Admin tippt auf verdeckte Karten eines Mitspielers (WP-033): umdrehen bzw. zurückdrehen. Nur das erste Umdrehen
+   * eines Platzes pro Hand fragt beim Server an (und wird dort protokolliert); Zurückdrehen bleibt im Client.
+   */
+  toggleReveal(seat: number): void {
+    if (!this.snapshot.isAdmin) return;
+    const { state, request } = toggleReveal(this.snapshot.reveal, seat);
+    if (request) {
+      const sent = this.send({
+        type: 'admin.revealCards',
+        tableId: this.tableId,
+        seat,
+        requestId: `${REVEAL_REQUEST}${String(seat)}`,
+      });
+      if (!sent) return;
+    }
+    this.update({ reveal: state });
+  }
+
   reconnectNow(): void {
     this.connection.reconnectNow();
   }
@@ -242,6 +283,7 @@ export class TableGameStore {
           notFound: false,
           pendingAction: this.pendingKey !== null,
           standings: message.table.status === 'finished' ? standings : null,
+          reveal: syncReveal(this.snapshot.reveal, message.table),
         });
         this.applyPreAction();
         return;
@@ -255,7 +297,13 @@ export class TableGameStore {
         if (message.code === 'TABLE_NOT_FOUND') {
           // Auch nach einem Server-Neustart (Tisch geschlossen): alten Stand nicht weiter zeigen.
           this.pendingKey = null;
-          this.update({ notFound: true, table: null, pendingAction: false, preAction: null });
+          this.update({ notFound: true, table: null, pendingAction: false, preAction: null, reveal: EMPTY_REVEAL });
+          return;
+        }
+        if (message.requestId?.startsWith(REVEAL_REQUEST) === true) {
+          // Aufdecken abgelehnt: nur die offene Anfrage verwerfen, eine laufende Aktion bleibt unberührt.
+          this.setError(message.code, message.message);
+          this.update({ reveal: clearPending(this.snapshot.reveal) });
           return;
         }
         // Abgelehnte Aktion: wieder bedienbar machen.
@@ -265,13 +313,24 @@ export class TableGameStore {
         return;
       }
       case 'table.left':
-        if (message.tableId === this.tableId) this.update({ table: null });
+        if (message.tableId === this.tableId) this.update({ table: null, reveal: EMPTY_REVEAL });
+        return;
+      case 'admin.cards':
+        if (message.tableId !== this.tableId) return;
+        this.update({ reveal: receiveRevealedCards(this.snapshot.reveal, message) });
         return;
       case 'table.closed':
         if (message.tableId !== this.tableId) return;
         this.pendingKey = null;
         this.connection.unwatchTable(this.tableId);
-        this.update({ closed: message.reason, table: null, pendingAction: false, preAction: null, standings: null });
+        this.update({
+          closed: message.reason,
+          table: null,
+          pendingAction: false,
+          preAction: null,
+          standings: null,
+          reveal: EMPTY_REVEAL,
+        });
         return;
       case 'table.reaction':
         if (message.tableId === this.tableId) this.showReaction(message);

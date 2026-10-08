@@ -30,6 +30,7 @@ describe('parseClientMessage', () => {
     [{ type: 'table.action', tableId: 3, handNumber: 1, seq: 2, action: { type: 'raise', amount: 60 } }],
     [{ type: 'table.react', tableId: 3, reaction: 'thumbs-up' }],
     [{ type: 'table.react', tableId: 3, reaction: 'fire', requestId: 'e1' }],
+    [{ type: 'admin.revealCards', tableId: 3, seat: 4, requestId: 'r2' }],
   ])('akzeptiert %j', (msg) => {
     const result = parse(msg);
     expect(result).toEqual({ ok: true, message: msg });
@@ -64,6 +65,9 @@ describe('parseClientMessage', () => {
     [{ type: 'table.sit', tableId: 1, seat: 1.5 }],
     [{ type: 'table.start', tableId: '1' }],
     [{ type: 'table.rematch' }],
+    [{ type: 'admin.revealCards', tableId: 1 }],
+    [{ type: 'admin.revealCards', tableId: 1, seat: 9 }],
+    [{ type: 'admin.revealCards', seat: 1 }],
     [{ type: 'table.rematch', tableId: 0 }],
     [{ type: 'table.action', tableId: 1, handNumber: 1, seq: 0 }],
     [{ type: 'table.action', tableId: 1, handNumber: 1, seq: 0, action: { type: 'raise' } }],

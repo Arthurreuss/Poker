@@ -106,6 +106,7 @@ export function registerWebSocket(app: FastifyInstance, options: WebSocketOption
           ws.close(code, reason);
         },
       },
+      { isAdmin: user.isAdmin },
     );
 
     // Nachrichten einer Verbindung strikt nacheinander verarbeiten (manche warten auf die DB).

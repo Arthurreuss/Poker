@@ -13,6 +13,7 @@ import { useReactionsPreference } from '../settings/reactions';
 import { cx } from '../styles/cx';
 import { useTableSounds } from '../sound/tableSounds';
 import { TableFx } from '../table/fx/TableFx';
+import type { CardReveal } from '../table/RevealableCards';
 import { TableScreen } from '../table/TableScreen';
 import { toReactionViews, toTableView } from './adapter';
 import { ConnectionBanner, ErrorToast, GameActionArea, RoundResultDialog, TableClosedNotice } from './GamePanels';
@@ -69,6 +70,22 @@ export function GameTable({ snapshot, store, onLeave }: GameTableProps) {
   const react = useCallback((reaction: ReactionId) => store.react(reaction), [store]);
   const feedback = useFeedbackDialog({ tableId: store.tableId });
   const canReact = reactionsOn && table !== null && table.you.seat !== null;
+  // Admin am Tisch (WP-033, D-027): verdeckte Karten der Mitspieler per Tipp umdrehen.
+  const adminSeated = snapshot.isAdmin && table !== null && table.you.seat !== null;
+  const { reveal: revealState } = snapshot;
+  const cardReveal = useMemo<CardReveal | undefined>(
+    () =>
+      adminSeated
+        ? {
+            cards: revealState.cards,
+            faceUp: revealState.faceUp,
+            onToggle: (seat) => {
+              store.toggleReveal(seat);
+            },
+          }
+        : undefined,
+    [adminSeated, revealState, store],
+  );
 
   return (
     <div
@@ -98,6 +115,7 @@ export function GameTable({ snapshot, store, onLeave }: GameTableProps) {
             overlay={<TableFx view={view} enabled={animations} />}
             reactionPicker={canReact ? <ReactionPicker onReact={react} /> : undefined}
             actionBar={<GameActionArea snapshot={snapshot} store={store} showResult={resultShown} />}
+            reveal={cardReveal}
             menuItems={
               <div className="gp-menu-items">
                 <p className="gp-menu-info">{table.settings.name}</p>

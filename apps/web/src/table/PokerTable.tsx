@@ -6,6 +6,7 @@ import { Card, winHighlight } from './Card';
 import { formatChips } from './format';
 import { placeSeats, seatMarker, type PlacedSeat, type TableLayout } from './layout';
 import { BetChips, Board, DealerButton, PotDisplay } from './parts';
+import { RevealableCards, type CardReveal } from './RevealableCards';
 import { SeatPlate } from './SeatPlate';
 import type { Card as CardValue, TableView } from './types';
 
@@ -23,6 +24,8 @@ export interface PokerTableProps {
   readonly overlay?: ReactNode;
   /** Reaktions-Knopf oben rechts (WP-032); ohne Inhalt bleibt die Ecke frei. */
   readonly reactionPicker?: ReactNode;
+  /** Nur für Admins (WP-033, D-027): verdeckte Karten der Mitspieler per Tipp umdrehen. */
+  readonly reveal?: CardReveal | undefined;
 }
 
 function at(x: number, y: number): CSSProperties {
@@ -41,13 +44,18 @@ function SeatCards({
   placed,
   fourColor,
   winning,
+  reveal,
 }: {
   placed: PlacedSeat;
   fourColor: boolean;
   winning: readonly CardValue[] | undefined;
+  reveal?: CardReveal;
 }) {
   const { holeCards } = placed.player;
   if (holeCards.kind === 'none') return null;
+  if (holeCards.kind === 'hidden' && reveal !== undefined && !placed.isHero) {
+    return <RevealableCards seat={placed.seat} name={placed.player.name} reveal={reveal} fourColor={fourColor} />;
+  }
   const big = placed.isHero && holeCards.kind !== 'hidden';
   const size = big ? 'hero' : 'seat';
   const cards = holeCards.kind === 'hidden' ? [undefined, undefined] : [...holeCards.cards];
@@ -63,7 +71,17 @@ function SeatCards({
   );
 }
 
-function TableSeat({ placed, view, fourColor }: { placed: PlacedSeat; view: TableView; fourColor: boolean }) {
+function TableSeat({
+  placed,
+  view,
+  fourColor,
+  reveal,
+}: {
+  placed: PlacedSeat;
+  view: TableView;
+  fourColor: boolean;
+  reveal: CardReveal | undefined;
+}) {
   const { slot, player, seat, isHero } = placed;
   const toAct = view.toActSeat === seat;
   const marker = seatMarker(view, seat);
@@ -82,7 +100,12 @@ function TableSeat({ placed, view, fourColor }: { placed: PlacedSeat; view: Tabl
       data-connected={player.connected ? 'true' : 'false'}
       data-winner={winner ? 'true' : undefined}
     >
-      <SeatCards placed={placed} fourColor={fourColor} winning={view.winningCards} />
+      <SeatCards
+        placed={placed}
+        fourColor={fourColor}
+        winning={view.winningCards}
+        {...(reveal === undefined ? {} : { reveal })}
+      />
       <SeatPlate
         name={player.name}
         stack={player.stack}
@@ -127,6 +150,7 @@ export function PokerTable({
   menu,
   overlay,
   reactionPicker,
+  reveal,
 }: PokerTableProps) {
   const placed = placeSeats(view, layout);
   return (
@@ -142,7 +166,7 @@ export function PokerTable({
             <Board cards={view.board} fourColor={fourColor} winning={view.winningCards} />
           </div>
           {placed.map((p) => (
-            <TableSeat key={p.seat} placed={p} view={view} fourColor={fourColor} />
+            <TableSeat key={p.seat} placed={p} view={view} fourColor={fourColor} reveal={reveal} />
           ))}
           {placed
             .filter((p) => p.player.bet > 0)

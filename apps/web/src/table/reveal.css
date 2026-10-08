@@ -1,0 +1,74 @@
+/* Admin deckt verdeckte Karten auf (WP-033, D-027) – nur im Client eines Admins sichtbar. Eigene Datei, damit
+   Änderungen an table.css (Karten, Plätze) unabhängig bleiben. Die Drehung läuft nur mit Animationen (.pg-anim). */
+.pt-seat-cards--revealable {
+  /* Button-Grundstil entfernen; Position und Lage kommen von .pt-seat-cards. */
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.pt-seat-cards--revealable:focus-visible {
+  outline: calc(0.5 * var(--u)) solid var(--pt-text, #fff);
+  outline-offset: calc(0.5 * var(--u));
+  border-radius: calc(1 * var(--u));
+}
+
+/* Eine Karte mit Rück- und Vorderseite übereinander. */
+.pt-flip {
+  position: relative;
+  display: block;
+  flex: none;
+  width: var(--pt-card-seat-w);
+  aspect-ratio: 5 / 7;
+}
+.pt-flip + .pt-flip {
+  margin-left: calc(var(--pt-card-seat-w) * -0.42);
+}
+.pt-seat-cards--revealable > .pt-flip:first-child {
+  transform: rotate(-6deg);
+}
+.pt-seat-cards--revealable > .pt-flip:last-child {
+  transform: rotate(6deg);
+}
+.pt-seat-cards--revealed > .pt-flip + .pt-flip {
+  margin-left: calc(var(--pt-card-seat-w) * -0.25);
+}
+.pt-seat-cards--revealed > .pt-flip:first-child,
+.pt-seat-cards--revealed > .pt-flip:last-child {
+  transform: none;
+}
+.pt-flip > .pt-flip-side {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.pt-flip > .pt-flip-back {
+  transform: perspective(calc(60 * var(--u))) rotateY(0deg);
+}
+.pt-flip > .pt-flip-face {
+  transform: perspective(calc(60 * var(--u))) rotateY(180deg);
+}
+.pt-flip--up > .pt-flip-back {
+  transform: perspective(calc(60 * var(--u))) rotateY(-180deg);
+}
+.pt-flip--up > .pt-flip-face {
+  transform: perspective(calc(60 * var(--u))) rotateY(0deg);
+}
+
+/* Drehung nur mit Animationen; die Vorderseite fliegt nicht wie eine neu gegebene Karte ein. */
+.pg-anim .pt-flip > .pt-flip-side {
+  transition: transform 320ms ease-in-out;
+}
+.pg-anim .pt-flip-face > .pt-card {
+  animation: none;
+}
+.pg-anim .pt-seat-cards--revealable > .pt-flip {
+  transition:
+    transform 320ms ease-in-out,
+    margin-left 320ms ease-in-out;
+}
