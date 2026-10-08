@@ -20,6 +20,7 @@
     "prod:logs": "sh scripts/prod.sh logs",
     "prod:tunnel:up": "sh scripts/prod.sh tunnel-up",
     "prod:smoke": "sh scripts/prod.sh smoke",
+    "prod:e2e": "sh scripts/prod.sh e2e",
     "prod:setup": "bash scripts/prod-worktree-setup.sh",
     "prod:backup": "bash scripts/backup-now.sh",
     "prod:restore": "bash scripts/restore.sh",

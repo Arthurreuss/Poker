@@ -1,60 +1,20 @@
 // WP-018: komplette Runde mit drei echten Browsern gegen den laufenden Game-Server.
 // Drei registrierte Test-User (`wp018_…`), Tisch über `/dev/new-table`, alle setzen sich, der Ersteller
 // startet, zwei Hände bis zum Showdown, dann All-in bis zum Rundenende-Dialog bei allen; danach „Nochmal“.
-import { expect, test, type Browser, type Page } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
+import { apiPlayer, deleteAccount, playUntilRoundEnds, uniqueName } from './helpers';
 
-const PASSWORD = 'wp018-passwort';
+const pages: Page[] = [];
 
-async function player(browser: Browser, name: string): Promise<Page> {
-  const context = await browser.newContext();
-  const page = await context.newPage();
-  const res = await page.request.post('/api/register', { data: { username: name, password: PASSWORD } });
-  expect(res.status(), await res.text()).toBe(201);
-  return page;
-}
-
-/**
- * Am Zug: `passive` = Check/Call; sonst All-in (direkt, über die Einsatzwahl oder per Call ins All-in).
- * `false`, wenn die Seite nicht am Zug ist.
- */
-async function play(page: Page, passive: boolean): Promise<boolean> {
-  const bar = page.locator('[data-testid="action-bar"][data-mode="turn"]');
-  if (!(await bar.isVisible())) return false;
-  const quick = { timeout: 2_000 };
-  try {
-    if (passive) {
-      await bar
-        .getByRole('button', { name: /^(Check|Call|All-in)/ })
-        .first()
-        .click(quick);
-      return true;
-    }
-    const allIn = bar.getByRole('button', { name: /^All-in/ });
-    if (await allIn.isVisible()) {
-      await allIn.click(quick);
-      return true;
-    }
-    const wager = bar.getByRole('button', { name: /^(Raise|Bet)/ });
-    if (await wager.isEnabled()) {
-      await wager.click(quick);
-      await bar.getByRole('dialog').getByRole('button', { name: 'All-in', exact: true }).click(quick);
-      await bar
-        .locator('.ab-row')
-        .getByRole('button', { name: /^All-in/ })
-        .click(quick);
-      return true;
-    }
-    const call = bar.getByRole('button', { name: /^(Call|Check)/ });
-    await call.click(quick);
-    return true;
-  } catch {
-    return false; // Zustand hat sich währenddessen geändert – nächster Durchlauf
-  }
-}
+// Test-User wieder löschen (DELETE /api/me), auch wenn der Test scheitert.
+test.afterEach(async () => {
+  const errors = (await Promise.all(pages.splice(0).map(deleteAccount))).filter((e) => e !== null);
+  expect(errors, 'Test-User aufräumen').toEqual([]);
+});
 
 test('komplette Runde mit drei Browsern', async ({ browser }) => {
   const suffix = Date.now().toString(36).slice(-6);
-  const pages = await Promise.all(['a', 'b', 'c'].map((p) => player(browser, `wp018_${p}${suffix}`)));
+  for (const p of ['a', 'b', 'c']) await apiPlayer(browser, uniqueName('wp018_', p), pages);
   const [creator, second, third] = pages;
   if (creator === undefined || second === undefined || third === undefined) throw new Error('3 Browser erwartet');
   const others = [second, third];
@@ -98,22 +58,7 @@ test('komplette Runde mit drei Browsern', async ({ browser }) => {
   await expect(callAny).toHaveAttribute('aria-pressed', 'true');
 
   // Zwei Hände bis zum Showdown durchchecken/-callen, danach All-in, bis die Runde vorbei ist
-  let results = 0;
-  let resultVisible = false;
-  const deadline = Date.now() + 150_000;
-  for (;;) {
-    const done = await Promise.all(pages.map((p) => p.getByTestId('round-result').isVisible()));
-    if (done.every(Boolean)) break;
-    if (Date.now() > deadline) throw new Error('Runde nicht beendet');
-    const gone = await Promise.all(pages.map((p) => p.getByText('Diesen Tisch gibt es nicht (mehr).').isVisible()));
-    if (gone.some(Boolean)) throw new Error('Tisch verschwunden – Game-Server neu gestartet?');
-    let acted = false;
-    for (const page of pages) acted = (await play(page, results < 2)) || acted;
-    const visible = (await Promise.all(pages.map((p) => p.getByTestId('hand-result').isVisible()))).some(Boolean);
-    if (visible && !resultVisible) results += 1;
-    resultVisible = visible;
-    if (!acted) await creator.waitForTimeout(200);
-  }
+  const results = await playUntilRoundEnds(pages, 2, 150_000);
 
   // Showdowns wurden angezeigt (mindestens die zwei passiven Hände)
   expect(results).toBeGreaterThanOrEqual(2);
