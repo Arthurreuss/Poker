@@ -8,7 +8,7 @@ import { runMigrations } from '../db/migrate';
 import { createTestSchema, testDatabaseUrl, type TestSchema } from '../db/test-db';
 import type { HandRow, RoundPlayerRow, RoundRow, TableRow } from '../db/types';
 import { ManualClock } from '../game/clock';
-import { GameServer, type GameClient } from '../game/game-server';
+import { DEFAULT_ORPHAN_TIMEOUT_MS, GameServer, type GameClient } from '../game/game-server';
 import type { GameHooks, RoundCompleteEvent } from '../game/hooks';
 import { closeOrphanedTables, createPgTableRepository } from '../game/pg-repository';
 import { combineHooks, createHandHistoryHooks } from './hooks';
@@ -138,7 +138,12 @@ describe.skipIf(testDatabaseUrl === undefined)('Hand-Historie mit Postgres', () 
       }
     }
 
-    return { game, clock, errors, captured, startTable, playToEnd, send };
+    /** Alle Verbindungen trennen (Spieler weg, WP-015/D-022). */
+    function disconnectAll(): void {
+      for (const c of clients.values()) game.disconnect(c);
+    }
+
+    return { game, clock, errors, captured, startTable, playToEnd, send, disconnectAll };
   }
 
   function botAction(rng: Rng, actions: NonNullable<ReturnType<typeof legalActions>>['actions']): Action {
@@ -288,13 +293,13 @@ describe.skipIf(testDatabaseUrl === undefined)('Hand-Historie mit Postgres', () 
   it('automatische Aktionen (Zeitablauf, D-013) werden wie normale gespeichert und als automatisch markiert', async () => {
     const ids = await users('ava', 'abe', 'amy');
     const t = setup({ seed: 9 });
-    const tableId = await t.startTable(ids, { turnTimeSeconds: 1, timeBankSeconds: 0 });
+    const tableId = await t.startTable(ids, { turnTimeSeconds: 10, timeBankSeconds: 0 });
     const table = t.game.getTable(tableId);
     if (table === undefined) throw new Error('Tisch fehlt');
     // Erste Aktion selbst (Call), danach läuft für alle nur noch die Zeit ab → Check, sonst Fold.
     expect(table.actFor(Number(table.round?.hand?.toActId), { type: 'call' }).ok).toBe(true);
     for (let i = 0; i < 50 && table.round?.handNumber === 1 && table.round.hand?.phase === 'betting'; i++) {
-      t.clock.advance(1000);
+      t.clock.advance(10_000);
     }
     expect(table.round?.hand?.phase).toBe('complete');
     await t.game.idle();
@@ -375,5 +380,68 @@ describe.skipIf(testDatabaseUrl === undefined)('Hand-Historie mit Postgres', () 
     expect(open.players.every((p) => p.holeCards.length === 2)).toBe(true);
     expect(open.actions).toEqual([]);
     expect(open.board).toEqual([]);
+  });
+
+  it('verwaiste Runde (D-022): 10 Minuten kein Spieler verbunden → Runde aborted ohne Punkte, Tisch closed', async () => {
+    const ids = await users('wp015_ola', 'wp015_ole');
+    const t = setup({ seed: 4 });
+    const tableId = await t.startTable(ids, { startingStack: 100_000 });
+    const roundId = (await roundOf(tableId)).id;
+    t.disconnectAll();
+    t.clock.advance(DEFAULT_ORPHAN_TIMEOUT_MS);
+    expect(t.game.getTable(tableId)).toBeUndefined();
+    await t.game.idle();
+    expect(t.errors).toEqual([]);
+
+    const round = await roundOf(tableId);
+    expect(round.status).toBe('aborted');
+    expect(round.finished_at).toBeInstanceOf(Date);
+    const { rows: tables } = await s.pool.query<TableRow>('SELECT status, closed_at FROM tables WHERE id = $1', [
+      tableId,
+    ]);
+    expect(tables[0]?.status).toBe('closed');
+    expect(tables[0]?.closed_at).toBeInstanceOf(Date);
+    const { rows: players } = await s.pool.query<RoundPlayerRow>('SELECT * FROM round_players WHERE round_id = $1', [
+      roundId,
+    ]);
+    expect(players.every((p) => p.placement === null && p.points === null)).toBe(true);
+    expect(await loadUserPoints(s.pool, ids)).toEqual(ids.map((userId) => ({ userId, points: 0, rounds: 0 })));
+    // Die Runde lief bis zum Abbruch allein weiter (Auto-Check/Fold); gespeicherte Hände bleiben.
+    const hands = await loadRoundHands(s.pool, roundId);
+    expect(hands.length).toBeGreaterThan(1);
+    expect(hands.slice(0, -1).every((h) => h.result !== null && h.actions.some((a) => a.isAutomatic))).toBe(true);
+  });
+
+  it('„Nochmal“ (D-020): zweite Runde am selben Tisch, Tisch dazwischen geschlossen und wieder geöffnet', async () => {
+    const ids = await users('wp015_nia', 'wp015_nils', 'wp015_noa');
+    const t = setup({ seed: 6 });
+    const tableId = await t.startTable(ids);
+    t.playToEnd(tableId, createSeededRng(5));
+    await t.game.idle();
+    const tableStatus = async () =>
+      (await s.pool.query<TableRow>('SELECT status, closed_at FROM tables WHERE id = $1', [tableId])).rows[0];
+    expect(await tableStatus()).toMatchObject({ status: 'closed', closed_at: expect.any(Date) as Date });
+
+    await t.send(ids[0] as number, { type: 'table.rematch', tableId });
+    await t.game.idle();
+    expect(await tableStatus()).toMatchObject({ status: 'running', closed_at: null });
+    t.playToEnd(tableId, createSeededRng(6));
+    await t.game.idle();
+    expect(t.errors).toEqual([]);
+
+    const { rows: rounds } = await s.pool.query<RoundRow>(
+      'SELECT * FROM rounds WHERE table_id = $1 ORDER BY started_at, id',
+      [tableId],
+    );
+    expect(rounds.map((r) => r.status)).toEqual(['finished', 'finished']);
+    for (const r of rounds) {
+      const { rows } = await s.pool.query<RoundPlayerRow>('SELECT * FROM round_players WHERE round_id = $1', [r.id]);
+      expect(rows.map((p) => p.user_id).sort()).toEqual([...ids].sort());
+      expect(rows.every((p) => p.placement !== null && p.points !== null)).toBe(true);
+      expect((await loadRoundHands(s.pool, r.id)).length).toBeGreaterThan(0);
+    }
+    expect(await tableStatus()).toMatchObject({ status: 'closed' });
+    const points = await loadUserPoints(s.pool, ids);
+    expect(points.every((p) => p.rounds === 2)).toBe(true);
   });
 });

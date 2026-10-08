@@ -34,7 +34,7 @@ export function createPgTableRepository(db: Queryable): TableRepository {
 
     async startRound(tableId: number, players: readonly RoundSeatRecord[]): Promise<number> {
       const { rows } = await db.query<{ id: number }>(
-        `WITH t AS (UPDATE tables SET status = 'running' WHERE id = $1),
+        `WITH t AS (UPDATE tables SET status = 'running', closed_at = NULL WHERE id = $1),
               r AS (INSERT INTO rounds (table_id) VALUES ($1) RETURNING id),
               p AS (INSERT INTO round_players (round_id, user_id, seat)
                     SELECT r.id, x.user_id, x.seat FROM r, unnest($2::int[], $3::int[]) AS x(user_id, seat))
@@ -54,6 +54,15 @@ export function createPgTableRepository(db: Queryable): TableRepository {
                      WHERE rp.round_id = $2 AND rp.user_id = x.user_id)
          UPDATE tables SET status = 'closed', closed_at = now() WHERE id = $1`,
         [tableId, roundId, results.map((r) => r.userId), results.map((r) => r.placement), results.map((r) => r.points)],
+      );
+    },
+
+    async abortRound(tableId: number, roundId: number): Promise<void> {
+      await db.query(
+        `WITH r AS (UPDATE rounds SET status = 'aborted', finished_at = greatest(now(), started_at)
+                     WHERE id = $2 AND status = 'running')
+         UPDATE tables SET status = 'closed', closed_at = now() WHERE id = $1 AND status <> 'closed'`,
+        [tableId, roundId],
       );
     },
 

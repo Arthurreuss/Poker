@@ -50,16 +50,19 @@ export interface TableSettings {
   maxSeats: number;
   startingStack: number;
   blindStructure: BlindStructure;
-  /** Sekunden pro Zug (D-013). */
+  /** Sekunden pro Zug (D-013), 10–120 (D-020). */
   turnTimeSeconds: number;
-  /** Zeitbank pro Spieler und Runde in Sekunden (D-013). */
+  /** Zeitbank pro Spieler und Runde in Sekunden (D-013), 0–300 (D-020). */
   timeBankSeconds: number;
 }
 
 /** Eingabe beim Erstellen: nur `name` ist Pflicht, alles andere hat Defaults (`DEFAULT_TABLE_SETTINGS`). */
 export type TableSettingsInput = { name: string } & Partial<Omit<TableSettings, 'name'>>;
 
-/** Status eines Tisches aus Client-Sicht: offen (Plätze wählbar) → läuft → beendet (Ergebnis steht). */
+/**
+ * Status eines Tisches aus Client-Sicht: offen (Plätze wählbar) → läuft → beendet (Ergebnis steht, „Runde
+ * beendet“). Aus `finished` kann der Ersteller mit `table.rematch` wieder nach `running` (D-020).
+ */
 export type TableStatus = 'open' | 'running' | 'finished';
 
 export interface PublicUser {
@@ -119,6 +122,14 @@ export interface TableStartMessage extends ClientBase {
   tableId: number;
 }
 /**
+ * „Nochmal“ (D-020, WP-015): Nur der Ersteller, nur im Status `finished`. Startet eine neue Runde am selben
+ * Tisch mit denselben Sitzen (wer saß, spielt wieder mit – auch Getrennte) und frischen Stacks/Zeitbanken.
+ */
+export interface TableRematchMessage extends ClientBase {
+  type: 'table.rematch';
+  tableId: number;
+}
+/**
  * Aktion des Spielers am Zug. `handNumber` und `seq` stammen aus der zuletzt empfangenen `HandView`
  * (`handNumber`, `actionSeq`); passt eins nicht mehr, ist der Klick veraltet und wird abgelehnt.
  */
@@ -141,6 +152,7 @@ export type ClientMessage =
   | TableSitMessage
   | TableStandMessage
   | TableStartMessage
+  | TableRematchMessage
   | TableActionMessage;
 
 export type ClientMessageType = ClientMessage['type'];
@@ -314,6 +326,7 @@ export type ErrorCode =
   | 'ROUND_STARTED'
   | 'NOT_CREATOR'
   | 'NOT_ENOUGH_PLAYERS'
+  | 'ROUND_NOT_FINISHED'
   | 'NO_HAND_IN_PROGRESS'
   | 'STALE_ACTION'
   | 'NOT_YOUR_TURN'
@@ -376,6 +389,17 @@ export interface RoundFinishedMessage {
   standings: StandingView[];
 }
 
+/**
+ * Der Tisch existiert nicht mehr (WP-015): `abandoned` = verwaiste Runde, 10 Minuten lang kein Spieler
+ * verbunden → Runde ohne Punkte abgebrochen (D-022). Geht an alle, die den Tisch noch beobachten; danach
+ * liefert `table.join` für diesen Tisch `TABLE_NOT_FOUND`.
+ */
+export interface TableClosedMessage {
+  type: 'table.closed';
+  tableId: number;
+  reason: 'abandoned';
+}
+
 export type ServerMessage =
   | WelcomeMessage
   | ErrorMessage
@@ -386,6 +410,7 @@ export type ServerMessage =
   | TableCreatedMessage
   | TableStateMessage
   | TableLeftMessage
-  | RoundFinishedMessage;
+  | RoundFinishedMessage
+  | TableClosedMessage;
 
 export type ServerMessageType = ServerMessage['type'];

@@ -109,6 +109,7 @@ describe('GameServer ohne Netzwerk', () => {
       createTable: (t) => memory.createTable(t),
       startRound: () => Promise.reject(new Error('DB weg')),
       finishRound: (...args) => memory.finishRound(...args),
+      abortRound: (...args) => memory.abortRound(...args),
       closeTable: (id) => memory.closeTable(id),
     };
     const s = setup({ repository: failing });

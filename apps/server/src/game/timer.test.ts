@@ -181,10 +181,10 @@ describe('Zug-Timer und Zeitbank (D-013)', () => {
 
   it('Zeitbank 0: automatische Aktion direkt nach der Zugzeit', async () => {
     const s = setup();
-    const { creator, actor } = await started(s, 2, { ...FIXED, turnTimeSeconds: 5, timeBankSeconds: 0 });
+    const { creator, actor } = await started(s, 2, { ...FIXED, turnTimeSeconds: 10, timeBankSeconds: 0 });
     const a = actor();
-    expect(s.last(creator).turnClock?.deadlineMs).toBe(T0 + 5000);
-    s.clock.advance(5000);
+    expect(s.last(creator).turnClock?.deadlineMs).toBe(T0 + 10_000);
+    s.clock.advance(10_000);
     expect(lastEvent(s.last(creator))).toMatchObject({ type: 'fold', playerId: String(a.userId) });
   });
 });
