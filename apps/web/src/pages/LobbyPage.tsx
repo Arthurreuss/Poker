@@ -5,6 +5,7 @@ import type { TableSettings } from '@poker/engine/protocol';
 import { useAuth } from '../auth/AuthContext';
 import { ConnectionNotice, ConnectionStatus } from '../lobby/ConnectionStatus';
 import { CreateTableForm } from '../lobby/CreateTableForm';
+import { invitePath } from '../lobby/invite';
 import { InviteShare } from '../lobby/InviteShare';
 import styles from '../lobby/Lobby.module.css';
 import { TableList } from '../lobby/TableList';
@@ -56,7 +57,7 @@ export function LobbyPage() {
         <div className={styles.invite} aria-label="Privater Tisch erstellt" role="region">
           <h2 className={styles.sectionTitle}>Privater Tisch „{created.name}“ erstellt</h2>
           <p className={pageStyles.muted}>Nur wer den Link hat, kann beitreten.</p>
-          <InviteShare inviteCode={created.inviteCode} tableName={created.name} />
+          <InviteShare path={invitePath(created.inviteCode)} tableName={created.name} />
           <div className={styles.actions}>
             <button
               type="button"

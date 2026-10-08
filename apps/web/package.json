@@ -9,6 +9,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "icons": "node scripts/generate-icons.mjs",
+    "og-image": "node scripts/generate-og-image.mjs",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p e2e-visual && tsc --noEmit -p e2e-game",
     "test": "vitest run",
     "test:visual": "playwright test -c e2e-visual/playwright.config.ts",

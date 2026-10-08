@@ -204,6 +204,7 @@ Grundschutz der öffentlichen Seite (WP-022). Vor jedem Release mit Änderungen 
 
 **Automatisch (in `npm run check`):**
 - [ ] `scripts/test/nginx-headers.test.mjs`: jede `location` bindet `docker/nginx/security-headers.conf` ein, CSP ohne `unsafe-inline`/`unsafe-eval`, keine Inline-Skripte in `index.html`, PWA-Registrierung als eigene Datei.
+- [ ] `scripts/test/og-tags.test.mjs`: Open-Graph-Tags, `sub_filter` für die Origin, CSP-Wortlaut unverändert (WP-030).
 - [ ] `scripts/test/compose-prod.test.mjs` und `scripts/test/log-rotate.test.mjs`: Log-Rotation nach D-025 (Größen-Rotation aller Container-Logs, Request-Logs in rotierten Dateien, Löschfrist < 14 Tage, cloudflared nicht auf `debug`).
 
 **Security-Header (nginx, prod):** Wortlaut in `docker/nginx/security-headers.conf`:
@@ -266,6 +267,28 @@ Für **jede** der beiden Zonen:
 - [ ] Wird ein Backup eingespielt (`prod:restore`), Konten, die seit dem Backup gelöscht wurden, erneut löschen (die Datenschutzerklärung sagt das zu). **Vor** dem Restore die IDs aus der aktuellen DB holen (das Server-Log reicht nur 14 Tage zurück; notfalls aus dem Dump in `pre-restore/`):
   `docker compose -p poker-prod exec db psql -U poker -d poker -tAc 'SELECT id FROM users WHERE deleted_at IS NOT NULL'`.
   Nach dem Restore die IDs, die im Backup noch nicht gelöscht sind, erneut anonymisieren, z. B. per `UPDATE users SET username = NULL, password_hash = NULL, is_admin = false, deleted_at = now() WHERE id = … AND deleted_at IS NULL` (der Trigger trennt dabei auch ihr Feedback) plus `DELETE FROM sessions WHERE user_id = …`. Abgelaufenes Feedback löscht der Server beim Start nach dem Restore selbst.
+
+## Link-Vorschau
+Messenger zeigen für geteilte Links (Startseite, `/join/…`, `/table/…`) Bild und Titel aus den Open-Graph-Tags (WP-030, ARCHITECTURE.md → „Frontend“ → „Link-Vorschau“). nginx setzt dabei die aufgerufene Domain in Bild- und Seiten-URL ein.
+
+**Lokal gegen ein gebautes Web-Image** (Ports 4324/4325, wie bei der Security-Checkliste):
+```sh
+docker build -f docker/web.Dockerfile -t poker-ogtest-web .
+docker run -d --name poker-ogtest -p 127.0.0.1:4324:8080 -e API_UPSTREAM=127.0.0.1:9 poker-ogtest-web
+for d in poker.arthur-reuss.de poker.deinemudda.win; do
+  curl -s -H "Host: $d" -H 'X-Forwarded-Proto: https' http://127.0.0.1:4324/join/abc | grep -E 'og:(url|image)"'
+done   # erwartet https://<domain>/ bzw. https://<domain>/og-image.png
+docker rm -f poker-ogtest && docker rmi poker-ogtest-web
+```
+
+**Nach dem Release (beide Domains):**
+```sh
+for d in poker.arthur-reuss.de poker.deinemudda.win; do
+  curl -s -A 'WhatsApp/2.23' "https://$d/join/test" | grep -E 'og:(title|url|image)"'
+  curl -sI "https://$d/og-image.png" | grep -iE '^HTTP|content-type'   # 200, image/png
+done
+```
+Dann in WhatsApp (und Signal) einen Einladungslink an sich selbst bzw. eine Testgruppe schicken: Vorschau mit Bild und „Poker – Spiel mit Freunden“. Messenger cachen Vorschauen pro URL; nach Änderungen am Bild mit einer neuen URL testen (z. B. anderer Einladungscode). Fehlt die Vorschau, prüfen, ob Cloudflare den Crawler blockt (Security → Events, „Bot Fight Mode“).
 
 ## Fehlersuche
 - `npm run prod:logs` bzw. `docker compose -p poker-prod ps` (Status inkl. Healthchecks); Requests und Fehler des Servers stehen in der Log-Datei (siehe [Logs](#logs)).

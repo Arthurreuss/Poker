@@ -31,6 +31,19 @@ map $http_x_forwarded_proto $forwarded_proto {
     default $http_x_forwarded_proto;
 }
 
+# Origin für die Open-Graph-Tags in index.html (WP-030): Messenger brauchen absolute URLs für Vorschaubild und Link,
+# passend zur aufgerufenen Domain (beide Domains, D-023). Host und Schema kommen vom Client und landen im HTML,
+# deshalb nur erlaubte Zeichen (Hostname, optional Port), sonst ein harmloser Ersatz.
+map $forwarded_proto $og_scheme {
+    https   https;
+    default http;
+}
+
+map $http_host $og_host {
+    "~*^[a-z0-9.-]+(:[0-9]+)?$" $http_host;
+    default                      localhost;
+}
+
 server {
     listen 8080;
     server_name _;
@@ -88,9 +101,12 @@ server {
     }
 
     # index.html und alles andere: immer revalidieren, damit neue Releases sofort ankommen.
+    # sub_filter: Platzhalter der Open-Graph-Tags → aufgerufene Origin (WP-030; nur text/html, also index.html).
     location / {
         include /etc/nginx/snippets/security-headers.conf;
         try_files $uri $uri/ /index.html;
         add_header Cache-Control "no-cache";
+        sub_filter "__POKER_ORIGIN__" "$og_scheme://$og_host";
+        sub_filter_once off;
     }
 }

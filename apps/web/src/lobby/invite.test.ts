@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { copyInvite, invitePath, inviteUrl, shareInvite } from './invite';
+import { canShareNatively, copyInvite, invitePath, inviteUrl, shareInvite, shareUrl, tablePath } from './invite';
 
 const nav = (patch: object) => patch as unknown as Navigator;
 
@@ -7,6 +7,18 @@ describe('Einladungslink', () => {
   it('Pfad und URL unter derselben Origin (D-014)', () => {
     expect(invitePath('ab_C-1')).toBe('/join/ab_C-1');
     expect(inviteUrl('ab_C-1', 'https://poker.example')).toBe('https://poker.example/join/ab_C-1');
+    expect(shareUrl(tablePath(7), 'https://poker.example')).toBe('https://poker.example/table/7');
+  });
+
+  it('Teilen-Menü nur mit Web Share API auf Touch-Geräten, sonst kopieren (WP-030)', () => {
+    const media = (coarse: boolean) => ({
+      matchMedia: (query: string) => ({ matches: coarse && query === '(pointer: coarse)' }) as MediaQueryList,
+    });
+    const share = () => Promise.resolve();
+    expect(canShareNatively(nav({ share }), media(true))).toBe(true);
+    expect(canShareNatively(nav({ share }), media(false))).toBe(false);
+    expect(canShareNatively(nav({}), media(true))).toBe(false);
+    expect(canShareNatively(nav({ share }), {} as Window)).toBe(false);
   });
 
   it('teilt über die Web Share API', async () => {

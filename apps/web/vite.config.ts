@@ -44,11 +44,25 @@ function themeColorHtml(): Plugin {
   };
 }
 
+/**
+ * Platzhalter der Open-Graph-Tags in index.html (WP-030). Im Build bleibt er stehen – nginx ersetzt ihn pro Anfrage
+ * durch die aufgerufene Origin (beide Domains, D-023); der Dev-Server setzt relative URLs ein.
+ */
+const OG_ORIGIN_PLACEHOLDER = '__POKER_ORIGIN__';
+function ogOriginDevHtml(): Plugin {
+  return {
+    name: 'poker-og-origin-dev',
+    apply: 'serve',
+    transformIndexHtml: (html) => html.replaceAll(OG_ORIGIN_PLACEHOLDER, ''),
+  };
+}
+
 export default defineConfig({
   define: { __APP_VERSION__: JSON.stringify(appVersion) },
   plugins: [
     react(),
     themeColorHtml(),
+    ogOriginDevHtml(),
     // PWA (WP-014): Service Worker nur für statische Assets, nie für /api oder /ws.
     VitePWA({
       registerType: 'autoUpdate',
@@ -75,6 +89,8 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,webmanifest}'],
+        // Vorschaubild nur für Messenger-Crawler (WP-030), nicht in den Offline-Cache.
+        globIgnores: ['**/og-image.png'],
         cleanupOutdatedCaches: true,
         // SPA-Navigation offline aus dem Precache – aber nie für API und WebSocket.
         navigateFallback: '/index.html',
