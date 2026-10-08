@@ -13,8 +13,8 @@
 | M2 | [WP-006](work-packages/WP-006.md) | Engine: Setzrunden | done | WP-004 |
 | M2 | [WP-007](work-packages/WP-007.md) | Engine: Side Pots und Showdown | in-progress | WP-005, WP-006 |
 | M2 | [WP-008](work-packages/WP-008.md) | Engine: Freezeout-Runde mit Blind-Leveln und Punkten | todo | WP-007 |
-| M3 | [WP-009](work-packages/WP-009.md) | Datenbankschema und Migrationen | in-progress | WP-002 |
-| M3 | [WP-010](work-packages/WP-010.md) | Accounts: Registrierung, Login, Sessions | todo | WP-009 |
+| M3 | [WP-009](work-packages/WP-009.md) | Datenbankschema und Migrationen | done | WP-002 |
+| M3 | [WP-010](work-packages/WP-010.md) | Accounts: Registrierung, Login, Sessions | in-progress | WP-009 |
 | M3 | [WP-011](work-packages/WP-011.md) | Game-Server: WebSocket-Protokoll und Tische | todo | WP-008, WP-010 |
 | M3 | [WP-012](work-packages/WP-012.md) | Zeitlimit, Zeitbank und Reconnect | todo | WP-011 |
 | M3 | [WP-013](work-packages/WP-013.md) | Persistenz: Runden und Hand-Historie | todo | WP-011 |
