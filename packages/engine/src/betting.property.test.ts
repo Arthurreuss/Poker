@@ -63,7 +63,7 @@ function checkInvariants(s: HandState, totalChips: number): void {
 describe('Property: zufällige legale Hände', () => {
   it(`${String(HANDS)} Hände mit 2–9 Spielern enden gültig und erhalten die Chips`, () => {
     const rng = createSeededRng(20261008);
-    const phases: Record<HandState['phase'], number> = { betting: 0, showdown: 0, complete: 0 };
+    const endings = { showdown: 0, foldOut: 0 };
     for (let hand = 0; hand < HANDS; hand++) {
       const count = randomInt(rng, 2, 9);
       const bigBlind = pick(rng, [2, 10, 100]);
@@ -103,21 +103,23 @@ describe('Property: zufällige legale Hände', () => {
         expect(steps).toBeLessThan(MAX_STEPS);
       }
 
-      expect(s.phase).not.toBe('betting');
+      expect(s.phase).toBe('complete');
       const remaining = s.players.filter((p) => p.status !== 'folded');
-      if (s.phase === 'complete') {
+      if (s.showdown === null) {
         expect(remaining).toHaveLength(1);
         expect(s.payouts).toEqual([{ playerId: remaining[0]?.id, amount: potTotal(s) }]);
+        endings.foldOut++;
       } else {
+        // Showdown direkt aufgelöst (Details: showdown.property.test.ts).
         expect(remaining.length).toBeGreaterThanOrEqual(2);
         expect(s.street).toBe('river');
         expect(s.board).toHaveLength(5);
-        expect(s.payouts).toBeNull();
+        expect(s.payouts?.reduce((sum, x) => sum + x.amount, 0)).toBe(potTotal(s));
+        endings.showdown++;
       }
-      phases[s.phase]++;
     }
     // Beide Endzustände kommen tatsächlich vor.
-    expect(phases.showdown).toBeGreaterThan(0);
-    expect(phases.complete).toBeGreaterThan(0);
+    expect(endings.showdown).toBeGreaterThan(0);
+    expect(endings.foldOut).toBeGreaterThan(0);
   });
 });

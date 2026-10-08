@@ -1,6 +1,6 @@
 /**
  * Setzrunden einer Hand als reine Zustandsmaschine (WP-006):
- * `startHand` → (`legalActions` / `applyAction`)* → Phase `showdown` oder `complete`.
+ * `startHand` → (`legalActions` / `applyAction`)* → Phase `complete` (Showdown wird direkt aufgelöst, WP-007).
  * Eingabezustände werden nie verändert. Semantik: ARCHITECTURE.md, „Engine: Zustandsmodell einer Hand“.
  */
 import { isCard, type Card } from './cards';
@@ -18,6 +18,8 @@ import type {
   Street,
 } from './hand-state';
 import type { Rng } from './rng';
+import { clockwiseFrom } from './seats';
+import { resolveShowdown } from './showdown';
 
 export interface StartHandPlayer {
   id: string;
@@ -98,6 +100,7 @@ export function startHand(options: StartHandOptions): ActionResult {
     minRaise: options.bigBlind,
     log: [],
     payouts: null,
+    showdown: null,
   };
 
   // Hole Cards: reihum, eine Karte pro Durchgang, beginnend links vom Button.
@@ -320,6 +323,7 @@ function proceed(state: HandState, lastSeat: number): void {
     const pot = potTotal(state);
     winner.stack += pot;
     state.payouts = [{ playerId: winner.id, amount: pot }];
+    state.showdown = null;
     state.phase = 'complete';
     state.toActId = null;
     return;
@@ -331,8 +335,8 @@ function proceed(state: HandState, lastSeat: number): void {
   // Straße fertig: weiter austeilen, bis jemand handeln muss oder der River durch ist.
   for (;;) {
     if (state.street === 'river') {
-      state.phase = 'showdown'; // Übergabe an WP-007 (Pots, Showdown)
       state.toActId = null;
+      resolveShowdown(state); // WP-007: Pots bilden, Hände vergleichen, auszahlen → `complete`
       return;
     }
     dealNextStreet(state);
@@ -387,13 +391,6 @@ function defaultBlindSeats(
   return { smallBlindSeat: (order[0] as StartHandPlayer).seat, bigBlindSeat: (order[1] as StartHandPlayer).seat };
 }
 
-/** Spieler im Uhrzeigersinn, beginnend mit dem ersten Sitz links von `seat` (`seat` selbst zuletzt). */
-function clockwiseFrom<T extends { seat: number }>(sortedBySeat: readonly T[], seat: number): T[] {
-  const start = sortedBySeat.findIndex((p) => p.seat > seat);
-  if (start <= 0) return [...sortedBySeat];
-  return [...sortedBySeat.slice(start), ...sortedBySeat.slice(0, start)];
-}
-
 function postBlind(state: HandState, player: HandPlayer, blind: number, type: 'smallBlind' | 'bigBlind'): void {
   const amount = Math.min(blind, player.stack);
   moveChips(player, amount, true);
@@ -445,6 +442,7 @@ function cloneState(state: HandState): HandState {
     board: [...state.board],
     log: state.log.map((e) => ({ ...e })),
     payouts: state.payouts === null ? null : state.payouts.map((x) => ({ ...x })),
+    showdown: null, // applyAction läuft nur in `betting`, da gibt es noch kein Showdown-Ergebnis
   };
 }
 

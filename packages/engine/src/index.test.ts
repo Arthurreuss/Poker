@@ -12,4 +12,13 @@ describe('öffentliche API', () => {
     expect(engine.parseCard('As')).toBe('As');
     expect('cryptoRng' in engine).toBe(false);
   });
+
+  it('exportiert die Pot-Berechnung (WP-007)', () => {
+    const { pots, uncalled } = engine.calculatePots([
+      { id: 'A', totalBet: 100, status: 'allIn' },
+      { id: 'B', totalBet: 300, status: 'active' },
+    ]);
+    expect(pots).toEqual([{ amount: 200, eligibleIds: ['A', 'B'] }]);
+    expect(uncalled).toEqual({ playerId: 'B', amount: 200 });
+  });
 });

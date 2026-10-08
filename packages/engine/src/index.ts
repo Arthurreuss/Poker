@@ -58,3 +58,8 @@ export type {
   PlayerStatus,
   Street,
 } from './hand-state';
+
+// --- Pots und Showdown (WP-007) ---
+export { calculatePots } from './showdown';
+export type { PotContributor } from './showdown';
+export type { Pot, PotAward, PotBreakdown, ShowdownHand, ShowdownReveal, ShowdownSummary } from './hand-state';

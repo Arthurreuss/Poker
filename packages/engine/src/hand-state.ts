@@ -5,16 +5,16 @@
  * Abschnitt „Engine: Zustandsmodell einer Hand“.
  */
 import type { Card } from './cards';
+import type { HandCategory } from './hand-eval';
 
 export type Street = 'preflop' | 'flop' | 'turn' | 'river';
 
 /**
  * - `betting`: eine Setzrunde läuft, `toActId` ist gesetzt.
- * - `showdown`: River-Setzrunde beendet (oder Board durchgelaufen), mindestens zwei Spieler übrig;
- *   Pot-Aufteilung übernimmt WP-007.
- * - `complete`: Hand beendet, `payouts` gesetzt (bisher nur „alle bis auf einen gefoldet“).
+ * - `complete`: Hand beendet, `payouts` gesetzt – entweder haben alle bis auf einen gefoldet
+ *   (`showdown === null`) oder der Showdown wurde direkt aufgelöst (`showdown` gesetzt, WP-007).
  */
-export type HandPhase = 'betting' | 'showdown' | 'complete';
+export type HandPhase = 'betting' | 'complete';
 
 /** `allIn` = Stack ist 0, der Spieler ist noch in der Hand, handelt aber nicht mehr. */
 export type PlayerStatus = 'active' | 'folded' | 'allIn';
@@ -47,9 +47,64 @@ export interface HandEvent {
   allIn: boolean;
 }
 
+/** Chips, die ein Spieler am Ende der Hand bekommt (inkl. eigener zurückgegebener Einsätze). */
 export interface Payout {
   playerId: string;
   amount: number;
+}
+
+/** Ein Pot (Main Pot = erster, danach Side Pots). `eligibleIds` = gewinnberechtigt, nach Sitz sortiert. */
+export interface Pot {
+  amount: number;
+  eligibleIds: string[];
+}
+
+/** Ergebnis von `calculatePots`: Pots aus `totalBet` und der nicht gecallte Überschuss. */
+export interface PotBreakdown {
+  pots: Pot[];
+  /** Nicht gecallter Teil des höchsten Einsatzes – geht an den Einzahler zurück. */
+  uncalled: Payout | null;
+}
+
+/** Bewertete Hand für die Anzeige (Kopie von `HandResult` aus der Handbewertung). */
+export interface ShowdownHand {
+  category: HandCategory;
+  value: number;
+  /** Die fünf besten Karten. */
+  cards: Card[];
+  /** Deutsche Beschreibung, z. B. „Full House, Könige über Zehnen“. */
+  description: string;
+}
+
+/** Ein Pot nach dem Showdown. */
+export interface PotAward extends Pot {
+  /** Gewinner in Vergabereihenfolge (ab dem ersten Sitz links vom Button); mehrere = Split. */
+  winnerIds: string[];
+  /** Gewinnerhand; `null`, wenn nur ein Spieler berechtigt war (Pot ohne Handvergleich). */
+  winningHand: ShowdownHand | null;
+  /** Anteile je Gewinner; ungerade Chips gehen einzeln an die ersten Gewinner links vom Button. */
+  shares: Payout[];
+}
+
+/** Ein Spieler im Showdown, in Zeigereihenfolge. */
+export interface ShowdownReveal {
+  playerId: string;
+  /** Hole Cards, wenn der Spieler zeigen muss; `null` = darf mucken (verliert, muss nicht zeigen). */
+  shownCards: Card[] | null;
+  /** Bewertung mit Board – auch für Mucker, deshalb vom Server zu filtern (D-003). */
+  hand: ShowdownHand;
+}
+
+/** Showdown-Ergebnis, gesetzt bei `phase === 'complete'` nach einem Showdown. */
+export interface ShowdownSummary {
+  /** Nicht gecallter Überschuss, der an den Einzahler zurückging (in `payouts` enthalten). */
+  uncalled: Payout | null;
+  /** Main Pot zuerst, dann Side Pots. */
+  pots: PotAward[];
+  /** Alle nicht gefoldeten Spieler in Zeigereihenfolge. */
+  reveals: ShowdownReveal[];
+  /** All-in-Situation: alle Hände werden aufgedeckt (TDA). */
+  allHandsShown: boolean;
 }
 
 export interface HandState {
@@ -75,8 +130,10 @@ export interface HandState {
   /** Größe des letzten vollständigen Bets/Raises dieser Straße (mindestens Big Blind). */
   minRaise: number;
   log: HandEvent[];
-  /** Auszahlungen, sobald `phase === 'complete'`; sonst `null`. */
+  /** Auszahlungen, sobald `phase === 'complete'` (nach Sitz sortiert, nur Beträge > 0); sonst `null`. */
   payouts: Payout[] | null;
+  /** Showdown-Ergebnis (Pots, Gewinner, gezeigte Karten); `null` während der Hand und bei Fold-out. */
+  showdown: ShowdownSummary | null;
 }
 
 /**
