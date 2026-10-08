@@ -21,9 +21,8 @@
   --pt-card-face: var(--color-card-face, #fbfbf8);
   --pt-card-red: var(--color-card-red, #c8202f);
   --pt-card-black: var(--color-card-black, #16181d);
-  /* Vier-Farben-Deck: keine Tokens im Vertrag, daher tischlokal (siehe ASSETS.md / offene Frage). */
-  --pt-card-blue: #1f5fc4;
-  --pt-card-green: #18803c;
+  --pt-card-blue: var(--color-card-blue, #1f5fc4);
+  --pt-card-green: var(--color-card-green, #18803c);
   --pt-radius-sm: var(--radius-sm, 4px);
   --pt-radius-md: var(--radius-md, 8px);
   --pt-radius-pill: var(--radius-pill, 999px);

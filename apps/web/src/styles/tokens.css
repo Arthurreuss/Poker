@@ -34,6 +34,9 @@
   --color-card-face: #fbfaf5;
   --color-card-red: #c8202f;
   --color-card-black: #1b1b1f;
+  /* Vier-Farben-Deck (optional): Karo blau, Kreuz grün */
+  --color-card-blue: #1f5fc4;
+  --color-card-green: #18803c;
 
   /* Rundungen */
   --radius-sm: 4px;

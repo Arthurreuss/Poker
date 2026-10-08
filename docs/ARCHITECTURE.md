@@ -429,6 +429,7 @@ Gemeinsamer Vertrag für alle Frontend-WPs (D-008: Anmutung PokerStars, eigene W
 | `--color-fold`, `--color-call`, `--color-raise` | Aktionsbuttons (rot, grün, gelb/orange) |
 | `--color-danger`, `--color-success` | Fehler, Bestätigung |
 | `--color-card-face`, `--color-card-red`, `--color-card-black` | Kartenfarben |
+| `--color-card-blue`, `--color-card-green` | Karo und Kreuz im optionalen Vier-Farben-Deck |
 | `--radius-sm`, `--radius-md`, `--radius-lg`, `--radius-pill` | Rundungen |
 | `--space-1` … `--space-6` | Abstände (4, 8, 12, 16, 24, 32 px) |
 | `--font-sans`, `--font-size-sm`, `--font-size-md`, `--font-size-lg` | Typografie |
