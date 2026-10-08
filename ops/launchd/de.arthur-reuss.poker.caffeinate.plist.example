@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  LaunchAgent (WP-021): hält den Mac nach der Anmeldung dauerhaft wach, damit poker-prod erreichbar bleibt.
+  caffeinate -s verhindert den Ruhezustand des Systems (nur bei Netzbetrieb wirksam), -i verhindert
+  Ruhezustand bei Inaktivität. Der Bildschirm darf trotzdem ausgehen.
+  Wird NICHT automatisch installiert. Installation (einmalig, als normaler Benutzer, ohne sudo):
+    cp ops/launchd/de.arthur-reuss.poker.caffeinate.plist.example ~/Library/LaunchAgents/de.arthur-reuss.poker.caffeinate.plist
+    launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/de.arthur-reuss.poker.caffeinate.plist
+  Prüfen:      launchctl print gui/$(id -u)/de.arthur-reuss.poker.caffeinate | head    bzw.   pmset -g assertions
+  Entfernen:   launchctl bootout gui/$(id -u)/de.arthur-reuss.poker.caffeinate && rm ~/Library/LaunchAgents/de.arthur-reuss.poker.caffeinate.plist
+  Doku: docs/OPERATIONS.md, Abschnitt "Betrieb nach Neustart".
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>de.arthur-reuss.poker.caffeinate</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/bin/caffeinate</string>
+    <string>-s</string>
+    <string>-i</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+</dict>
+</plist>

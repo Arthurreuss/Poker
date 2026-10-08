@@ -38,8 +38,12 @@ Workspaces importieren sich gegenseitig über den Paketnamen; `@poker/engine` ex
 | `dev:up` / `dev:down` / `dev:logs` | Docker-Dev-Umgebung starten (mit Build) / stoppen / Logs folgen |
 | `prod:up` / `prod:down` / `prod:logs` | Prod-Umgebung ohne Tunnel starten (mit Build, wartet auf healthy) / stoppen / Logs folgen (`scripts/prod.sh`) |
 | `prod:tunnel:up` | Prod inkl. `cloudflared` (Profil `tunnel`) |
-| `prod:smoke` | Smoke-Test gegen prod (`scripts/smoke-prod.mjs`) |
-| `release` | dev → main mergen, pushen, prod neu starten (`scripts/release.sh`) |
+| `prod:smoke` | Smoke-Test gegen prod (`scripts/smoke-prod.mjs`, über `scripts/prod.sh smoke`) |
+| `prod:setup` | Prod-Worktree auf `main` einmalig anlegen (`scripts/prod-worktree-setup.sh`, D-017) |
+| `prod:backup` / `prod:restore` | sofortiges Backup / Restore aus einem Dump (`scripts/backup-now.sh`, `scripts/restore.sh`) |
+| `prod:status` | Zustandsbericht: Container, letztes Backup, Speicherplatz, Health (`scripts/status.sh`) |
+| `prod:test-restore` | Restore-Test in isolierter prod-Kopie (`scripts/test-restore.sh`) |
+| `release` | dev → main im Prod-Worktree mergen, pushen, prod neu starten (`scripts/release.sh`) |
 | `typecheck` | `tsc --noEmit` in allen Workspaces |
 | `lint` | ESLint über das ganze Repo |
 | `format` / `format:check` | Prettier schreiben bzw. prüfen |
@@ -167,7 +171,7 @@ users 1─n tables (created_by) 1─n rounds 1─n round_players n─1 users
 - **Tests:** `src/db/migrate.test.ts` (frische DB, zweiter Lauf No-Op, parallele Läufe, Rollback, geänderte/fehlende Dateien) und `src/db/schema.test.ts` (Constraints, Fremdschlüssel, Löschverhalten, Beispiel-Queries). Sie laufen nur mit gesetztem `TEST_DATABASE_URL` (sonst `skipIf`, damit `npm run check` ohne Docker grün bleibt). `npm run test:db -w @poker/server` nutzt standardmäßig die Datenbank `poker_test` im dev-Postgres (`localhost:4312`), legt sie bei Bedarf an (`src/db/test-db.ts`), gibt jedem Testlauf ein eigenes Schema `test_<zeit>_<zufall>` und löscht es danach.
 
 ## Prod-Umgebung
-`compose.prod.yml`, Compose-Projekt `poker-prod` (D-002, D-005, D-014), Werte aus `.env.prod` (gitignored, Vorlage `.env.prod.example`). Bedienung, Release und Tunnel-Einrichtung: [OPERATIONS.md](OPERATIONS.md).
+`compose.prod.yml`, Compose-Projekt `poker-prod` (D-002, D-005, D-014), gebaut und betrieben aus dem eigenen Git-Worktree auf `main` (`~/code/Arthurreuss/poker-prod`, D-017); Werte aus dessen `.env.prod` (gitignored, Vorlage `.env.prod.example`). Bedienung, Release, Tunnel, Backup/Restore und Betrieb: [OPERATIONS.md](OPERATIONS.md).
 
 ```
 Internet ──https──▶ Cloudflare ──Tunnel──▶ cloudflared ──http──▶ web:8080 (nginx)
@@ -183,8 +187,10 @@ Host 127.0.0.1:4321 (Debug) ─────────────────�
 | `server` | `poker-prod-server` (`docker/server.Dockerfile`) | 4321, `node server.mjs` | 4321 (`SERVER_PORT`, Debugging) | `GET /api/health` | `db` healthy |
 | `web` | `poker-prod-web` (`docker/web.Dockerfile`) | 8080, nginx | 4320 (`WEB_PORT`) | `GET /` | `server` healthy |
 | `cloudflared` | `cloudflare/cloudflared:2026.9.3` | `tunnel --no-autoupdate run` | – | – (Image ohne Shell) | `web` healthy; nur Profil `tunnel` |
+| `backup` | `prodrigestivill/postgres-backup-local:16` | go-cron + `pg_dump`, Health-Port 8080 | – (Bind-Mount `BACKUP_DIR` → `/backups`) | Scheduler-Endpunkt (`curl :8080`) | `db` healthy |
 
-- Alle Dienste `restart: unless-stopped`. DB-Daten im Named Volume `poker-prod-db`. Netz `backend` ist `internal` (kein Zugang nach außen), die DB hat keinen Host-Port.
+- Alle Dienste `restart: unless-stopped` (geprüft von `scripts/test/compose-prod.test.mjs`), damit poker-prod nach einem Neustart von Docker Desktop ohne Eingreifen wieder läuft. DB-Daten im Named Volume `poker-prod-db`.
+- **Backup:** `backup` dumpt täglich (`BACKUP_SCHEDULE`, Standard `@daily`, Zeitzone `BACKUP_TZ`) per `pg_dump -Z6` (Plain-SQL, gzip) über das Netz `backend` in einen Host-Ordner außerhalb von Docker (`BACKUP_DIR`, Standard `~/poker-backups`, aufgelöst in `scripts/lib/prod-env.sh`); Aufbewahrung 7 täglich / 4 wöchentlich / 6 monatlich (`last/`, `daily/`, `weekly/`, `monthly/`). Restore per `scripts/restore.sh`: Server stoppen → DB neu anlegen → Dump in einer Transaktion einspielen → Server starten. Netz `backend` ist `internal` (kein Zugang nach außen), die DB hat keinen Host-Port.
 - **Server-Image:** Build-Stage mit allen Abhängigkeiten → `esbuild`-Bundle; eigene Stage installiert nur die Laufzeit-Abhängigkeiten des Servers (`npm ci --omit=dev -w @poker/server`, ohne Source-Maps); Runtime `node:22-alpine` mit `node_modules` + `server.mjs`, User `node`, `NODE_ENV=production`.
 - **Web-Image:** Build-Stage `vite build` → Runtime `nginxinc/nginx-unprivileged` (User `nginx`, Port 8080). Konfiguration `docker/nginx/default.conf.template`, Ziel des Proxys per `API_UPSTREAM=server:4321` (envsubst beim Start, Auflösung über Docker-DNS zur Laufzeit). `/api/` und `/ws` gehen an den Server (`/ws` mit Upgrade-Headern, Read-/Send-Timeout 1 h); gzip; `/assets/*` (gehasht) `Cache-Control: public, max-age=31536000, immutable`, `index.html` und SPA-Fallback `no-cache`, `/api/` `no-store`.
 - **Proxy-Header:** nginx setzt `X-Forwarded-For` auf `CF-Connecting-IP` (hinter dem Tunnel) bzw. die Peer-Adresse und reicht `X-Forwarded-Proto` von cloudflared durch; der Server vertraut ihnen nur in prod (`trustProxy`).
@@ -203,7 +209,7 @@ docs/
   PROGRESS.md           Stand (Tabelle generiert)
   DECISIONS.md          Entscheidungen
   ARCHITECTURE.md       diese Datei
-  OPERATIONS.md         Betrieb: Start/Stopp, Release, Tunnel
+  OPERATIONS.md         Betrieb: Start/Stopp, Release, Tunnel, Backup/Restore, Status, Neustart
   work-packages/        ein WP pro Datei
 packages/
   engine/               @poker/engine – Poker-Logik (src/, Tests als *.test.ts daneben)
@@ -221,10 +227,17 @@ compose.prod.yml        Prod-Umgebung (poker-prod)
 .env.prod.example       Vorlage für .env.prod (prod, gitignored)
 scripts/
   docs.mjs              Doku-Check und -Sync
-  prod.sh               prod:up/down/logs/tunnel:up
+  lib/prod-env.sh       gemeinsame Helfer der prod-Skripte (Prod-Worktree, .env.prod, BACKUP_DIR)
+  prod.sh               prod:up/down/logs/tunnel:up/smoke
+  prod-worktree-setup.sh  prod:setup (Prod-Worktree auf main anlegen)
+  backup-now.sh         prod:backup
+  restore.sh            prod:restore
+  status.sh             prod:status
+  test-restore.sh       Restore-Test (isolierte prod-Kopie)
   smoke-prod.mjs        Smoke-Test prod (Health + WebSocket)
-  release.sh            Release dev → main
+  release.sh            Release dev → main (im Prod-Worktree)
   test/                 Tests für die Skripte
+ops/launchd/            LaunchAgent-Vorlage (caffeinate), nicht automatisch installiert
 .githooks/pre-commit    blockiert Commits auf main, führt npm run check aus
 package.json            Workspaces und npm-Skripte
 tsconfig.base.json      gemeinsame TypeScript-Einstellungen

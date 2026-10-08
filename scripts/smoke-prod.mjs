@@ -4,7 +4,8 @@
 // und dass eine fremde Origin abgelehnt wird.
 //   npm run prod:smoke
 //   SMOKE_URL=http://localhost:4320 SMOKE_ORIGIN=https://poker.arthur-reuss.de node scripts/smoke-prod.mjs
-// Ohne SMOKE_ORIGIN wird PUBLIC_ORIGIN aus der Umgebung bzw. aus .env.prod genommen.
+// Ohne SMOKE_ORIGIN wird PUBLIC_ORIGIN aus der Umgebung bzw. aus .env.prod genommen
+// (PROD_ENV_FILE, von scripts/prod.sh auf die .env.prod im Prod-Worktree gesetzt; sonst ../.env.prod).
 import { request as httpRequest } from 'node:http';
 import { request as httpsRequest } from 'node:https';
 import { randomBytes } from 'node:crypto';
@@ -13,7 +14,7 @@ import { readFileSync, existsSync } from 'node:fs';
 const TIMEOUT_MS = 5000;
 
 function envFileValue(name) {
-  const file = new URL('../.env.prod', import.meta.url);
+  const file = process.env.PROD_ENV_FILE ?? new URL('../.env.prod', import.meta.url);
   if (!existsSync(file)) return undefined;
   const line = readFileSync(file, 'utf8')
     .split('\n')
