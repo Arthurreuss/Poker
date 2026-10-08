@@ -27,3 +27,22 @@ export { createDeck, deal, shuffle, shuffledDeck } from './deck';
 export type { DealResult } from './deck';
 export { createSeededRng } from './rng';
 export type { Rng } from './rng';
+
+// --- Setzrunden (WP-006) ---
+export { applyAction, legalActions, potTotal, startHand } from './betting';
+export type { StartHandOptions, StartHandPlayer } from './betting';
+export type {
+  Action,
+  HandError,
+  HandErrorCode,
+  HandEvent,
+  HandPhase,
+  HandPlayer,
+  HandResult,
+  HandState,
+  LegalAction,
+  LegalActions,
+  Payout,
+  PlayerStatus,
+  Street,
+} from './hand-state';
