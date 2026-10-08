@@ -1,0 +1,15 @@
+{
+  "name": "poker",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "setup": "git config core.hooksPath .githooks",
+    "test": "node --test scripts/test/",
+    "docs:check": "node scripts/docs.mjs check",
+    "docs:sync": "node scripts/docs.mjs sync",
+    "check": "npm run docs:check && npm test"
+  }
+}

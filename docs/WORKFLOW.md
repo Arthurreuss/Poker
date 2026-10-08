@@ -1,0 +1,81 @@
+# Arbeitsweise
+
+## Grundprinzip
+Arbeit passiert in **Arbeitspaketen (WPs)**. Ein WP ist klein genug für 1–3 Sessions, hat ein klares Ziel und prüfbare Akzeptanzkriterien. Jedes WP liegt als eigene Datei in [work-packages/](work-packages/) (Vorlage: [_TEMPLATE.md](work-packages/_TEMPLATE.md)).
+
+## Single Source of Truth
+| Information | Wo sie lebt | Nicht hier |
+|---|---|---|
+| Status eines WP | Frontmatter der WP-Datei | PROGRESS.md (wird generiert) |
+| Was ein WP liefern muss | Akzeptanzkriterien im WP | Chat, Commit-Messages |
+| Warum etwas so gebaut ist | [DECISIONS.md](DECISIONS.md) | Code-Kommentare (dort nur Verweis `D-00X`) |
+| Wie das System aufgebaut ist | [ARCHITECTURE.md](ARCHITECTURE.md) | WP-Dateien |
+| Verlauf / was zuletzt passiert ist | Log-Abschnitt in PROGRESS.md + Git | — |
+
+Jede Information hat genau **einen** Ort. Andere Dateien verlinken darauf statt sie zu kopieren – so entsteht kein Drift.
+
+## WP-Lebenszyklus
+```
+todo → in-progress → review → done
+          ↓
+       blocked (mit Grund im WP-Log)
+```
+- **todo**: definiert, Akzeptanzkriterien stehen, Abhängigkeiten bekannt.
+- **in-progress**: es wird daran gearbeitet. Höchstens **ein** WP gleichzeitig.
+- **review**: alle Kriterien aus Sicht des Bearbeiters erfüllt, Mensch schaut drüber.
+- **done**: alle Checkboxen abgehakt, Tests grün, Doku aktuell, gemerged.
+- **blocked**: Grund + was zum Entblocken nötig ist steht im WP-Log.
+
+Ein WP darf erst `in-progress` werden, wenn alle WPs in `depends` `done` sind.
+
+## Ablauf einer Session
+1. `CLAUDE.md` → `PROGRESS.md` → aktives WP lesen.
+2. WP-Status auf `in-progress` setzen, `npm run docs:sync`.
+3. Arbeiten: Test zuerst (bei Logik), dann Implementierung, dann Doku.
+4. Am Ende der Session: WP-Log ergänzen (1–3 Zeilen: was getan, was offen), Checkboxen aktualisieren, Session-Eintrag im Log von PROGRESS.md.
+5. `npm run check` grün → Commit.
+
+## Definition of Done (gilt für jedes WP)
+- [ ] Alle Akzeptanzkriterien im WP abgehakt
+- [ ] Tests für neue Logik vorhanden und grün (`npm test`)
+- [ ] `npm run check` grün (Tests + Doku-Konsistenz + Lint, sobald vorhanden)
+- [ ] Betroffene Doku (ARCHITECTURE, DECISIONS, README) aktualisiert
+- [ ] Läuft auf dev per `docker compose up` unter localhost:4310 (sobald Docker-Setup existiert)
+
+## Tests
+- **Poker-Logik** (Mischen, Setzrunden, Side Pots, Handbewertung) ist reiner, deterministischer Code ohne I/O → Unit-Tests, Zufall per injizierbarem Seed.
+- **Side Pots und Showdown** bekommen tabellarische Testfälle (Eingabe-Stacks → erwartete Pots/Gewinner).
+- **Server**: Integrationstests über echte WebSocket-Verbindungen gegen einen Testserver.
+- **Frontend**: Komponenten-Tests für Kernansichten; ein E2E-Smoke-Test (zwei Spieler spielen eine Hand).
+- Ein Bug wird erst mit einem fehlschlagenden Test reproduziert, dann gefixt.
+
+## Drift-Schutz
+`npm run check` (auch als Pre-Commit-Hook) prüft automatisch:
+- WP-Frontmatter gültig, ID passt zum Dateinamen, Status erlaubt, `depends` existieren.
+- `done`-WPs haben keine offenen Checkboxen; `in-progress` nur, wenn Abhängigkeiten `done` sind.
+- Höchstens ein WP `in-progress`.
+- Die generierte Tabelle in PROGRESS.md entspricht den WP-Dateien.
+- Relative Links in allen Markdown-Dateien zeigen auf existierende Dateien.
+- Entscheidungs-IDs in DECISIONS.md sind eindeutig und fortlaufend.
+
+Was der Check **nicht** sieht (Inhalt veraltet, Architektur beschreibt alten Stand) wird über die Definition of Done abgefangen: Doku-Update gehört zum WP.
+
+## Branches und Umgebungen
+Details und Begründung: D-005 (Branches) und D-006 (Ports) in [DECISIONS.md](DECISIONS.md).
+
+| Branch | Zweck | Läuft wo |
+|---|---|---|
+| `dev` | Arbeitsbranch, hier wird committet | lokal: http://localhost:4310 |
+| `main` | Release, nur per Merge von dev | später öffentlich per Cloudflare Tunnel (Ports 4320/4321) |
+
+- Gearbeitet wird auf `dev` (bei größeren WPs optional auf `wp/WP-XXX` abzweigen und zurück nach dev mergen).
+- Release: `npm run check` grün auf dev, lokal per Docker getestet, dann `git checkout main && git merge --no-ff dev`.
+- Direkte Commits auf `main` blockiert der Pre-Commit-Hook.
+- Keine fremden Ports verwenden: Auf dem Rechner laufen andere Docker-Projekte, Poker bleibt in 4310–4329.
+
+## Commits
+- Ein Commit referenziert sein WP: `WP-003: Side-Pot-Berechnung`.
+- Kleine Commits, jeder für sich grün.
+
+## Entscheidungen
+Neue Architektur-/Technologieentscheidung → Eintrag in DECISIONS.md mit nächster ID (`D-00X`), Kontext, Entscheidung, Konsequenzen. Revidierte Entscheidungen werden nicht gelöscht, sondern als `ersetzt durch D-00Y` markiert.
