@@ -1,17 +1,20 @@
 /**
- * Screenshot- und Geometrie-Tests der Tischansicht im Hochformat (WP-016).
- * Prüft pro Mock-Zustand und Viewport per Bounding-Box:
+ * Screenshot- und Geometrie-Tests der Tischansicht im Hoch- (WP-016) und Querformat (WP-017).
+ * Ohne `layout`-Parameter gilt „Auto“: Hochformat-Viewports zeigen das Hochformat-, Querformat-
+ * Viewports das Querformat-Layout. Prüft pro Mock-Zustand und Viewport per Bounding-Box:
  * - Teile verschiedener Sitze (Plakette, Karten, Marker, Status-Etikett) überlappen sich nicht,
- * - Einsätze, Pots, Board und Kopfzeile überlappen keine Sitze und einander nicht,
- * - alles liegt im Viewport und oberhalb der freien Fläche für die Aktionsleiste (WP-018),
+ * - Einsätze, Pots, Board, Kopfzeile und Menü-Knopf überlappen keine Sitze und einander nicht,
+ * - alles liegt im Viewport und außerhalb der freien Fläche für die Aktionsleiste (WP-018),
  * - Texte sind nicht abgeschnitten und mindestens 11 px groß.
  * Ausführen: `npm run test:visual -w @poker/web` (Baselines aktualisieren: `-- --update-snapshots`).
  */
 import { expect, test, type Page } from '@playwright/test';
 
 const VIEWPORTS = [
-  { width: 360, height: 740 },
-  { width: 430, height: 932 },
+  { width: 360, height: 740, layout: 'portrait' },
+  { width: 430, height: 932, layout: 'portrait' },
+  { width: 740, height: 360, layout: 'landscape' },
+  { width: 932, height: 430, layout: 'landscape' },
 ] as const;
 
 /** Mock-Zustände mit Screenshot-Baseline (2, 6 und 9 Spieler). */
@@ -37,9 +40,16 @@ interface Box {
   h: number;
 }
 
+interface Rect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
 interface Geometry {
   boxes: Box[];
-  actionTop: number;
+  action: Rect;
   truncated: string[];
   tooSmall: string[];
 }
@@ -70,22 +80,24 @@ async function measure(page: Page): Promise<Geometry> {
       ...all('[data-testid="pot"]').map((el, i) => box(`pot ${String(i)}`, `Pot ${el.textContent}`, el)),
       box('board', 'Board', one('[data-testid="board"]')),
       box('blinds', 'Kopfzeile', one('[data-testid="blinds"] .pt-text')),
+      box('menu', 'Menü-Knopf', one('[data-testid="table-menu"] button')),
     ];
-    const actionTop = one('[data-testid="action-slot"]').getBoundingClientRect().top;
+    const a = one('[data-testid="action-slot"]').getBoundingClientRect();
+    const action = { x: a.left, y: a.top, w: a.width, h: a.height };
     const texts = all('.pt-text, .pt-bet, .pt-pot, .pt-pill');
     const truncated = texts.filter((t) => t.scrollWidth > t.clientWidth + 0.5).map((t) => t.textContent);
     const tooSmall = texts
       .filter((t) => parseFloat(getComputedStyle(t).fontSize) < 11)
       .map((t) => `${t.textContent} (${getComputedStyle(t).fontSize})`);
-    return { boxes, actionTop, truncated, tooSmall };
+    return { boxes, action, truncated, tooSmall };
   });
 }
 
-function fmt(b: Box): string {
+function fmt(b: Rect): string {
   return `[${[b.x, b.y, b.x + b.w, b.y + b.h].map((v) => String(Math.round(v))).join(',')}]`;
 }
 
-function overlaps(a: Box, b: Box): boolean {
+function overlaps(a: Rect, b: Rect): boolean {
   const eps = 0.5;
   return a.x + a.w - eps > b.x && b.x + b.w - eps > a.x && a.y + a.h - eps > b.y && b.y + b.h - eps > a.y;
 }
@@ -96,10 +108,8 @@ function findProblems(g: Geometry, vp: { width: number; height: number }): strin
     if (b.x < -0.5 || b.y < -0.5 || b.x + b.w > vp.width + 0.5 || b.y + b.h > vp.height + 0.5) {
       problems.push(`${b.name} außerhalb des Viewports ${fmt(b)}`);
     }
-    if (b.y + b.h > g.actionTop + 0.5) {
-      problems.push(
-        `${b.name} ragt in die Fläche der Aktionsleiste ${fmt(b)}, Leiste ab y=${String(Math.round(g.actionTop))}`,
-      );
+    if (overlaps(b, g.action)) {
+      problems.push(`${b.name} ${fmt(b)} ragt in die Fläche der Aktionsleiste ${fmt(g.action)}`);
     }
   }
   g.boxes.forEach((a, i) => {
@@ -114,13 +124,14 @@ function findProblems(g: Geometry, vp: { width: number; height: number }): strin
 
 for (const vp of VIEWPORTS) {
   test.describe(`${String(vp.width)}×${String(vp.height)}`, () => {
-    test.use({ viewport: vp });
+    test.use({ viewport: { width: vp.width, height: vp.height } });
 
     for (const state of [...STATES, ...LAYOUT_ONLY]) {
       const withScreenshot = STATES.some((s) => s.id === state.id);
       test(`${state.id} (${String(state.players)} Spieler)`, async ({ page }) => {
         await page.goto(`/table-dev.html?state=${state.id}&bare=1`);
         await expect(page.getByTestId('seat')).toHaveCount(state.players);
+        await expect(page.getByTestId('poker-table')).toHaveAttribute('data-layout', vp.layout);
         await page.evaluate(() => document.fonts.ready);
 
         expect.soft(findProblems(await measure(page), vp)).toEqual([]);
@@ -132,3 +143,31 @@ for (const vp of VIEWPORTS) {
     }
   });
 }
+
+test.describe('Umschalter Hoch/Quer (WP-017)', () => {
+  test('erzwungenes Layout gilt unabhängig von der Gerätelage', async ({ page }) => {
+    await page.setViewportSize({ width: 360, height: 740 });
+    await page.goto('/table-dev.html?state=six-flop&bare=1&layout=landscape');
+    await expect(page.getByTestId('poker-table')).toHaveAttribute('data-layout', 'landscape');
+    await page.setViewportSize({ width: 740, height: 360 });
+    await page.goto('/table-dev.html?state=six-flop&bare=1&layout=portrait');
+    await expect(page.getByTestId('poker-table')).toHaveAttribute('data-layout', 'portrait');
+  });
+
+  test('Auto folgt dem Drehen des Geräts, Menü-Auswahl schaltet ohne Neuladen um', async ({ page }) => {
+    await page.setViewportSize({ width: 360, height: 740 });
+    await page.goto('/table-dev.html?state=six-flop&bare=1&layout=auto');
+    const table = page.getByTestId('poker-table');
+    await expect(table).toHaveAttribute('data-layout', 'portrait');
+    // Marker am DOM-Knoten: überlebt nur, wenn der Tisch nicht neu gemountet wird.
+    await table.evaluate((el) => {
+      el.dataset['marker'] = 'same-node';
+    });
+    await page.setViewportSize({ width: 740, height: 360 });
+    await expect(table).toHaveAttribute('data-layout', 'landscape');
+    await page.getByRole('button', { name: 'Tisch-Menü' }).click();
+    await page.getByRole('radio', { name: 'Hochformat' }).check();
+    await expect(table).toHaveAttribute('data-layout', 'portrait');
+    await expect(table).toHaveAttribute('data-marker', 'same-node');
+  });
+});

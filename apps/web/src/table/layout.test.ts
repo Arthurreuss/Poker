@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { formatChips } from './format';
-import { PORTRAIT_SLOTS, SLOTS_BY_COUNT, placeSeats, seatMarker } from './layout';
+import {
+  LANDSCAPE_SLOTS,
+  LANDSCAPE_SLOTS_BY_COUNT,
+  PORTRAIT_SLOTS,
+  SLOTS_BY_COUNT,
+  placeSeats,
+  resolveLayout,
+  seatMarker,
+} from './layout';
 import { MOCK_STATES, mockById } from './dev/mocks';
 import type { PlayerSeatView, SeatView, TableView } from './types';
 
@@ -89,6 +97,53 @@ describe('placeSeats – Sitzrotation', () => {
 
   it('verlangt genau 9 Sitze', () => {
     expect(() => placeSeats({ ...table([0], 0), seats: [p('a')] })).toThrow(/9 Einträge/);
+  });
+});
+
+describe('Querformat (WP-017)', () => {
+  it('nutzt dieselbe Sitzrotation mit eigenen Positionen, eigener Sitz unten mittig', () => {
+    const view = table([0, 1, 2, 3, 4, 5, 6, 7, 8], 4);
+    const portrait = placeSeats(view, 'portrait');
+    const landscape = placeSeats(view, 'landscape');
+    expect(landscape.map((x) => x.seat)).toEqual(portrait.map((x) => x.seat));
+    expect(landscape.map((x) => x.slot)).toEqual((LANDSCAPE_SLOTS_BY_COUNT[9] ?? []).map((id) => LANDSCAPE_SLOTS[id]));
+    expect(landscape[0]?.slot).toMatchObject({ id: 'B', x: 50 });
+  });
+
+  it('hat für 1–9 Spieler eindeutige Positionen, beginnend unten mittig', () => {
+    for (let n = 1; n <= 9; n++) {
+      const ids = LANDSCAPE_SLOTS_BY_COUNT[n] ?? [];
+      expect(ids).toHaveLength(n);
+      expect(new Set(ids).size).toBe(n);
+      expect(ids[0]).toBe('B');
+    }
+  });
+
+  it('bis 8 Spieler links/rechts symmetrisch; die Ecke unten rechts (Aktionsleiste) nur bei 9', () => {
+    for (let n = 1; n <= 8; n++) {
+      const slots = (LANDSCAPE_SLOTS_BY_COUNT[n] ?? []).map((id) => LANDSCAPE_SLOTS[id]);
+      const xs = slots.map((s) => Math.round(s.x * 10)).sort((a, b) => a - b);
+      const mirrored = slots.map((s) => Math.round((100 - s.x) * 10)).sort((a, b) => a - b);
+      expect(xs, `${String(n)} Spieler`).toEqual(mirrored);
+      expect(LANDSCAPE_SLOTS_BY_COUNT[n]).not.toContain('BR');
+    }
+  });
+
+  it('Standard bleibt Hochformat', () => {
+    const view = table([0, 4], 0);
+    expect(placeSeats(view)).toEqual(placeSeats(view, 'portrait'));
+  });
+});
+
+describe('resolveLayout (D-009)', () => {
+  it('auto folgt der Ausrichtung des Bildschirms', () => {
+    expect(resolveLayout('auto', false)).toBe('portrait');
+    expect(resolveLayout('auto', true)).toBe('landscape');
+  });
+
+  it('Hoch/Quer erzwingen das Layout unabhängig von der Gerätelage', () => {
+    expect(resolveLayout('portrait', true)).toBe('portrait');
+    expect(resolveLayout('landscape', false)).toBe('landscape');
   });
 });
 

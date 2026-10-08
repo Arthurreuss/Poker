@@ -1,8 +1,22 @@
 /**
- * Reine Layout-Funktionen der Tischansicht (Hochformat, WP-016): welche Sitznummer an welcher
- * Position um den ovalen Tisch erscheint. Keine DOM-Abhängigkeit – direkt testbar.
+ * Reine Layout-Funktionen der Tischansicht (Hochformat WP-016, Querformat WP-017): welche
+ * Sitznummer an welcher Position um den ovalen Tisch erscheint und welches Layout gilt.
+ * Keine DOM-Abhängigkeit – direkt testbar.
  */
+import type { OrientationPreference } from '../settings/orientation';
 import { MAX_SEATS, type PlayerSeatView, type TableView } from './types';
+
+/** Die zwei Layouts der Tischansicht (D-009). */
+export type TableLayout = 'portrait' | 'landscape';
+
+/**
+ * Welches Layout gilt: `auto` folgt der Ausrichtung des Bildschirms (Viewport), `portrait` und
+ * `landscape` erzwingen das Layout unabhängig davon (D-009).
+ */
+export function resolveLayout(preference: OrientationPreference, deviceLandscape: boolean): TableLayout {
+  if (preference === 'auto') return deviceLandscape ? 'landscape' : 'portrait';
+  return preference;
+}
 
 /** Feste Positionen um den Tisch, im Uhrzeigersinn ab „unten mittig“. */
 export type SlotId = 'B' | 'BL' | 'L1' | 'L2' | 'TL' | 'T' | 'TR' | 'R2' | 'R1' | 'BR';
@@ -40,8 +54,8 @@ export const PORTRAIT_SLOTS: Readonly<Record<SlotId, Slot>> = {
 };
 
 /**
- * Welche Positionen bei n belegten Plätzen genutzt werden – im Uhrzeigersinn ab unten mittig,
- * so dass die Spieler gleichmäßig um den Tisch verteilt sind.
+ * Welche Positionen bei n belegten Plätzen im Hochformat genutzt werden – im Uhrzeigersinn ab
+ * unten mittig, so dass die Spieler gleichmäßig um den Tisch verteilt sind.
  */
 export const SLOTS_BY_COUNT: Readonly<Record<number, readonly SlotId[]>> = {
   1: ['B'],
@@ -53,6 +67,52 @@ export const SLOTS_BY_COUNT: Readonly<Record<number, readonly SlotId[]>> = {
   7: ['B', 'BL', 'L2', 'TL', 'TR', 'R2', 'BR'],
   8: ['B', 'BL', 'L1', 'L2', 'T', 'R2', 'R1', 'BR'],
   9: ['B', 'BL', 'L1', 'L2', 'TL', 'TR', 'R2', 'R1', 'BR'],
+};
+
+/**
+ * Positionen im Querformat (WP-017): breiter, flacher Tisch. Die rechte untere Ecke gehört der
+ * Aktionsleiste (WP-018), deshalb sitzt `BR` höher als `BL`. Seitliche Sitze: L2/R2 oben,
+ * L1/R1 auf halber Höhe. Der eigene Einsatz steht links neben den eigenen Karten.
+ * Werte sind per Screenshot-Test (e2e-visual) abgestimmt.
+ */
+export const LANDSCAPE_SLOTS: Readonly<Record<SlotId, Slot>> = {
+  B: { id: 'B', x: 50, y: 88, betX: 43, betY: 74, betAlign: 'end', markerSide: 'right' },
+  BL: { id: 'BL', x: 21, y: 80, betX: 30, betY: 68, betAlign: 'start', markerSide: 'right' },
+  L1: { id: 'L1', x: 8, y: 47, betX: 16, betY: 42, betAlign: 'start', markerSide: 'right' },
+  L2: { id: 'L2', x: 16, y: 22, betX: 24, betY: 30, betAlign: 'start', markerSide: 'right' },
+  TL: { id: 'TL', x: 33, y: 19, betX: 37, betY: 33, betAlign: 'center', markerSide: 'right' },
+  T: { id: 'T', x: 50, y: 19, betX: 50, betY: 33, betAlign: 'center', markerSide: 'right' },
+  TR: { id: 'TR', x: 67, y: 19, betX: 63, betY: 33, betAlign: 'center', markerSide: 'left' },
+  R2: { id: 'R2', x: 84, y: 22, betX: 76, betY: 30, betAlign: 'end', markerSide: 'left' },
+  R1: { id: 'R1', x: 92, y: 47, betX: 84, betY: 42, betAlign: 'end', markerSide: 'left' },
+  BR: { id: 'BR', x: 80, y: 68, betX: 71, betY: 66, betAlign: 'end', markerSide: 'left' },
+};
+
+/**
+ * Positionen je Spielerzahl im Querformat. `BR` (über der Aktionsleiste) wird nur bei 9 Spielern
+ * gebraucht; bis 8 Spieler bleibt die Verteilung links/rechts symmetrisch.
+ */
+export const LANDSCAPE_SLOTS_BY_COUNT: Readonly<Record<number, readonly SlotId[]>> = {
+  1: ['B'],
+  2: ['B', 'T'],
+  3: ['B', 'TL', 'TR'],
+  4: ['B', 'L1', 'T', 'R1'],
+  5: ['B', 'L1', 'TL', 'TR', 'R1'],
+  6: ['B', 'L1', 'TL', 'T', 'TR', 'R1'],
+  7: ['B', 'L1', 'L2', 'TL', 'TR', 'R2', 'R1'],
+  8: ['B', 'L1', 'L2', 'TL', 'T', 'TR', 'R2', 'R1'],
+  9: ['B', 'BL', 'L1', 'L2', 'TL', 'TR', 'R2', 'R1', 'BR'],
+};
+
+interface LayoutTables {
+  readonly slots: Readonly<Record<SlotId, Slot>>;
+  readonly byCount: Readonly<Record<number, readonly SlotId[]>>;
+}
+
+/** Positionstabellen je Layout. */
+export const LAYOUT_TABLES: Readonly<Record<TableLayout, LayoutTables>> = {
+  portrait: { slots: PORTRAIT_SLOTS, byCount: SLOTS_BY_COUNT },
+  landscape: { slots: LANDSCAPE_SLOTS, byCount: LANDSCAPE_SLOTS_BY_COUNT },
 };
 
 export interface PlacedSeat {
@@ -67,9 +127,9 @@ export interface PlacedSeat {
  * Ordnet die belegten Sitze den Positionen zu. Der eigene Sitz ist immer unten mittig (`B`),
  * die übrigen folgen im Uhrzeigersinn in Sitzreihenfolge. Ohne eigenen Sitz (Zuschauer)
  * steht der niedrigste belegte Sitz unten. Leere Sitze werden nicht gezeichnet; die belegten
- * werden je nach Anzahl gleichmäßig verteilt (`SLOTS_BY_COUNT`).
+ * werden je nach Anzahl gleichmäßig verteilt (`SLOTS_BY_COUNT` bzw. `LANDSCAPE_SLOTS_BY_COUNT`).
  */
-export function placeSeats(view: TableView): PlacedSeat[] {
+export function placeSeats(view: TableView, layout: TableLayout = 'portrait'): PlacedSeat[] {
   if (view.seats.length !== MAX_SEATS) {
     throw new Error(`TableView.seats muss ${String(MAX_SEATS)} Einträge haben, hat ${String(view.seats.length)}`);
   }
@@ -86,13 +146,14 @@ export function placeSeats(view: TableView): PlacedSeat[] {
   const heroIndex = heroSeat === null ? -1 : occupied.findIndex((o) => o.seat === heroSeat);
   const start = heroIndex === -1 ? 0 : heroIndex;
   const rotated = [...occupied.slice(start), ...occupied.slice(0, start)];
-  const slotIds = SLOTS_BY_COUNT[rotated.length];
+  const { slots, byCount } = LAYOUT_TABLES[layout];
+  const slotIds = byCount[rotated.length];
   if (slotIds === undefined) {
     throw new Error(`Keine Sitzaufteilung für ${String(rotated.length)} Spieler`);
   }
   return rotated.map((o, i) => {
     const id = slotIds[i] ?? 'B';
-    return { seat: o.seat, player: o.player, slot: PORTRAIT_SLOTS[id], isHero: o.seat === heroSeat };
+    return { seat: o.seat, player: o.player, slot: slots[id], isHero: o.seat === heroSeat };
   });
 }
 
