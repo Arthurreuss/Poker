@@ -2,13 +2,16 @@
 // Aktionsleiste, Showdown, Rundenende und Verbindungshinweis. Layout (Hoch/Quer) macht `TableScreen`.
 import { useCallback } from 'react';
 import { Link } from 'react-router';
+import type { ReactionId } from '@poker/engine/protocol';
 import { useFeedbackDialog } from '../feedback';
 import { DATENSCHUTZ_PATH, IMPRESSUM_PATH } from '../legal/LegalFooter';
 import { InviteShare } from '../lobby/InviteShare';
+import { ReactionPicker } from '../reactions/ReactionPicker';
 import { useAnimationsPreference } from '../settings/animations';
+import { useReactionsPreference } from '../settings/reactions';
 import { cx } from '../styles/cx';
 import { TableScreen } from '../table/TableScreen';
-import { toTableView } from './adapter';
+import { toReactionViews, toTableView } from './adapter';
 import { ConnectionBanner, ErrorToast, GameActionArea, RoundResultDialog, TableClosedNotice } from './GamePanels';
 import { useNow } from './hooks';
 import type { TableGameSnapshot, TableGameStore } from './tableGame';
@@ -24,6 +27,7 @@ export interface GameTableProps {
 
 export function GameTable({ snapshot, store, onLeave }: GameTableProps) {
   const [animations] = useAnimationsPreference();
+  const [reactionsOn] = useReactionsPreference();
   const table = snapshot.table;
   const turnClock = table === null ? null : readTurnClock(table, snapshot.receivedAtMs);
   const now = useNow(turnClock !== null, 200);
@@ -39,14 +43,22 @@ export function GameTable({ snapshot, store, onLeave }: GameTableProps) {
   const rematch = useCallback(() => {
     store.rematch();
   }, [store]);
+  const react = useCallback((reaction: ReactionId) => store.react(reaction), [store]);
   const feedback = useFeedbackDialog({ tableId: store.tableId });
+  const baseView = table === null ? null : toTableView(table, { turnClock, nowMs: now });
+  // Reaktionen nur, wenn eingeschaltet (WP-032); senden dürfen nur Spieler mit Platz.
+  const view =
+    baseView === null || !reactionsOn
+      ? baseView
+      : { ...baseView, reactions: toReactionViews(snapshot.reactions, baseView) };
+  const canReact = reactionsOn && table !== null && table.you.seat !== null;
 
   return (
     <div className={cx('gp-page', 'safe-area', animations && 'pg-anim')} data-testid="game-table">
       <ConnectionBanner status={snapshot.connection} hasState={table !== null} onReconnect={reconnect} />
       {snapshot.closed !== null ? (
         <TableClosedNotice onBack={onLeave} />
-      ) : table === null ? (
+      ) : table === null || view === null ? (
         <div className="gp-center">
           {snapshot.notFound ? (
             <>
@@ -60,7 +72,8 @@ export function GameTable({ snapshot, store, onLeave }: GameTableProps) {
       ) : (
         <div className="gp-table">
           <TableScreen
-            view={toTableView(table, { turnClock, nowMs: now })}
+            view={view}
+            reactionPicker={canReact ? <ReactionPicker onReact={react} /> : undefined}
             actionBar={<GameActionArea snapshot={snapshot} store={store} />}
             menuItems={
               <div className="gp-menu-items">

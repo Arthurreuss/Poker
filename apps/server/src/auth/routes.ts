@@ -4,6 +4,7 @@
 import fastifyCookie from '@fastify/cookie';
 import rateLimit from '@fastify/rate-limit';
 import type { FastifyError, FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
+import { toAvatarId } from '../avatar/avatar';
 import type { Database } from '../db';
 import { anonymizeAccount } from './account';
 import type { AuthConfig } from './config';
@@ -126,7 +127,7 @@ export const authRoutes: FastifyPluginAsync<AuthPluginOptions> = async (app, { d
     if (row === undefined) throw new Error('User konnte nicht angelegt werden');
     await startSession(reply, row.id);
     return reply.code(201).send({
-      user: { id: row.id, username: row.username, isAdmin: row.is_admin },
+      user: { id: row.id, username: row.username, isAdmin: row.is_admin, avatar: null },
     } satisfies UserResponse);
   });
 
@@ -136,8 +137,14 @@ export const authRoutes: FastifyPluginAsync<AuthPluginOptions> = async (app, { d
       return reply.code(400).send({ error: 'invalid_request', message: input.message } satisfies ErrorResponse);
     }
     const { username, password } = input.value;
-    const { rows } = await db.query<{ id: number; username: string; is_admin: boolean; password_hash: string }>(
-      `SELECT id, username, is_admin, password_hash FROM users
+    const { rows } = await db.query<{
+      id: number;
+      username: string;
+      is_admin: boolean;
+      password_hash: string;
+      avatar: string | null;
+    }>(
+      `SELECT id, username, is_admin, password_hash, avatar FROM users
         WHERE lower(username) = lower($1) AND deleted_at IS NULL`,
       [username],
     );
@@ -149,7 +156,9 @@ export const authRoutes: FastifyPluginAsync<AuthPluginOptions> = async (app, { d
       return reply.code(401).send(INVALID_CREDENTIALS);
     }
     await startSession(reply, user.id);
-    return { user: { id: user.id, username: user.username, isAdmin: user.is_admin } } satisfies UserResponse;
+    return {
+      user: { id: user.id, username: user.username, isAdmin: user.is_admin, avatar: toAvatarId(user.avatar) },
+    } satisfies UserResponse;
   });
 
   app.post('/api/logout', async (request, reply) => {

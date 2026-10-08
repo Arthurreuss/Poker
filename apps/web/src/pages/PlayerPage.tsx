@@ -2,6 +2,7 @@
 import { Link, useParams } from 'react-router';
 import { fetchPlayerStats, fetchRecentRounds, type RoundSummary } from '../api/stats';
 import { useAuth } from '../auth/AuthContext';
+import { Avatar } from '../avatars/Avatar';
 import {
   formatDate,
   formatNumber,
@@ -76,6 +77,10 @@ export function PlayerPage() {
       <ResourceView resource={stats}>
         {(s) => (
           <>
+            <div className={styles.profileHead}>
+              <Avatar avatar={s.player.avatar} name={s.player.name} className={styles.avatarLarge} />
+              <span className={styles.profileName}>{s.player.name}</span>
+            </div>
             <section className={styles.section} aria-label="Rangliste">
               <div className={styles.tiles}>
                 <Tile label="Platz" value={s.rank === null ? '–' : `${String(s.rank)}.`} />

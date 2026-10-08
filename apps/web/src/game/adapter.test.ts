@@ -1,7 +1,7 @@
 import type { TableView as ServerTableView } from '@poker/engine/protocol';
 import { describe, expect, it } from 'vitest';
 import type { PlayerSeatView, SeatView } from '../table/types';
-import { heroHandContext, toTableView } from './adapter';
+import { heroHandContext, toReactionViews, toTableView } from './adapter';
 import { act, NOW, serverView, startGame, toAct, type Game } from './test/fixtures';
 
 function player(seat: SeatView | undefined): PlayerSeatView {
@@ -163,5 +163,25 @@ describe('heroHandContext', () => {
     expect(heroHandContext(serverView(game, null))).toBeNull();
     checkDown(game);
     expect(heroHandContext(serverView(game, 1))).toBeNull();
+  });
+});
+
+describe('Avatare und Reaktionen (WP-032)', () => {
+  it('Avatar je Sitz aus der Server-Sicht', () => {
+    const view = toTableView(serverView(null, 1));
+    expect([0, 1, 2].map((i) => player(view.seats[i]).avatar)).toEqual(['fox', null, null]);
+  });
+
+  it('Reaktionen → Emoji und Beschriftung; nur für besetzte Sitze', () => {
+    const view = toTableView(serverView(null, 1));
+    expect(
+      toReactionViews(
+        [
+          { id: 1, seat: 1, userId: 2, reaction: 'thumbs-up' },
+          { id: 2, seat: 7, userId: 9, reaction: 'cry' },
+        ],
+        view,
+      ),
+    ).toEqual([{ id: 1, seat: 1, emoji: '👍', label: 'Daumen hoch' }]);
   });
 });

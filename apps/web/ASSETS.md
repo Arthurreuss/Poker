@@ -15,4 +15,6 @@ Werkzeug: `@resvg/resvg-js` (MPL-2.0) wird nur als Entwicklungswerkzeug zum Rend
 
 Karten, Chips und Marker der Tischansicht (WP-016): siehe [src/table/ASSETS.md](src/table/ASSETS.md).
 
+Avatare (WP-032): siehe [src/avatars/ASSETS.md](src/avatars/ASSETS.md).
+
 Neue Assets hier mit Herkunft und Lizenz ergänzen.

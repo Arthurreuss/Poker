@@ -2,7 +2,7 @@
 import type { RoundStanding } from '@poker/engine';
 import type { ClientMessage, TableView as ServerTableView } from '@poker/engine/protocol';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { TableGameStore } from './tableGame';
+import { REACTION_DISPLAY_MS, TableGameStore } from './tableGame';
 import { fakeConnection } from './test/fakeSocket';
 import { act, serverView, startGame, toAct, USERS, type Game } from './test/fixtures';
 
@@ -270,5 +270,43 @@ describe('TableGameStore – Rundenende', () => {
     store.dismissStandings();
     state(finished());
     expect(store.getSnapshot().standings).toBeNull();
+  });
+});
+
+describe('TableGameStore – Reaktionen (WP-032)', () => {
+  it('react sendet table.react', () => {
+    const { store, last } = setup(1);
+    expect(store.react('wow')).toBe(true);
+    expect(last().sent.at(-1)).toEqual({ type: 'table.react', tableId: TABLE, reaction: 'wow' });
+  });
+
+  it('blendet Reaktionen je Sitz ein, ersetzt eine sichtbare und entfernt sie nach REACTION_DISPLAY_MS', () => {
+    const { store, last } = setup(1);
+    const receive = (seat: number, reaction: 'laugh' | 'fire') => {
+      last().receive({ type: 'table.reaction', tableId: TABLE, seat, userId: seat + 1, reaction });
+    };
+    receive(0, 'laugh');
+    vi.advanceTimersByTime(1000);
+    receive(1, 'fire');
+    receive(0, 'fire');
+    expect(store.getSnapshot().reactions.map((r) => [r.seat, r.reaction])).toEqual([
+      [1, 'fire'],
+      [0, 'fire'],
+    ]);
+    vi.advanceTimersByTime(REACTION_DISPLAY_MS - 1);
+    expect(store.getSnapshot().reactions).toHaveLength(2);
+    vi.advanceTimersByTime(1);
+    expect(store.getSnapshot().reactions).toEqual([]);
+  });
+
+  it('ignoriert Reaktionen anderer Tische; stop räumt die Timer ab', () => {
+    const { store, last } = setup(1);
+    last().receive({ type: 'table.reaction', tableId: TABLE + 1, seat: 0, userId: 1, reaction: 'cry' });
+    expect(store.getSnapshot().reactions).toEqual([]);
+    const before = vi.getTimerCount(); // Timer der Verbindung (z. B. Heartbeat) zählen nicht
+    last().receive({ type: 'table.reaction', tableId: TABLE, seat: 0, userId: 1, reaction: 'cry' });
+    expect(vi.getTimerCount()).toBe(before + 1);
+    store.stop();
+    expect(vi.getTimerCount()).toBe(before);
   });
 });

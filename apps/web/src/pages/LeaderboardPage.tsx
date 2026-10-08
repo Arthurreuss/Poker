@@ -4,6 +4,7 @@
 import { Link } from 'react-router';
 import { fetchLeaderboard } from '../api/stats';
 import { useAuth } from '../auth/AuthContext';
+import { Avatar } from '../avatars/Avatar';
 import { formatNumber, isSharedRank } from '../stats/format';
 import { PlayerLink, ResourceView } from '../stats/parts';
 import styles from '../stats/Stats.module.css';
@@ -54,8 +55,13 @@ export function LeaderboardPage() {
                         {p.rank}.
                       </td>
                       <td className={styles.name}>
-                        <PlayerLink name={p.name} />
-                        {own && <span className={styles.muted}> (du)</span>}
+                        <span className={styles.who}>
+                          <Avatar avatar={p.avatar} name={p.name} decorative className={styles.avatarSmall} />
+                          <span>
+                            <PlayerLink name={p.name} />
+                            {own && <span className={styles.muted}> (du)</span>}
+                          </span>
+                        </span>
                       </td>
                       <td className={styles.strong}>{formatNumber(p.points)}</td>
                       <td>{formatNumber(p.rounds)}</td>
