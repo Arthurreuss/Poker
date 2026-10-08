@@ -8,6 +8,7 @@ import { createPgTableRepository } from './game/pg-repository';
 import { combineHooks, createHandHistoryHooks } from './history/hooks';
 import { DEFAULT_RETRY_DELAYS_MS, withFinishRoundRetry } from './history/retry';
 import { createPgHandHistoryStore, type HandHistoryStore } from './history/store';
+import { statsRoutes } from './stats/routes';
 import { registerWebSocket, type Authenticate } from './ws';
 
 export interface AppOptions {
@@ -113,6 +114,7 @@ export function buildApp({
   });
 
   void app.register(authRoutes, { db, config: auth });
+  void app.register(statsRoutes, { db });
 
   return app;
 }

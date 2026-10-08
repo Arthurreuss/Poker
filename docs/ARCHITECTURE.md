@@ -8,7 +8,7 @@ npm-Workspaces-Monorepo (D-004). Alle Workspaces sind TypeScript (ESM, `strict`)
 | Workspace | Paket | Zweck |
 |---|---|---|
 | `packages/engine` | `@poker/engine` | reine Poker-Logik, keine I/O-Abhängigkeiten; Subpfad `@poker/engine/protocol` = WebSocket-Protokoll (Typen, Validatoren, gefilterte Sichten) für Server und Web |
-| `apps/server` | `@poker/server` | Game-Server: Fastify mit `GET /api/health` (prüft die DB per `pg`), Auth-Endpunkten (`/api/register`, `/login`, `/logout`, `/me`) und Game-Server über WebSocket `/ws` (`ws`, Tische im Speicher); importiert `@poker/engine` |
+| `apps/server` | `@poker/server` | Game-Server: Fastify mit `GET /api/health` (prüft die DB per `pg`), Auth-Endpunkten (`/api/register`, `/login`, `/logout`, `/me`), Rangliste/Statistik/Hand-Historie (`/api/leaderboard`, `/api/players/:name/stats`, `/api/rounds/…`, `/api/hands/:id`) und Game-Server über WebSocket `/ws` (`ws`, Tische im Speicher); importiert `@poker/engine` |
 | `apps/web` | `@poker/web` | Frontend: React + Vite als installierbare PWA mit Routing, Login/Registrierung und App-Shell (Abschnitt „Frontend“) |
 
 ### Server (`apps/server/src`)
@@ -16,6 +16,7 @@ npm-Workspaces-Monorepo (D-004). Alle Workspaces sind TypeScript (ESM, `strict`)
 - `db.ts` – `Database`-Schnittstelle (`ping`, `query`, `close`; `Queryable` = nur `query`, passt auch auf `pg.Pool`) und `createPgDatabase(url | poolConfig)` mit `pg.Pool`.
 - `app.ts` – `buildApp({ db, publicOrigin, trustProxy, auth?, game? })` baut die Fastify-App ohne `listen`; Tests nutzen `app.inject()` und können eine Fake-DB übergeben. `game` überschreibt Teile des Game-Servers (Repository, `authenticate`, Uhr, Rng, Pause nach der Hand, Hooks); der Game-Server hängt als `app.game` an der Instanz. `GET /api/health` → `200 { status: "ok", db: "ok" }` bzw. `503 { status: "error", db: "error" }`; die Route loggt nur Warnungen. Registriert das Auth-Plugin (`auth/routes.ts`, siehe „Auth“); `auth` ist optional eine `AuthConfig` (Standard: aus `process.env`).
 - `auth/` – Registrierung, Login, Sessions, Rate-Limit (Abschnitt „Auth“); `cli/` – Admin-Skripte.
+- `stats/` – Rangliste, Statistiken und Hand-Historie für Clients (Abschnitt „Datenmodell“ → „Statistiken“).
 - `ws.ts` – `registerWebSocket(app, { publicOrigin, authenticate, game })`: `ws`-Server (`noServer`) am `upgrade`-Event des HTTP-Servers, nur Pfad `/ws` (sonst `404`). `Origin` muss exakt `PUBLIC_ORIGIN` sein, sonst `403` (D-014); dann Session aus dem `Cookie`-Header (`getUserFromCookieHeader`), ohne gültige Session `401`, Fehler der Prüfung `500`. Nachrichten (max. 64 KiB, sonst Trennung mit 1009) gehen pro Verbindung strikt nacheinander an den `GameServer`. Heartbeat: Ping alle 30 s, Clients ohne Pong bis zum nächsten Ping werden getrennt. Beim Schließen der App werden Tisch-Timer beendet und offene Verbindungen getrennt. Tests: `ws.test.ts` (Transport), `game/*.test.ts` (Spielablauf).
 - `game/` – Game-Server, siehe „Game-Server: Protokoll und Tische“.
 - `main.ts` – Einstiegspunkt: Config laden, App bauen, Migrationen, verwaiste Tische/Runden schließen (`closeOrphanedTables`), `listen`, sauberes Beenden bei SIGTERM/SIGINT.
@@ -379,8 +380,58 @@ Code in `apps/server/src/history/`, Engine-Hilfen `initialDeck`/`replayHand` in 
 - **Punkte auf dem Account:** keine eigene Spalte, sondern `SUM(round_players.points)` (`loadUserPoints(db, userIds)`, Index `round_players_user_points_idx`). Abgebrochene Runden haben `points = NULL` und zählen nicht. Die Punkte selbst berechnet nur die Engine (`placementPoints`, D-012; geteilte Plätze nach D-018: Durchschnitt der belegten Plätze, abgerundet).
 - **Speicherfehler:** halten das Spiel nie an – alle Schreibvorgänge laufen in der Hook-Warteschlange des Tisches. `withRetry` wiederholt vorübergehende Fehler (Verbindung, Timeout, Neustart der DB) nach 1 s, 5 s und 15 s (`DEFAULT_RETRY_DELAYS_MS`, `game.retryDelaysMs`); deterministische SQL-Fehler (SQLSTATE-Klassen 22, 23, 42) sofort nicht. Danach wird der Fehler geloggt („Fehler in Tisch-Hook“ mit Task, Runde, Hand), die Hand fehlt dann in der Historie. Ein Retry verzögert nur die folgenden Schreibvorgänge dieses Tisches. Dasselbe gilt für `finishRound` (`withFinishRoundRetry`); `startRound` bleibt ohne Retry (der Ersteller bekommt sofort einen Fehler). Beim Herunterfahren wartet die App bis zu 10 s auf ausstehende Schreibvorgänge.
 - **Replay:** `loadRoundHands(db, roundId)`/`loadHand(db, id)` laden Hände mit Aktionen; `replayHandRecord(hand)` spielt sie über `replayHand` der Engine mit dem gespeicherten Deck nach (Aktionen → Engine-Aktionen: `bet`/`raise` mit `amount` = Straßeneinsatz danach, mit `is_all_in` → `allIn`), vergleicht jeden erzeugten Protokolleintrag mit dem gespeicherten und liefert Endzustand und neu abgeleiteten Datensatz. `initialDeck(hand)` rekonstruiert das Deck aus jedem Handzustand (Hole Cards in Austeilreihenfolge, je Straße Burn + Board, Rest).
-- **Server-Neustart (D-019):** Tische und laufende Runden leben nur im Speicher. Beim Start setzt `closeOrphanedTables` laufende Runden auf `aborted` (Platz/Punkte bleiben `NULL`, keine Punkte) und offene/laufende Tische auf `closed`. Bereits gespeicherte Hände der abgebrochenen Runde bleiben: beendete vollständig (nachspielbar), eine zum Zeitpunkt des Absturzes laufende Hand nur mit Ausgangslage (`result`/`finished_at` `NULL`, keine Aktionen, kein Board). Statistiken (WP-019) müssen entscheiden, ob sie Hände abgebrochener Runden mitzählen.
+- **Server-Neustart (D-019):** Tische und laufende Runden leben nur im Speicher. Beim Start setzt `closeOrphanedTables` laufende Runden auf `aborted` (Platz/Punkte bleiben `NULL`, keine Punkte) und offene/laufende Tische auf `closed`. Bereits gespeicherte Hände der abgebrochenen Runde bleiben: beendete vollständig (nachspielbar), eine zum Zeitpunkt des Absturzes laufende Hand nur mit Ausgangslage (`result`/`finished_at` `NULL`, keine Aktionen, kein Board). Statistiken zählen sie nicht (D-022, siehe „Statistiken“).
 - **Tests:** `history/records.test.ts` (Abbildung, Sichtbarkeit, Replay ganzer Zufallsrunden ohne DB), `history/retry.test.ts` (Retry-Regeln, `combineHooks`), `history/history.db.test.ts` (mit `TEST_DATABASE_URL`: Runde über den Game-Server → jede Hand gleich dem Serverzustand und per Replay identisch; Platzierungen/Punkte unabhängig nachgerechnet, Summe je Account über drei Runden; vorübergehende und dauerhafte Speicherfehler; automatische Aktionen; Neustart mitten in der Runde mit gespeicherten Händen), `packages/engine/src/replay.test.ts` (Deck-Rekonstruktion, 300 Zufallshände mit All-ins/Side Pots, Manipulation wird erkannt).
+
+### Statistiken (Rangliste, Profil, Hand-Historie, WP-019)
+Code in `apps/server/src/stats/`: `stats.ts` (reine Berechnung), `view.ts` (Hand-Historie für Clients, rein), `queries.ts` (SQL), `routes.ts` (Fastify-Plugin, registriert in `buildApp`). Web: Abschnitt „Frontend“.
+
+**Was zählt:** nur Runden mit Status `finished` und darin nur beendete Hände (`hands.result` gesetzt). Hände abgebrochener Runden bleiben in der Historie und sind nachlesbar, zählen aber nirgends (D-019, D-022); laufende Runden sind über die API gar nicht sichtbar.
+
+**Rangliste und Rundenwerte** (aus `round_players` ⋈ `rounds`):
+
+| Wert | Definition |
+|---|---|
+| Punkte | `SUM(points)` über beendete Runden (D-012; geteilte Plätze nach D-018 abgerundet, berechnet die Engine) |
+| Runden | Anzahl beendeter Runden mit Teilnahme |
+| Siege | Anzahl Runden mit `placement = 1` |
+| Platz | `rank()` nach Punkten: gleiche Punkte = gleicher Platz (1, 1, 3). Sortierung innerhalb eines Platzes: Siege, Runden, Name |
+
+Die Rangliste enthält alle aktiven Accounts (auch mit 0 Runden), gelöschte nicht. In Rundenergebnissen und Händen erscheinen gelöschte Spieler mit Name `null` („Gelöschter Spieler“ in der UI) – egal ob die User-Zeile anonymisiert ist (`deleted_at`) oder fehlt.
+
+**Spielstil je Hand** (`classifyHand`, Eingabe: eigene Aktionen der Hand in Reihenfolge, Board-Größe, Showdown ja/nein, Pot gewonnen ja/nein):
+
+| Kennzahl | Zähler | Nenner |
+|---|---|---|
+| Hände | – | alle gewerteten Hände, in denen der Spieler Karten bekam |
+| VPIP | Hände mit eigenem Preflop-`call`, `bet` oder `raise` | Hände mit eigener Preflop-Entscheidung |
+| PFR | Hände mit eigenem Preflop-`bet` oder `raise` | wie VPIP |
+| Showdown-Quote (WTSD) | Flop gesehen und ohne Fold im Showdown | Flop gesehen |
+| Showdown gewonnen (W$SD) | im Showdown mindestens einen Pot (auch geteilt) gewonnen | Showdowns |
+
+- **Blinds** sind nie freiwillig. Ein Big Blind, der seine Option checkt, hat entschieden (Nenner), aber nichts freiwillig gezahlt. Ein Small Blind, der completet (Call), zählt als VPIP.
+- **Eigene Preflop-Entscheidung:** mindestens eine Nicht-Blind-Aktion preflop, und der Spieler war nicht abwesend. Walk für den Big Blind und All-in schon durch den Blind haben keine Entscheidung (nicht im VPIP-/PFR-Nenner).
+- **Flop gesehen:** preflop nicht gefoldet und die Hand hat mindestens drei Board-Karten – auch per All-in-Run-out.
+- **Automatische Aktionen (`is_automatic`):** Ist die **erste** eigene Nicht-Blind-Aktion einer Hand automatisch, war der Spieler nicht da (getrennt oder Zeit abgelaufen, bevor er überhaupt gehandelt hat). Solche Hände zählen bei „Hände“, aber in **keinem** Nenner der Quoten (VPIP, PFR, WTSD, W$SD). Grund: Ein getrennter Spieler wird automatisch gefoldet bzw. gecheckt (D-012, D-022) – mitgezählt würde Abwesenheit seinen Spielstil verzerren (VPIP fällt, ein abwesender Big Blind „sieht“ Flops). Hat der Spieler in der Hand zuerst selbst gehandelt und läuft später die Zeit ab, zählt die Hand normal, der automatische Fold wie ein eigener. Automatische Aktionen sind immer Check oder Fold, also nie VPIP oder PFR.
+- **Gewonnen** heißt: Anteil an einem Pot (`result.pots[].winnerUserIds`); zurückgegebene, nicht gecallte Einsätze zählen nicht. W$SD zählt nur Hände mit Showdown, ein Gewinn ohne Showdown ist kein W$SD.
+- Quoten liefert die API als `{ count, of }`; die UI zeigt ganze Prozent, bei `of = 0` „–“.
+- **Tests:** `stats.test.ts` (Tabellentests je Fall und eine bekannte Zehn-Hände-Historie), `stats.db.test.ts` vergleicht die SQL-Ableitung (`loadPlayerHands`) mit `playerHandFromRecord` über die gespeicherten Hände echter Zufallsrunden und prüft, dass abgebrochene Runden und unbeendete Hände nicht zählen.
+
+**Abfragen (`queries.ts`):** Rangliste in einer Anweisung (`users` ⟕ (`round_players` ⋈ `rounds`), `rank()`); Spielstil über `hand_actions (user_id, hand_id)` → je Hand ein JSON-Array der eigenen Aktionen, Board-Größe, `result.showdown` und Pot-Gewinn per `jsonb_path_exists` – gerechnet wird in `aggregateHandStats`. Das reicht, weil jeder Spieler mit Karten in jeder Hand mindestens eine Aktion hat (Blind oder Entscheidung: wer nicht im Blind sitzt, muss preflop handeln). Letzte Runden über `round_players (user_id, round_id)`, Hände über `hands (round_id, hand_number)`. Die vorhandenen Indizes aus 0001 genügen, es gibt keine neue Migration. Profil: Rangliste + Spielstil, beides pro Aufruf frisch gerechnet (keine Zwischenspeicher, die veralten könnten).
+
+**Endpunkte** (alle `GET`, nur mit gültiger Session, sonst `401 { error: "unauthorized" }`; Fehler `{ error, message }` wie bei „Auth“):
+
+| Pfad | Antwort |
+|---|---|
+| `/api/leaderboard` | `{ players: [{ rank, userId, name, points, rounds, wins }] }` |
+| `/api/players/:name/stats` | `{ player: { id, name }, rank, points, rounds, wins, hands: { hands, vpip, pfr, wtsd, wsd } }`; Name case-insensitiv, unbekannt/gelöscht `404` |
+| `/api/rounds/recent?player=&limit=` | `{ rounds: RoundSummary[] }` – beendete und abgebrochene Runden von `player` (Standard: man selbst), neueste zuerst, `limit` 1–50 (Standard 10, sonst `400`). `RoundSummary`: `id`, `tableName`, `status`, `startedAt`, `finishedAt`, `handCount`, `viewerParticipated`, `players` (`name`, `seat`, `placement`, `points`, `isViewer`; nach Platz, geteilte Plätze möglich) |
+| `/api/rounds/:id` | `{ round: RoundSummary, hands: [{ id, handNumber, board, winners, viewer: { holeCards, net } \| null }] }`; laufend/unbekannt `404`, ohne Teilnahme `403` |
+| `/api/hands/:id` | `{ hand: HandView }` (`view.ts`): Blinds, Button/Blind-Sitze, Board, `players` (`seat`, `name`, `isViewer`, Stacks vor/nach, `folded`, `cards` = Sichtbarkeit, `holeCards`, `handDescription`), `actions` (`seq`, `street`, `seat`, `name`, `action`, `amount`, `streetTotal` = Einsatz auf der Straße danach, `isAllIn`, `isAutomatic`), `pots` (Gewinner, Hand), `winners` (ohne zurückgegebene Einsätze); unbeendete Hand oder laufende Runde `404`, ohne Teilnahme an der Runde `403` |
+
+**Datenschutz der Historie (D-003):** Das Deck wird für die API gar nicht geladen (`HISTORY_HAND_SELECT` ohne `deck`), die Antwort wird Feld für Feld aufgebaut. Hole Cards: eigene immer, fremde nur bei `cards === 'shown'` (gemuckte und gefoldete bleiben `null`). Hand-Details und Handliste einer Runde nur für deren Teilnehmer; Rundenergebnisse (Plätze, Punkte) in „letzte Runden“ sieht jeder Eingeloggte. Tests: `view.test.ts` (feste Hände und Zufallsrunden: für jeden Betrachter tauchen nur Board-, eigene und gezeigte Karten auf), `stats.db.test.ts` (über HTTP, inkl. `403`/`404`).
+
+**Aktualität:** keine Push-Nachricht. Die Rangliste ist nach Rundenende aktuell, weil `finishRound` Platz und Punkte direkt beim Rundenende schreibt und die Seiten bei jedem Aufruf sowie bei `focus`/`visibilitychange` neu laden (`useResource` mit `refetchOnFocus`); wer vom Tisch zur Rangliste wechselt, öffnet sie neu. `/api/` wird weder von nginx (`no-store`) noch vom Service Worker gecacht.
 
 ## Prod-Umgebung
 `compose.prod.yml`, Compose-Projekt `poker-prod` (D-002, D-005, D-014), gebaut und betrieben aus dem eigenen Git-Worktree auf `main` (`~/code/Arthurreuss/poker-prod`, D-017); Werte aus dessen `.env.prod` (gitignored, Vorlage `.env.prod.example`). Bedienung, Release, Tunnel, Backup/Restore und Betrieb: [OPERATIONS.md](OPERATIONS.md).
@@ -415,11 +466,12 @@ React 19 + Vite, Routing mit `react-router` (Deklarativ: `BrowserRouter`/`Routes
 | Pfad | Inhalt |
 |---|---|
 | `main.tsx`, `App.tsx` | Einstieg; `App` = `AuthProvider` + `BrowserRouter` + `AppRoutes` (Tests rendern `AppRoutes` in einem `MemoryRouter`) |
-| `api/` | `client.ts` (`apiRequest`, `ApiError`), `auth.ts` (`register`, `login`, `logout`, `me`), `ws.ts` (`wsUrl`); Export über `api/index.ts` |
+| `api/` | `client.ts` (`apiRequest`, `ApiError`), `auth.ts` (`register`, `login`, `logout`, `me`), `ws.ts` (`wsUrl`); Export über `api/index.ts`; `stats.ts` (Rangliste, Profil, Runden, Hände – direkt importiert) |
 | `auth/` | `AuthContext.tsx` (`AuthProvider`, `useAuth`), `guards.tsx` (`RequireAuth`, `RequireAdmin`, `RedirectIfAuthenticated`), `validation.ts` (Regeln wie der Server) |
 | `layout/AppShell.tsx` | Kopfzeile mit App-Name, Menü (Lobby, Rangliste, Einstellungen, Admin nur für Admins, Abmelden) und Feedback-Slot; `<Outlet>` für die Seite |
 | `feedback/FeedbackSlot.tsx` | leerer Platzhalter (`data-slot="feedback"`) für den Feedback-Button aus WP-024 |
-| `pages/` | Login, Registrierung, Lobby, Rangliste, Einstellungen, Admin, Tisch – außer Login/Registrierung/Einstellungen noch Platzhalter |
+| `pages/` | Login, Registrierung, Lobby, Rangliste, Profil (`PlayerPage`), Runde (`RoundPage`), Hand (`HandPage`), Einstellungen, Admin, Tisch – Lobby, Admin und Tisch noch Platzhalter |
+| `stats/` | Bausteine für Rangliste/Profil/Historie: `useResource` (Laden mit Abbruch, optional Neuladen bei Fokus), `format.ts` (Quoten, Plätze inkl. „geteilt“, „Gelöschter Spieler“, Aktionstexte), `parts.tsx` (`MiniCard` als Text-Karte, `PlayerLink`, `ResourceView`, `Tile`), `Stats.module.css` |
 | `settings/orientation.ts` | `useOrientationPreference()` (D-009) |
 | `styles/` | `tokens.css` (Vertrag, siehe „Design-Tokens (Web)“), `global.css`, `cx.ts` (Klassen verbinden) |
 | `table/` | Tischansicht (WP-016 ff.) |
@@ -430,7 +482,10 @@ React 19 + Vite, Routing mit `react-router` (Deklarativ: `BrowserRouter`/`Routes
 |---|---|---|
 | `/login`, `/register` | Anmelden, Registrieren | nur ausgeloggt (eingeloggt → Zielseite bzw. `/`) |
 | `/` | Lobby (Platzhalter bis WP-015) | eingeloggt, in der App-Shell |
-| `/leaderboard` | Rangliste (Platzhalter bis WP-019) | eingeloggt, App-Shell |
+| `/leaderboard` | Rangliste: Platz, Punkte, Runden, Siege; eigener Eintrag hervorgehoben, Link „Meine Statistiken“ | eingeloggt, App-Shell |
+| `/players/:name` | Profil: Platz, Punkte, Runden, Siege, Spielstil, letzte Runden | eingeloggt, App-Shell |
+| `/rounds/:id` | Runde: Ergebnis (geteilte Plätze), Handliste | eingeloggt, App-Shell; Daten nur für Teilnehmer |
+| `/hands/:id` | Hand: Spieler mit Karten, Aktionen je Straße, Pots | eingeloggt, App-Shell; Daten nur für Teilnehmer |
 | `/settings` | Einstellungen (Ausrichtung) | eingeloggt, App-Shell |
 | `/admin/*` | Admin (Platzhalter; WP-024: `/admin/feedback`) | nur `isAdmin`, sonst Umleitung auf `/` |
 | `/table/:id` | Tisch (`pages/TablePage.tsx`, Platzhalter bis WP-016/018) | eingeloggt, **ohne** App-Shell (volle Fläche, eigenes Tisch-Menü) |
@@ -458,7 +513,7 @@ CSS-Modules (`*.module.css` neben der Komponente, von Vite ohne Zusatzpaket unte
 - nginx (prod) liefert `sw.js`, `registerSW.js`, Manifest und `index.html` mit `Cache-Control: no-cache`, gehashte `/assets/` langlebig.
 
 ### Tests
-Vitest mit jsdom und Testing Library (`*.test.ts(x)` neben dem Code): `App.test.tsx` (Routen-Schutz, Rücksprung nach Login, Login-/Registrierungsfehler 400/401/409/429/Netzwerk, Admin-Menü, Abmelden, Einstellungen), `api/api.test.ts` (Client, Fehler, `wsUrl`), `auth/validation.test.ts`, `settings/orientation.test.ts`. `fetch` wird mit `test/mockApi.ts` ersetzt.
+Vitest mit jsdom und Testing Library (`*.test.ts(x)` neben dem Code): `App.test.tsx` (Routen-Schutz, Rücksprung nach Login, Login-/Registrierungsfehler 400/401/409/429/Netzwerk, Admin-Menü, Abmelden, Einstellungen), `api/api.test.ts` (Client, Fehler, `wsUrl`), `auth/validation.test.ts`, `settings/orientation.test.ts`, `stats/stats.test.tsx` (Rangliste inkl. geteilter Plätze, Hervorhebung, Neuladen bei Fokus; Profil; Runde; Hand mit verdeckten/gezeigten Karten). `fetch` wird mit `test/mockApi.ts` ersetzt.
 
 ## Design-Tokens (Web)
 Gemeinsamer Vertrag für alle Frontend-WPs (D-008: Anmutung PokerStars, eigene Werte). Definiert in [`apps/web/src/styles/tokens.css`](../apps/web/src/styles/tokens.css) (WP-014); Komponenten nutzen nur diese CSS-Variablen.
