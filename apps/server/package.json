@@ -12,7 +12,8 @@
   "scripts": {
     "dev": "tsx watch --clear-screen=false src/main.ts",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:db": "TEST_DATABASE_URL=${TEST_DATABASE_URL:-postgres://poker:poker@localhost:4312/poker_test} vitest run src/db"
   },
   "devDependencies": {
     "@types/pg": "^8.23.1",
