@@ -7,7 +7,7 @@
 | M0 | [WP-000](work-packages/WP-000.md) | Arbeitsweise und Doku-System | done | — |
 | M1 | [WP-001](work-packages/WP-001.md) | Monorepo-Grundgerüst und Tooling | done | WP-000 |
 | M1 | [WP-002](work-packages/WP-002.md) | Docker-Entwicklungsumgebung (dev, localhost) | done | WP-001 |
-| M1 | [WP-003](work-packages/WP-003.md) | Prod-Setup und Cloudflare-Tunnel vorbereiten | in-progress | WP-002 |
+| M1 | [WP-003](work-packages/WP-003.md) | Prod-Setup und Cloudflare-Tunnel vorbereiten | done | WP-002 |
 | M2 | [WP-004](work-packages/WP-004.md) | Engine: Karten, Deck, Mischen | done | WP-001 |
 | M2 | [WP-005](work-packages/WP-005.md) | Engine: Handbewertung | done | WP-004 |
 | M2 | [WP-006](work-packages/WP-006.md) | Engine: Setzrunden | done | WP-004 |
@@ -25,7 +25,7 @@
 | M4 | [WP-018](work-packages/WP-018.md) | Spielablauf im UI: Aktionen, Timer, Showdown | todo | WP-011, WP-016 |
 | M4 | [WP-019](work-packages/WP-019.md) | Rangliste und Statistiken | todo | WP-013, WP-014 |
 | M5 | [WP-020](work-packages/WP-020.md) | E2E-Smoke-Test | todo | WP-015, WP-018 |
-| M5 | [WP-021](work-packages/WP-021.md) | Backups und Betrieb | todo | WP-003, WP-009 |
+| M5 | [WP-021](work-packages/WP-021.md) | Backups und Betrieb | in-progress | WP-003, WP-009 |
 | M5 | [WP-022](work-packages/WP-022.md) | Rechtliches und Security-Check | todo | WP-014 |
 | M5 | [WP-023](work-packages/WP-023.md) | Go-Live: main auf poker.arthur-reuss.de | todo | WP-003, WP-012, WP-020, WP-021, WP-022 |
 <!-- END GENERATED -->
@@ -45,7 +45,7 @@
 - Strang-Zusammenführung bei WP-011 (Engine + Accounts) und WP-018 (Server + UI).
 
 ## Nächster Schritt
-Parallel in Arbeit: WP-003 (Prod/Cloudflare), WP-007 (Side Pots/Showdown), WP-010 (Accounts). Danach WP-008, WP-014, WP-011.
+Parallel in Arbeit: WP-007 (Side Pots/Showdown), WP-010 (Accounts), WP-021 (Backups/Betrieb). Danach WP-008, WP-014, WP-011.
 
 ## Log
 Neueste Einträge oben. Pro Session 1–3 Zeilen.
