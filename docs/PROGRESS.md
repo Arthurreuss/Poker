@@ -10,8 +10,8 @@
 | M1 | [WP-003](work-packages/WP-003.md) | Prod-Setup und Cloudflare-Tunnel vorbereiten | in-progress | WP-002 |
 | M2 | [WP-004](work-packages/WP-004.md) | Engine: Karten, Deck, Mischen | done | WP-001 |
 | M2 | [WP-005](work-packages/WP-005.md) | Engine: Handbewertung | done | WP-004 |
-| M2 | [WP-006](work-packages/WP-006.md) | Engine: Setzrunden | in-progress | WP-004 |
-| M2 | [WP-007](work-packages/WP-007.md) | Engine: Side Pots und Showdown | todo | WP-005, WP-006 |
+| M2 | [WP-006](work-packages/WP-006.md) | Engine: Setzrunden | done | WP-004 |
+| M2 | [WP-007](work-packages/WP-007.md) | Engine: Side Pots und Showdown | in-progress | WP-005, WP-006 |
 | M2 | [WP-008](work-packages/WP-008.md) | Engine: Freezeout-Runde mit Blind-Leveln und Punkten | todo | WP-007 |
 | M3 | [WP-009](work-packages/WP-009.md) | Datenbankschema und Migrationen | in-progress | WP-002 |
 | M3 | [WP-010](work-packages/WP-010.md) | Accounts: Registrierung, Login, Sessions | todo | WP-009 |
@@ -45,11 +45,12 @@
 - Strang-Zusammenführung bei WP-011 (Engine + Accounts) und WP-018 (Server + UI).
 
 ## Nächster Schritt
-Parallel in Arbeit: WP-003 (Prod/Cloudflare), WP-006 (Setzrunden), WP-009 (DB-Schema). Danach WP-007, WP-010, WP-014.
+Parallel in Arbeit: WP-003 (Prod/Cloudflare), WP-007 (Side Pots/Showdown), WP-009 (DB-Schema). Danach WP-008, WP-010, WP-014.
 
 ## Log
 Neueste Einträge oben. Pro Session 1–3 Zeilen.
 
+- 2026-10-08: WP-006 done – Setzrunden als reine Zustandsmaschine (TDA-Auslegungen im WP-Log), Property-Test über 400 Hände. Merge-Fix: `HandResult` (Setzrunden) → `ActionResult`. Offen für Arthur: Antes pro Spieler vs. Big-Blind-Ante. WP-007 gestartet.
 - 2026-10-08: WP-005 done – Handbewertung per Bitmasken, alle 2.598.960 Hände verifiziert (1,3 s), ~0,6 µs pro 7-Karten-Hand. WP-009 gestartet.
 - 2026-10-08: WP-002 done – `npm run dev:up` → http://localhost:4310 (Vite), Server 4311, Postgres 4312; Health inkl. DB ok, Hot-Reload ok. WP-003 gestartet.
 - 2026-10-08: WP-004 done (Karten als Strings `"As"`, Fisher-Yates, seeded RNG für Tests, `@poker/engine/crypto-rng` für Prod). WP-005 und WP-006 gestartet.
