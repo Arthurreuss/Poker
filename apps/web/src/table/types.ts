@@ -95,6 +95,12 @@ export interface TableView {
   /** Main Pot zuerst, danach Side Pots. Leer = noch nichts im Pot. */
   readonly pots: readonly PotView[];
   readonly blinds: BlindsView;
+  /** Nummer der laufenden bzw. letzten Hand (WP-031: erkennt neues Austeilen für Animationen/Sounds). */
+  readonly handNumber?: number;
+  /** Sitze, die in der beendeten Hand einen Pot gewonnen haben (WP-031: Hervorhebung, Chips zum Gewinner). */
+  readonly winnerSeats?: readonly number[];
+  /** Die fünf Karten der Gewinnerhand (Main Pot), werden am Tisch hervorgehoben (WP-031). */
+  readonly winningCards?: readonly Card[];
   /** Eingeblendete Emoji-Reaktionen (WP-032); fehlt/leer = keine. */
   readonly reactions?: readonly SeatReactionView[];
 }

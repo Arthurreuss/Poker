@@ -1,6 +1,6 @@
 // Spielseite eines Tisches (WP-018): verbindet Store/Verbindung mit der Tischansicht (WP-016/017),
 // Aktionsleiste, Showdown, Rundenende und Verbindungshinweis. Layout (Hoch/Quer) macht `TableScreen`.
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { Link } from 'react-router';
 import type { ReactionId } from '@poker/engine/protocol';
 import { useFeedbackDialog } from '../feedback';
@@ -11,10 +11,14 @@ import { ReactionPicker } from '../reactions/ReactionPicker';
 import { useAnimationsPreference } from '../settings/animations';
 import { useReactionsPreference } from '../settings/reactions';
 import { cx } from '../styles/cx';
+import { useTableSounds } from '../sound/tableSounds';
+import { TableFx } from '../table/fx/TableFx';
 import { TableScreen } from '../table/TableScreen';
 import { toReactionViews, toTableView } from './adapter';
 import { ConnectionBanner, ErrorToast, GameActionArea, RoundResultDialog, TableClosedNotice } from './GamePanels';
 import { useNow } from './hooks';
+import { useHandReveal } from './presentation';
+import { useRoundEndHold } from './roundEndHold';
 import type { TableGameSnapshot, TableGameStore } from './tableGame';
 import { readTurnClock } from './turnClock';
 import './game.css';
@@ -32,6 +36,24 @@ export function GameTable({ snapshot, store, onLeave }: GameTableProps) {
   const table = snapshot.table;
   const turnClock = table === null ? null : readTurnClock(table, snapshot.receivedAtMs);
   const now = useNow(turnClock !== null, 200);
+  // WP-031: Runout Straße für Straße, Ergebnis danach; Showdown vor dem Rundenende-Dialog.
+  const { reveal, resultShown } = useHandReveal(table?.round?.hand ?? null);
+  const roundEnd = useRoundEndHold(table?.status ?? null, resultShown);
+  const baseView = useMemo(
+    () => (table === null ? null : toTableView(table, { turnClock, nowMs: now, reveal })),
+    // `turnClock` wird je Render neu berechnet; er hängt nur von `table` und der Empfangszeit ab.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [table, snapshot.receivedAtMs, now, reveal],
+  );
+  // Reaktionen nur, wenn eingeschaltet (WP-032); senden dürfen nur Spieler mit Platz.
+  const view = useMemo(
+    () =>
+      baseView === null || !reactionsOn
+        ? baseView
+        : { ...baseView, reactions: toReactionViews(snapshot.reactions, baseView) },
+    [baseView, reactionsOn, snapshot.reactions],
+  );
+  useTableSounds(view);
   const dismissError = useCallback(() => {
     store.dismissError();
   }, [store]);
@@ -46,16 +68,15 @@ export function GameTable({ snapshot, store, onLeave }: GameTableProps) {
   }, [store]);
   const react = useCallback((reaction: ReactionId) => store.react(reaction), [store]);
   const feedback = useFeedbackDialog({ tableId: store.tableId });
-  const baseView = table === null ? null : toTableView(table, { turnClock, nowMs: now });
-  // Reaktionen nur, wenn eingeschaltet (WP-032); senden dürfen nur Spieler mit Platz.
-  const view =
-    baseView === null || !reactionsOn
-      ? baseView
-      : { ...baseView, reactions: toReactionViews(snapshot.reactions, baseView) };
   const canReact = reactionsOn && table !== null && table.you.seat !== null;
 
   return (
-    <div className={cx('gp-page', 'safe-area', animations && 'pg-anim')} data-testid="game-table">
+    <div
+      className={cx('gp-page', 'safe-area', animations && 'pg-anim')}
+      data-testid="game-table"
+      onPointerDownCapture={roundEnd.holding ? roundEnd.skip : undefined}
+      onKeyDownCapture={roundEnd.holding ? roundEnd.skip : undefined}
+    >
       <ConnectionBanner status={snapshot.connection} hasState={table !== null} onReconnect={reconnect} />
       {snapshot.closed !== null ? (
         <TableClosedNotice reason={snapshot.closed} onBack={onLeave} />
@@ -74,8 +95,9 @@ export function GameTable({ snapshot, store, onLeave }: GameTableProps) {
         <div className="gp-table">
           <TableScreen
             view={view}
+            overlay={<TableFx view={view} enabled={animations} />}
             reactionPicker={canReact ? <ReactionPicker onReact={react} /> : undefined}
-            actionBar={<GameActionArea snapshot={snapshot} store={store} />}
+            actionBar={<GameActionArea snapshot={snapshot} store={store} showResult={resultShown} />}
             menuItems={
               <div className="gp-menu-items">
                 <p className="gp-menu-info">{table.settings.name}</p>
@@ -114,7 +136,7 @@ export function GameTable({ snapshot, store, onLeave }: GameTableProps) {
         </div>
       )}
       <ErrorToast error={snapshot.error} onDismiss={dismissError} />
-      {snapshot.standings !== null && (
+      {snapshot.standings !== null && !roundEnd.holding && (
         <RoundResultDialog
           standings={snapshot.standings}
           youUserId={table?.you.userId ?? null}

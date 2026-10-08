@@ -235,3 +235,13 @@ Format: Kontext → Entscheidung → Konsequenzen. Status: `akzeptiert`, `offen`
   - Ein Schalter pro Gerät: Reaktionen aus = weder sehen noch senden; Standard an.
   - Protokoll bleibt Version 1 (nur Ergänzungen; Server und Web werden zusammen ausgeliefert).
 - **Konsequenzen:** Kontolöschung setzt den Avatar zurück; die Datenschutzerklärung nennt Avatar und Reaktionen.
+
+## D-031: Showdown-Darstellung, Runout-Staffelung und Tisch-Sounds (WP-031)
+- **Status:** akzeptiert
+- **Kontext:** Der Server liefert eine fertige Hand (auch einen All-in-Runout) in einem Stand; die letzte Hand einer Runde endete sofort im Rundenende-Dialog, das Board war kaum zu sehen. Animationen und Sounds sollen lebendig wirken, ohne die Server-Wahrheit (D-003) oder die CSP (D-014) zu verletzen.
+- **Entscheidung:**
+  - Animationen und Sounds werden rein aus dem Unterschied zweier `TableView`s abgeleitet; Animationen per Web Animations API, keine `<style>`-Elemente, keine Eingabesperre, aus bei „Animationen“ aus bzw. `prefers-reduced-motion`.
+  - Der Client deckt einen All-in-Runout Straße für Straße auf (0,9 s je Straße, Ergebnis 0,7 s danach) und hält bis dahin Gewinner und Auszahlung zurück – auch bei ausgeschalteten Animationen. Der Server verlängert die Pause bis zur nächsten Hand um `DEFAULT_RUNOUT_PAUSE_MS` = 1 s je Runout-Straße.
+  - Endet die Runde live, bleibt der Rundenende-Dialog 5 s nach dem sichtbaren Ergebnis verborgen; ein Tipp oder eine Taste überspringt die Pause.
+  - Sounds werden per Web Audio synthetisiert (keine Audiodateien, keine Lizenzfragen); Ton standardmäßig an (70 %), Vibration an, wo verfügbar; Einstellung nur im Gerät (`poker.sound`).
+- **Konsequenzen:** Der dargestellte Stand kann bis ca. 3,4 s hinter dem Server liegen, nur bei fertigen Händen; Eingaben sind dann ohnehin nicht möglich. Ein neuer Stand einer anderen Hand beendet die Staffelung sofort. Der Spieltest gegen einen älteren Dev-Server deckt die Server-Pause nicht ab.

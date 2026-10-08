@@ -24,6 +24,7 @@ import {
 } from '@poker/engine/protocol';
 import type { Cancel, Clock } from './clock';
 import type { GameHooks } from './hooks';
+import { handPauseFor } from './pause';
 import type { TableRepository } from './repository';
 
 export type TableResult = { ok: true } | { ok: false; code: ErrorCode; message: string };
@@ -52,6 +53,8 @@ export interface TableDeps {
   hooks: GameHooks;
   /** Pause nach jeder Hand, bevor die nächste startet (Showdown-Anzeige); in Tests 0. */
   handPauseMs: number;
+  /** Zusätzliche Pause je Straße eines All-in-Runouts (Client deckt sie nacheinander auf, WP-031). */
+  runoutPauseMs: number;
   /**
    * Gnadenfrist für getrennte Spieler am Zug (WP-012): so lange nach Zugbeginn bzw. Abbruch wartet der
    * Server höchstens, bevor er für sie checkt/foldet (Reload/Netzwechsel ohne Fold); in Tests frei wählbar.
@@ -520,7 +523,8 @@ export class Table {
       this.finish(round, roundId, now);
       return;
     }
-    this.cancelPending = this.deps.clock.schedule(this.deps.handPauseMs, () => {
+    const pause = handPauseFor(round.hand, this.deps.handPauseMs, this.deps.runoutPauseMs);
+    this.cancelPending = this.deps.clock.schedule(pause, () => {
       try {
         this.dealNextHand();
       } catch (error) {

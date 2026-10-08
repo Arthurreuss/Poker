@@ -134,6 +134,9 @@ const sixShowdown: TableView = {
   board: ['Qh', 'Th', '3c', '8d', '2h'],
   pots: [{ amount: 9_600 }, { amount: 2_400 }],
   blinds: { small: 150, big: 300, level: 5 },
+  // WP-031: Arthur gewinnt mit dem Herz-Flush – Plakette und Gewinnerhand hervorgehoben.
+  winnerSeats: [0],
+  winningCards: ['Kh', 'Qh', 'Jh', 'Th', '2h'],
 };
 
 const sixDisconnected: TableView = {

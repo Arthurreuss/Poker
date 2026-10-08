@@ -1,12 +1,13 @@
 import type { CSSProperties, ReactNode } from 'react';
 import './table.css';
 import './seat-extras.css';
-import { Card } from './Card';
+import './fx/fx.css';
+import { Card, winHighlight } from './Card';
 import { formatChips } from './format';
 import { placeSeats, seatMarker, type PlacedSeat, type TableLayout } from './layout';
 import { BetChips, Board, DealerButton, PotDisplay } from './parts';
 import { SeatPlate } from './SeatPlate';
-import type { TableView } from './types';
+import type { Card as CardValue, TableView } from './types';
 
 export interface PokerTableProps {
   readonly view: TableView;
@@ -18,6 +19,8 @@ export interface PokerTableProps {
   readonly layout?: TableLayout;
   /** Tisch-Menü oben links (z. B. `TableMenu`, WP-017). */
   readonly menu?: ReactNode;
+  /** Ebene über der Tischfläche, z. B. Animationen (`TableFx`, WP-031); nimmt keine Eingaben an. */
+  readonly overlay?: ReactNode;
   /** Reaktions-Knopf oben rechts (WP-032); ohne Inhalt bleibt die Ecke frei. */
   readonly reactionPicker?: ReactNode;
 }
@@ -34,7 +37,15 @@ function blindsText(view: TableView): string {
   return parts.join(' · ');
 }
 
-function SeatCards({ placed, fourColor }: { placed: PlacedSeat; fourColor: boolean }) {
+function SeatCards({
+  placed,
+  fourColor,
+  winning,
+}: {
+  placed: PlacedSeat;
+  fourColor: boolean;
+  winning: readonly CardValue[] | undefined;
+}) {
   const { holeCards } = placed.player;
   if (holeCards.kind === 'none') return null;
   const big = placed.isHero && holeCards.kind !== 'hidden';
@@ -46,7 +57,7 @@ function SeatCards({ placed, fourColor }: { placed: PlacedSeat; fourColor: boole
   return (
     <div className={classes} data-testid="hole-cards" data-kind={holeCards.kind}>
       {cards.map((card, i) => (
-        <Card key={i} card={card} size={size} fourColor={fourColor} />
+        <Card key={i} card={card} size={size} fourColor={fourColor} highlight={winHighlight(card, winning)} />
       ))}
     </div>
   );
@@ -56,10 +67,11 @@ function TableSeat({ placed, view, fourColor }: { placed: PlacedSeat; view: Tabl
   const { slot, player, seat, isHero } = placed;
   const toAct = view.toActSeat === seat;
   const marker = seatMarker(view, seat);
+  const winner = view.winnerSeats?.includes(seat) ?? false;
   const reaction = view.reactions?.find((r) => r.seat === seat);
   return (
     <div
-      className={`pt-seat${isHero ? ' pt-seat--hero' : ''} pt-seat--${player.status}`}
+      className={`pt-seat${isHero ? ' pt-seat--hero' : ''} pt-seat--${player.status}${winner ? ' pt-seat--winner' : ''}`}
       style={at(slot.x, slot.y)}
       data-testid="seat"
       data-seat={seat}
@@ -68,8 +80,9 @@ function TableSeat({ placed, view, fourColor }: { placed: PlacedSeat; view: Tabl
       data-status={player.status}
       data-to-act={toAct ? 'true' : undefined}
       data-connected={player.connected ? 'true' : 'false'}
+      data-winner={winner ? 'true' : undefined}
     >
-      <SeatCards placed={placed} fourColor={fourColor} />
+      <SeatCards placed={placed} fourColor={fourColor} winning={view.winningCards} />
       <SeatPlate
         name={player.name}
         stack={player.stack}
@@ -112,6 +125,7 @@ export function PokerTable({
   actionBar,
   layout = 'portrait',
   menu,
+  overlay,
   reactionPicker,
 }: PokerTableProps) {
   const placed = placeSeats(view, layout);
@@ -125,7 +139,7 @@ export function PokerTable({
           <div className="pt-felt" aria-hidden="true" />
           <div className="pt-center">
             <PotDisplay pots={view.pots} />
-            <Board cards={view.board} fourColor={fourColor} />
+            <Board cards={view.board} fourColor={fourColor} winning={view.winningCards} />
           </div>
           {placed.map((p) => (
             <TableSeat key={p.seat} placed={p} view={view} fourColor={fourColor} />
@@ -135,11 +149,13 @@ export function PokerTable({
             .map((p) => (
               <BetChips
                 key={p.seat}
+                seat={p.seat}
                 amount={p.player.bet}
                 align={p.slot.betAlign}
                 style={at(p.slot.betX, p.slot.betY)}
               />
             ))}
+          {overlay}
         </div>
         <div className="pt-action-slot" data-testid="action-slot">
           {actionBar}

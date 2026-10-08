@@ -201,7 +201,16 @@ function InfoPanel({ children }: { children: React.ReactNode }) {
 }
 
 /** Inhalt des `actionBar`-Bereichs je nach Tisch- und Handzustand. */
-export function GameActionArea({ snapshot, store }: { snapshot: TableGameSnapshot; store: TableGameStore }) {
+export function GameActionArea({
+  snapshot,
+  store,
+  showResult = true,
+}: {
+  snapshot: TableGameSnapshot;
+  store: TableGameStore;
+  /** `false`, solange der Tisch einen Runout noch aufdeckt (WP-031) – das Ergebnis kommt danach. */
+  showResult?: boolean;
+}) {
   const table = snapshot.table;
   if (table === null) return null;
   const disconnected = snapshot.connection.kind !== 'open';
@@ -211,7 +220,9 @@ export function GameActionArea({ snapshot, store }: { snapshot: TableGameSnapsho
     return (
       <div className="gp-panel" data-testid="finished-panel">
         {/* Letzte Hand der Runde (Showdown) bleibt sichtbar; das Rundenergebnis zeigt der Dialog. */}
-        {handResult(table) === null ? (
+        {!showResult ? (
+          <p className="gp-panel-text gp-muted">Showdown …</p>
+        ) : handResult(table) === null ? (
           <p className="gp-panel-text">Die Runde ist beendet.</p>
         ) : (
           <HandResultList table={table} />
@@ -247,7 +258,9 @@ export function GameActionArea({ snapshot, store }: { snapshot: TableGameSnapsho
   }
 
   const hand = table.round?.hand ?? null;
-  if (hand?.phase === 'complete') return <HandResultPanel table={table} />;
+  if (hand?.phase === 'complete') {
+    return showResult ? <HandResultPanel table={table} /> : <InfoPanel>Showdown …</InfoPanel>;
+  }
 
   const ctx = heroHandContext(table);
   if (ctx !== null && (ctx.canAct || ctx.legal !== null)) {
