@@ -1,6 +1,6 @@
 # Betrieb
 
-Wie dev und prod gestartet, gestoppt und released werden, wie der Cloudflare-Tunnel eingerichtet wird, und Backup, Restore, Status und Betrieb nach Neustart. Aufbau der Umgebungen: [ARCHITECTURE.md](ARCHITECTURE.md); Begründungen: D-002, D-005, D-006, D-010, D-014, D-017 in [DECISIONS.md](DECISIONS.md).
+Wie dev und prod gestartet, gestoppt und released werden, wie der Cloudflare-Tunnel eingerichtet wird, Backup, Restore, Status, Betrieb nach Neustart und die Security-Checkliste. Aufbau der Umgebungen: [ARCHITECTURE.md](ARCHITECTURE.md); Begründungen: D-002, D-005, D-006, D-010, D-014, D-017 in [DECISIONS.md](DECISIONS.md).
 
 | | dev | prod |
 |---|---|---|
@@ -152,6 +152,57 @@ Einmalig einzurichten (Arthur, macOS-Systemeinstellungen – nicht automatisiert
 5. Prod einmal mit `npm run prod:up` bzw. `prod:tunnel:up` starten (nicht mit `prod:down` beenden).
 
 **Prüfen (Arthur):** Mac neu starten, (ggf. anmelden,) ca. 2 min warten, dann `npm run prod:status` – alle Container `running, healthy`, Health ok. Wer ganz sicher gehen will, testet auch „Stromkabel ziehen“ (Desktop-Mac).
+
+## Security-Checkliste
+Grundschutz der öffentlichen Seite (WP-022). Vor jedem Release mit Änderungen an nginx, Abhängigkeiten oder Datenverarbeitung durchgehen.
+
+**Automatisch (in `npm run check`):**
+- [ ] `scripts/test/nginx-headers.test.mjs`: jede `location` bindet `docker/nginx/security-headers.conf` ein, CSP ohne `unsafe-inline`/`unsafe-eval`, keine Inline-Skripte in `index.html`, PWA-Registrierung als eigene Datei.
+
+**Security-Header (nginx, prod):** Wortlaut in `docker/nginx/security-headers.conf`:
+```
+Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self' wss://$host; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+X-Frame-Options: DENY
+X-Content-Type-Options: nosniff
+Referrer-Policy: same-origin
+Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), bluetooth=(), hid=(), midi=(), magnetometer=(), gyroscope=(), accelerometer=(), browsing-topics=()
+Cross-Origin-Opener-Policy: same-origin
+```
+Braucht die App etwas Neues (fremde Bilder, Schriftarten, Sensoren …), wird die Policy im selben Commit angepasst – und die Datenschutzerklärung, falls Dritte ins Spiel kommen.
+
+**Manuell gegen ein gebautes Web-Image** (ohne prod anzufassen; Ports 4324/4325 sind dafür frei):
+```sh
+docker build -f docker/web.Dockerfile -t poker-headertest-web .
+docker run -d --name poker-headertest -p 127.0.0.1:4324:8080 -e API_UPSTREAM=127.0.0.1:9 poker-headertest-web
+curl -sI http://127.0.0.1:4324/ | grep -iE 'content-security|x-frame|x-content|referrer|permissions|cross-origin'
+curl -sI http://127.0.0.1:4324/api/health   # 502 (kein Server), Header trotzdem da
+# Browser: http://127.0.0.1:4324 öffnen, DevTools-Konsole: keine „Content Security Policy“-Meldungen (502 der API sind ok)
+docker rm -f poker-headertest && docker rmi poker-headertest-web
+```
+Gegen die echte Domain: `curl -sI https://poker.arthur-reuss.de/ | grep -iE 'strict-transport|content-security'`.
+
+**HSTS über Cloudflare (Arthur, einmalig):** nginx sieht hinter dem Tunnel nur `http`, deshalb setzt Cloudflare HSTS.
+1. Cloudflare-Dashboard → Domain `arthur-reuss.de` → **SSL/TLS** → **Edge Certificates**.
+2. **Always Use HTTPS** an.
+3. **HTTP Strict Transport Security (HSTS)** → **Enable HSTS**: Status an, `Max Age` zunächst 1 Monat (später 6–12 Monate), **Include subdomains** nur, wenn *alle* Subdomains von `arthur-reuss.de` HTTPS können (sonst aus lassen), **Preload** aus, **No-Sniff** an.
+4. Prüfen: `curl -sI https://poker.arthur-reuss.de/ | grep -i strict-transport` → `strict-transport-security: max-age=…`.
+5. Optional unter **SSL/TLS** → **Edge Certificates**: **Minimum TLS Version** 1.2.
+
+**Abhängigkeiten:**
+- [ ] `npm audit` ohne `high`/`critical` (Stand 2026-10-08: 0 Schwachstellen). Treffer: `npm audit fix` bzw. Version anheben; nicht behebbare mit Begründung im WP-Log dokumentieren.
+- [ ] Basis-Images (`node:22-alpine`, `nginxinc/nginx-unprivileged`, `postgres:16-alpine`, `cloudflared`) gelegentlich auf neue Patch-Versionen heben.
+
+**Anwendung:**
+- [ ] Passwörter nur als argon2id-Hash, Session-Token nur als SHA-256 in der DB, Cookie `HttpOnly`, `SameSite=Lax`, in prod `Secure` (D-011, D-014).
+- [ ] Rate-Limit auf Login, Registrierung und Konto löschen; WebSocket prüft `Origin` und Session.
+- [ ] Logs enthalten keine Passwörter, Tokens oder Request-Bodies (Test in `auth.db.test.ts`).
+- [ ] Konto löschen anonymisiert (siehe ARCHITECTURE.md, „Auth“ → „Konto löschen“); neue Tabellen mit `user_id` dort einbinden.
+- [ ] DB ohne Host-Port in prod, Netz `backend` `internal`; `.env.prod` und `TUNNEL_TOKEN` nie im Git.
+
+**Rechtliches:**
+- [ ] Impressum und Datenschutz unter `/impressum`, `/datenschutz` erreichbar (ohne Login), Footer auf allen Seiten, am Tisch im Tisch-Menü.
+- [ ] Datenschutzerklärung (`apps/web/src/legal/content/datenschutz.tsx`) beschreibt die aktuelle Datenverarbeitung; keine offenen Platzhalter (gelb markiert).
+- [ ] Wird ein Backup eingespielt (`prod:restore`), Konten, die seit dem Backup gelöscht wurden, erneut löschen (die Datenschutzerklärung sagt das zu). Die IDs stehen im Server-Log (`Konto gelöscht (anonymisiert)`, `userId`); erneut anonymisieren z. B. per `UPDATE users SET username = NULL, password_hash = NULL, is_admin = false, deleted_at = now() WHERE id = …` plus `DELETE FROM sessions WHERE user_id = …`.
 
 ## Fehlersuche
 - `npm run prod:logs` bzw. `docker compose -p poker-prod ps` (Status inkl. Healthchecks).

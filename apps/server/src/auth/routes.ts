@@ -1,9 +1,11 @@
-// Auth-Endpunkte als gekapseltes Fastify-Plugin: /api/register, /api/login, /api/logout, /api/me (WP-010, D-011).
+// Auth-Endpunkte als gekapseltes Fastify-Plugin: /api/register, /api/login, /api/logout, /api/me (WP-010, D-011),
+// DELETE /api/me = Konto löschen (WP-022).
 // Ablauf, Cookie und Rate-Limit: docs/ARCHITECTURE.md, Abschnitt „Auth“.
 import fastifyCookie from '@fastify/cookie';
 import rateLimit from '@fastify/rate-limit';
 import type { FastifyError, FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 import type { Database } from '../db';
+import { anonymizeAccount } from './account';
 import type { AuthConfig } from './config';
 import { hashPassword, verifyDummyPassword, verifyPassword } from './password';
 import {
@@ -14,11 +16,13 @@ import {
   getUserFromSessionToken,
   type AuthUser,
 } from './session';
-import { validateLogin, validateRegistration } from './validation';
+import { validateLogin, validatePasswordConfirmation, validateRegistration } from './validation';
 
 export interface AuthPluginOptions {
   db: Database;
   config: AuthConfig;
+  /** Nach erfolgreicher Konto-Löschung, z. B. um offene WebSocket-Verbindungen des Users zu schließen. */
+  onAccountDeleted?: (userId: number) => void;
 }
 
 export interface UserResponse {
@@ -46,7 +50,7 @@ export function clientIp(request: FastifyRequest, trustCfConnectingIp: boolean):
   return request.ip;
 }
 
-export const authRoutes: FastifyPluginAsync<AuthPluginOptions> = async (app, { db, config }) => {
+export const authRoutes: FastifyPluginAsync<AuthPluginOptions> = async (app, { db, config, onAccountDeleted }) => {
   await app.register(fastifyCookie);
   await app.register(rateLimit, { global: false });
 
@@ -163,5 +167,35 @@ export const authRoutes: FastifyPluginAsync<AuthPluginOptions> = async (app, { d
       return reply.code(401).send({ error: 'unauthorized', message: 'Nicht angemeldet' } satisfies ErrorResponse);
     }
     return { user } satisfies UserResponse;
+  });
+
+  // Konto löschen (WP-022, DSGVO): Passwort bestätigen, dann anonymisieren (auth/account.ts). Rate-Limit wie
+  // Login, weil die Route ein Passwort prüft. 403 statt 401 bei falschem Passwort: die Session bleibt gültig.
+  app.delete('/api/me', { config: rateLimitConfig }, async (request, reply) => {
+    const token = request.cookies[SESSION_COOKIE];
+    const user = token === undefined ? null : await getUserFromSessionToken(db, token);
+    if (user === null) {
+      if (token !== undefined) clearSessionCookie(reply);
+      return reply.code(401).send({ error: 'unauthorized', message: 'Nicht angemeldet' } satisfies ErrorResponse);
+    }
+    const input = validatePasswordConfirmation(request.body);
+    if (!input.ok) {
+      return reply.code(400).send({ error: 'invalid_request', message: input.message } satisfies ErrorResponse);
+    }
+    const { rows } = await db.query<{ password_hash: string }>(
+      'SELECT password_hash FROM users WHERE id = $1 AND deleted_at IS NULL',
+      [user.id],
+    );
+    const passwordHash = rows[0]?.password_hash;
+    if (passwordHash === undefined || !(await verifyPassword(passwordHash, input.password))) {
+      return reply
+        .code(403)
+        .send({ error: 'invalid_credentials', message: 'Passwort ist falsch' } satisfies ErrorResponse);
+    }
+    await anonymizeAccount(db, user.id);
+    request.log.info({ userId: user.id }, 'Konto gelöscht (anonymisiert)');
+    onAccountDeleted?.(user.id);
+    clearSessionCookie(reply);
+    return reply.code(204).send();
   });
 };

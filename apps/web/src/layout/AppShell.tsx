@@ -1,9 +1,11 @@
-// Rahmen für alle eingeloggten Seiten außer dem Tisch: Kopfzeile mit App-Name, Menü, Feedback-Slot.
+// Rahmen für alle eingeloggten Seiten außer dem Tisch: Kopfzeile mit App-Name, Menü, Feedback-Slot;
+// Fußzeile mit Spielgeld-Hinweis und Rechtstexten (WP-022).
 import { useState } from 'react';
 import { Link, NavLink, Outlet } from 'react-router';
 import { useAuth } from '../auth/AuthContext';
 import { FeedbackSlot } from '../feedback/FeedbackSlot';
 import { appTitle } from '../health';
+import { LegalFooter } from '../legal/LegalFooter';
 import { cx } from '../styles/cx';
 import styles from './AppShell.module.css';
 
@@ -74,6 +76,7 @@ export function AppShell() {
       <main className={styles.main}>
         <Outlet />
       </main>
+      <LegalFooter />
     </div>
   );
 }

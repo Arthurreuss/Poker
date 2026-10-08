@@ -1,0 +1,65 @@
+.title {
+  font-size: var(--font-size-md);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.form input {
+  padding: var(--space-3);
+  border: 1px solid var(--color-surface-2);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+}
+
+.form input[aria-invalid='true'] {
+  border-color: var(--color-danger);
+}
+
+.error {
+  color: var(--color-danger);
+  font-size: var(--font-size-sm);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+
+.cancel,
+.danger,
+.dangerOutline {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-pill);
+  font-weight: 700;
+}
+
+.cancel {
+  border: 1px solid var(--color-surface-2);
+  background: transparent;
+}
+
+.danger {
+  border: none;
+  background: var(--color-danger);
+  color: var(--color-text);
+}
+
+.dangerOutline {
+  align-self: flex-start;
+  border: 1px solid var(--color-danger);
+  background: transparent;
+  color: var(--color-danger);
+}
+
+.danger:disabled,
+.cancel:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}

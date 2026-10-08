@@ -16,5 +16,7 @@ RUN npm run build -w @poker/web
 FROM nginxinc/nginx-unprivileged:1.30.5-alpine AS runtime
 # API_UPSTREAM (host:port des Servers) wird beim Start per envsubst in die Konfiguration eingesetzt.
 COPY docker/nginx/default.conf.template /etc/nginx/templates/default.conf.template
+# Security-Header (WP-022), per include in jedem location-Block.
+COPY docker/nginx/security-headers.conf /etc/nginx/snippets/security-headers.conf
 COPY --from=build /app/apps/web/dist /usr/share/nginx/html
 EXPOSE 8080

@@ -5,7 +5,8 @@ import { hasErrors, validateLogin, type FieldErrors } from '../auth/validation';
 import { AuthPageLayout, Field, FormAlert, authStyles as styles, errorMessage } from './AuthForm';
 
 export function LoginPage() {
-  const { login } = useAuth();
+  const { login, state } = useAuth();
+  const accountDeleted = state.status === 'anonymous' && state.accountDeleted === true;
   const location = useLocation();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -31,6 +32,11 @@ export function LoginPage() {
 
   return (
     <AuthPageLayout title="Anmelden">
+      {accountDeleted && (
+        <p role="status" className={styles.notice}>
+          Dein Konto wurde gelöscht.
+        </p>
+      )}
       <form
         noValidate
         className={styles.form}

@@ -1,3 +1,4 @@
+import { DeleteAccount } from '../settings/DeleteAccount';
 import { ORIENTATION_LABELS, ORIENTATION_PREFERENCES, useOrientationPreference } from '../settings/orientation';
 import styles from './Page.module.css';
 import { PlaceholderPage } from './PlaceholderPage';
@@ -24,6 +25,7 @@ export function SettingsPage() {
         ))}
         <p className={styles.muted}>Wird nur auf diesem Gerät gespeichert.</p>
       </fieldset>
+      <DeleteAccount />
     </PlaceholderPage>
   );
 }

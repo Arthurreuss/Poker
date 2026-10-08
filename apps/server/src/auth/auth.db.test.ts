@@ -197,7 +197,8 @@ describe.skipIf(testDatabaseUrl === undefined)('Auth-Endpunkte (Test-DB)', () =>
     it('findet gelöschte (anonymisierte) Accounts nicht', async () => {
       const a = start();
       await register(a, 'Alice');
-      await s.pool.query('UPDATE users SET deleted_at = now()');
+      // Gelöschte Accounts sind anonymisiert (WP-022, Constraint aus 0005): kein Name, kein Hash mehr.
+      await s.pool.query('UPDATE users SET username = NULL, password_hash = NULL, deleted_at = now()');
       const res = await post(a, '/api/login', { username: 'Alice', password: PASSWORD });
       expect(res.statusCode).toBe(401);
     });
