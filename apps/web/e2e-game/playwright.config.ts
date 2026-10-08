@@ -8,7 +8,7 @@ import { defineConfig, devices } from '@playwright/test';
 //   /api und /ws → GAME_E2E_API (Standard 4311); der Proxy setzt den Origin GAME_E2E_ORIGIN (PUBLIC_ORIGIN
 //   von dev). `npm run test:game -w @poker/web`
 // - E2E_BASE_URL=http://localhost:4310: direkt gegen den dev-Docker. `npm run test:e2e -w @poker/web`
-// - zusätzlich E2E_ORIGIN: lokaler Origin-Proxy (scripts/e2e-origin-proxy.mjs) auf E2E_PROXY_PORT (Standard 4326)
+// - zusätzlich E2E_ORIGIN: lokaler Origin-Proxy (scripts/e2e-origin-proxy.mjs) auf E2E_PROXY_PORT (Standard 4318)
 //   vor E2E_BASE_URL, der die Origin durch E2E_ORIGIN ersetzt – für prod (localhost:4320), dessen WebSocket nur
 //   PUBLIC_ORIGIN annimmt. `npm run prod:e2e`
 // Nicht Teil von `npm run check` (braucht Server und Datenbank). Test-User werden am Ende gelöscht.
@@ -16,7 +16,7 @@ const env = process.env;
 const VITE_PORT = Number(env['PW_PORT'] ?? 4317);
 const target = env['E2E_BASE_URL'];
 const origin = env['E2E_ORIGIN'];
-const proxyPort = Number(env['E2E_PROXY_PORT'] ?? 4326);
+const proxyPort = Number(env['E2E_PROXY_PORT'] ?? 4318);
 
 function setup() {
   if (target === undefined) {

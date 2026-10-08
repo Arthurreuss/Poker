@@ -68,16 +68,16 @@ npm run prod:restore -- <dump.sql.gz> [--yes]   # Restore (siehe Restore)
 Vorher dev lokal per Docker getestet haben (D-005), am besten auch mit dem E2E-Test: `npm run test:e2e -w @poker/web` (gegen http://localhost:4310).
 
 ### E2E-Smoke-Test (WP-020)
-Playwright-Test `apps/web/e2e-game/smoke.pw.ts`: zwei Spieler registrieren sich über `/register` (Namen `e2e_<Zeitstempel>…`), A erstellt über die Lobby einen öffentlichen Tisch „E2E-Test …“ (2 Plätze, Stack 200, feste Blinds), B tritt über die Lobby-Liste bei, beide nehmen Platz, A startet, beide gehen All-in, bis bei beiden der Dialog „Runde beendet“ mit zwei Platzierungen und demselben Sieger steht. Danach werden beide Konten per `DELETE /api/me` gelöscht – auch wenn der Test scheitert. Dauer: wenige Sekunden; greift das Auth-Rate-Limit (10 pro Minute und IP), wartet der Test es ab.
+Playwright-Test `apps/web/e2e-game/smoke.pw.ts`: zwei Spieler registrieren sich über `/register` (Namen `e2e_<Zeitstempel>…`), A erstellt über die Lobby einen **privaten** Tisch „E2E-Test …“ (2 Plätze, Stack 200, feste Blinds), B tritt über den Einladungslink bei, beide nehmen Platz, A startet, beide gehen All-in, bis bei beiden der Dialog „Runde beendet“ mit zwei Platzierungen und demselben Sieger steht. Danach werden beide Konten per `DELETE /api/me` gelöscht – auch wenn der Test scheitert. Dauer: wenige Sekunden; greift das Auth-Rate-Limit (10 pro Minute und IP), wartet der Test es ab.
 ```sh
 npm run test:e2e -w @poker/web                      # gegen dev-Docker (http://localhost:4310)
 npm run prod:e2e                                    # gegen prod (http://localhost:4320 über den Origin-Proxy)
 E2E_BASE_URL=https://poker.arthur-reuss.de npm run prod:e2e   # gegen die echte Domain (über Cloudflare, ohne Proxy)
 npm run test:e2e -w @poker/web -- --repeat-each=10  # Stabilität prüfen
 ```
-- **Warum ein Proxy (D-028):** Der prod-WebSocket nimmt nur Origins aus `PUBLIC_ORIGIN` an. `prod:e2e` startet deshalb für die Dauer des Tests `scripts/e2e-origin-proxy.mjs` auf `localhost:4326`, der alles an `http://127.0.0.1:4320` weiterreicht und nur den `Origin`-Header durch die erste `PUBLIC_ORIGIN` ersetzt. prod braucht dafür keine Konfigurationsänderung. Andere Werte: `E2E_ORIGIN`, `E2E_PROXY_PORT`, `E2E_BASE_URL`.
+- **Warum ein Proxy (D-028):** Der prod-WebSocket nimmt nur Origins aus `PUBLIC_ORIGIN` an. `prod:e2e` startet deshalb für die Dauer des Tests `scripts/e2e-origin-proxy.mjs` auf `localhost:4318`, der alles an `http://127.0.0.1:4320` weiterreicht und nur den `Origin`-Header durch die erste `PUBLIC_ORIGIN` ersetzt. prod braucht dafür keine Konfigurationsänderung. Andere Werte: `E2E_ORIGIN`, `E2E_PROXY_PORT`, `E2E_BASE_URL`.
 - Playwright läuft aus dem Arbeitsordner (der Prod-Worktree hat keine `node_modules`); Chromium einmalig: `npx playwright install chromium` in `apps/web`.
-- **Spuren in prod:** zwei gelöschte (anonymisierte) Konten, eine Runde in der Historie, der Tisch war kurz in der Lobby sichtbar. Fehlerbericht und Trace: `apps/web/node_modules/.cache/playwright-game-results/` (`npx playwright show-trace …/trace.zip`).
+- **Spuren in prod:** zwei gelöschte (anonymisierte) Konten und eine private Runde, die nur ihre (gelöschten) Teilnehmer sehen dürften – nicht in Lobby, Rangliste, Profilen oder Rundenlisten (D-024, D-028). Fehlerbericht und Trace: `apps/web/node_modules/.cache/playwright-game-results/` (`npx playwright show-trace …/trace.zip`).
 
 ### Release abgebrochen – Rollback
 Schlägt Smoke-Test oder E2E fehl, steht `main` schon auf dem neuen Stand (gepusht) und prod läuft damit. Das Skript nennt den vorherigen Stand `<vorher>` und die Befehle:

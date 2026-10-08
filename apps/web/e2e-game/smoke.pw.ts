@@ -1,7 +1,8 @@
 // WP-020: E2E-Smoke-Test – beweist, dass das Gesamtsystem (Web, Server, DB, WebSocket) zusammen funktioniert.
-// Zwei Spieler registrieren sich über die Seite, A erstellt einen öffentlichen Tisch über die Lobby, B tritt über
-// die Lobby-Liste bei, beide nehmen Platz, A startet, beide gehen All-in, bis der Rundenende-Dialog bei beiden
-// steht. Danach werden beide Test-Konten gelöscht (auch in prod, auch wenn der Test scheitert).
+// Zwei Spieler registrieren sich über die Seite, A erstellt über die Lobby einen privaten Tisch, B tritt über den
+// Einladungslink bei, beide nehmen Platz, A startet, beide gehen All-in, bis der Rundenende-Dialog bei beiden
+// steht. Danach werden beide Test-Konten gelöscht (auch in prod, auch wenn der Test scheitert). Privat, damit in
+// prod keine Spuren öffentlich sichtbar sind: nicht in der Lobby, Ergebnis nur für Teilnehmer (D-024, D-028).
 // Läuft gegen dev (localhost:4310), prod (localhost:4320 über den Origin-Proxy, D-028) oder den eigenen Vite.
 import { expect, test, type Page } from '@playwright/test';
 import { deleteAccount, playUntilRoundEnds, registerViaUi, uniqueName } from './helpers';
@@ -13,7 +14,9 @@ test.afterEach(async () => {
   expect(errors, 'Test-Konten löschen').toEqual([]);
 });
 
-test('zwei Spieler: Registrierung, Tisch über die Lobby, Runde bis zum Ende', async ({ browser }) => {
+test('zwei Spieler: Registrierung, privater Tisch über Lobby und Einladung, Runde bis zum Ende', async ({
+  browser,
+}) => {
   const nameA = uniqueName('e2e_', 'a');
   const nameB = uniqueName('e2e_', 'b');
   const tableName = `E2E-Test ${nameA}`;
@@ -22,7 +25,7 @@ test('zwei Spieler: Registrierung, Tisch über die Lobby, Runde bis zum Ende', a
   const b = await registerViaUi(browser, nameB, pages);
   await expect(a.getByText(`Hallo ${nameA}!`)).toBeVisible();
 
-  // A: Tisch über die Lobby erstellen (öffentlich, 2 Plätze, feste Blinds, kleiner Stack → kurze Runde)
+  // A: privaten Tisch über die Lobby erstellen (2 Plätze, feste Blinds, kleiner Stack → kurze Runde)
   await expect(a.getByRole('status', { name: 'Verbindung: Verbunden' })).toBeVisible(); // WS steht
   await a.getByRole('button', { name: 'Tisch erstellen' }).click();
   const form = a.getByRole('form', { name: 'Tisch erstellen' });
@@ -30,17 +33,20 @@ test('zwei Spieler: Registrierung, Tisch über die Lobby, Runde bis zum Ende', a
   await form.getByLabel('Startstack').fill('200');
   await form.getByLabel('Plätze').selectOption('2');
   await form.getByLabel('Fest').check();
-  await form.getByLabel('Öffentlich (in der Lobby)').check();
+  await form.getByLabel('Privat (nur per Einladungslink)').check();
   await form.getByRole('button', { name: 'Tisch erstellen' }).click();
+  const created = a.getByRole('region', { name: 'Privater Tisch erstellt' });
+  const invitePath = new URL(await created.getByLabel('Einladungslink').inputValue()).pathname;
+  expect(invitePath).toMatch(/^\/join\/.+/);
+  await expect(a.getByRole('button', { name: `Beitreten: ${tableName}` })).toHaveCount(0); // nicht in der Lobby
+  await created.getByRole('button', { name: 'Zum Tisch' }).click();
   await a.waitForURL(/\/table\/\d+$/);
   const tablePath = new URL(a.url()).pathname;
   await a.getByRole('button', { name: 'Platz nehmen' }).click();
   await expect(a.getByRole('button', { name: 'Aufstehen' })).toBeVisible();
 
-  // B: Tisch in der Lobby-Liste finden (live per lobby.update) und beitreten
-  const join = b.getByRole('button', { name: `Beitreten: ${tableName}` });
-  await expect(join).toBeVisible();
-  await join.click();
+  // B: über den Einladungslink beitreten (Pfad relativ zur baseURL, z. B. hinter dem Origin-Proxy)
+  await b.goto(invitePath);
   await b.waitForURL((url) => url.pathname === tablePath);
   await b.getByRole('button', { name: 'Platz nehmen' }).click();
   await expect(b.getByRole('button', { name: 'Aufstehen' })).toBeVisible();

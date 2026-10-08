@@ -94,7 +94,7 @@ test('HTTP: Origin ersetzt, Body, Pfad und Set-Cookie unverändert', async () =>
     const res = await httpCall(proxy.port, {
       method: 'POST',
       path: '/api/register?x=1',
-      headers: { Origin: 'http://localhost:4326', 'content-type': 'application/json' },
+      headers: { Origin: 'http://localhost:4318', 'content-type': 'application/json' },
       body: '{"a":1}',
     });
     assert.equal(res.status, 200);
@@ -112,7 +112,7 @@ test('WebSocket-Upgrade: mit ersetzter Origin 101 und Daten in beide Richtungen'
   const stub = await stubServer();
   const proxy = await startOriginProxy({ target: `http://127.0.0.1:${String(stub.port)}`, origin: ALLOWED });
   try {
-    const res = await upgradeCall(proxy.port, 'http://localhost:4326');
+    const res = await upgradeCall(proxy.port, 'http://localhost:4318');
     assert.equal(res.status, 101);
     assert.equal(res.echo, 'ping');
   } finally {
@@ -128,7 +128,7 @@ test('WebSocket-Upgrade: Ablehnung des Ziels kommt unverändert an', async () =>
     origin: 'https://evil.example',
   });
   try {
-    const res = await upgradeCall(proxy.port, 'http://localhost:4326');
+    const res = await upgradeCall(proxy.port, 'http://localhost:4318');
     assert.equal(res.status, 403);
   } finally {
     await proxy.close();

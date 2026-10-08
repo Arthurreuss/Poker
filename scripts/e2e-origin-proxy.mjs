@@ -6,7 +6,7 @@
 // `Origin`-Header durch E2E_PROXY_ORIGIN. So läuft der Browser gegen die echten prod-Container (nginx, Server,
 // DB), ohne dass prod eine zusätzliche Origin erlauben muss.
 //   E2E_PROXY_TARGET=http://localhost:4320 E2E_PROXY_ORIGIN=https://poker.arthur-reuss.de \
-//   E2E_PROXY_PORT=4326 node scripts/e2e-origin-proxy.mjs
+//   E2E_PROXY_PORT=4318 node scripts/e2e-origin-proxy.mjs
 import { createServer, request as httpRequest } from 'node:http';
 import { connect } from 'node:net';
 import { fileURLToPath } from 'node:url';
@@ -93,7 +93,7 @@ export function startOriginProxy({ target, origin, port = 0, host = '127.0.0.1' 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const target = process.env.E2E_PROXY_TARGET;
   const origin = process.env.E2E_PROXY_ORIGIN;
-  const port = Number(process.env.E2E_PROXY_PORT ?? 4326);
+  const port = Number(process.env.E2E_PROXY_PORT ?? 4318);
   if (!target || !origin) {
     console.error('✗ E2E_PROXY_TARGET und E2E_PROXY_ORIGIN setzen.');
     process.exit(2);
