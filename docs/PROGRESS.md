@@ -30,7 +30,7 @@
 | M5 | [WP-023](work-packages/WP-023.md) | Go-Live: main auf poker.arthur-reuss.de | todo | WP-003, WP-012, WP-020, WP-021, WP-022, WP-024 |
 | M4 | [WP-024](work-packages/WP-024.md) | Feedback-Button | done | WP-010, WP-014 |
 | M5 | [WP-025](work-packages/WP-025.md) | Zweite Domain poker.deinemudda.win | done | WP-003 |
-| M5 | [WP-026](work-packages/WP-026.md) | Nacharbeiten aus der Abnahme (Tische, Zugang, Rangliste) | in-progress | WP-015, WP-019 |
+| M5 | [WP-026](work-packages/WP-026.md) | Nacharbeiten aus der Abnahme (Tische, Zugang, Rangliste) | done | WP-015, WP-019 |
 <!-- END GENERATED -->
 
 ## Meilensteine
