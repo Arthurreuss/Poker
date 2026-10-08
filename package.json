@@ -19,7 +19,7 @@
     "test": "node --test \"scripts/test/**/*.test.mjs\" && vitest run",
     "docs:check": "node scripts/docs.mjs check",
     "docs:sync": "node scripts/docs.mjs sync",
-    "check": "npm run docs:check && npm run typecheck && npm run lint && npm test"
+    "check": "npm run docs:check && npm run format:check && npm run typecheck && npm run lint && npm test"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
