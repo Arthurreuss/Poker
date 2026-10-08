@@ -255,7 +255,8 @@ Quellen: Protokoll in `packages/engine/src/protocol/` (Subpfad `@poker/engine/pr
 
 | Client → Server | Felder | Wirkung |
 |---|---|---|
-| `hello` | `protocolVersion` | Handshake, muss zuerst kommen; andere Version → `error UNSUPPORTED_VERSION` und Schließen mit Code 4000 |
+| `hello` | `protocolVersion` | Handshake, muss zuerst kommen; andere Version → `error UNSUPPORTED_VERSION` und Schließen mit Code 4000. Eine ältere Verbindung desselben Users wird dabei mit 4001 geschlossen (WP-012) |
+| `ping` | – | Anwendungs-Heartbeat (WP-012), auch vor `hello` erlaubt → `pong` |
 | `lobby.subscribe` / `lobby.unsubscribe` | – | Lobby-Liste abonnieren (`lobby.snapshot`, danach Updates) bzw. abbestellen |
 | `table.create` | `settings` (`name` Pflicht; `isPublic`, `maxSeats`, `startingStack`, `blindStructure`, `turnTimeSeconds`, `timeBankSeconds` optional) | Tisch anlegen (DB `tables`), Ersteller beobachtet ihn automatisch |
 | `table.join` | `tableId` **oder** `inviteCode` | Tisch beobachten (Zuschauen). Private Tische nur per Code (außer Ersteller und Spieler am Tisch), sonst `TABLE_NOT_FOUND` |
@@ -267,6 +268,7 @@ Quellen: Protokoll in `packages/engine/src/protocol/` (Subpfad `@poker/engine/pr
 | Server → Client | Inhalt |
 |---|---|
 | `welcome` | `protocolVersion`, `user { id, username }` |
+| `pong` | `requestId`, `serverNowMs` (Antwort auf `ping`) |
 | `error` | `code`, `message` (deutsch), `requestId`, `tableId` – nur an den Absender |
 | `lobby.snapshot` / `lobby.update` / `lobby.remove` | alle öffentlichen offenen/laufenden Tische bzw. ein geänderter Eintrag (`LobbyTable`: Name, Ersteller, Status, Spieler/Plätze, Startstack, Blinds des ersten Levels, Blind-Typ, Zeitlimit, Zeitbank) bzw. Tisch weg (privat nie) |
 | `table.created` | `requestId`, `tableId`, `inviteCode` |
@@ -277,7 +279,7 @@ Quellen: Protokoll in `packages/engine/src/protocol/` (Subpfad `@poker/engine/pr
 Fehlercodes (`ErrorCode`): `BAD_MESSAGE`, `UNSUPPORTED_VERSION`, `HELLO_REQUIRED`, `INVALID_SETTINGS`, `TABLE_NOT_FOUND`, `NOT_AT_TABLE`, `INVALID_SEAT`, `SEAT_TAKEN`, `TABLE_FULL`, `ALREADY_SEATED`, `NOT_SEATED`, `ROUND_STARTED`, `NOT_CREATOR`, `NOT_ENOUGH_PLAYERS`, `NO_HAND_IN_PROGRESS`, `STALE_ACTION`, `NOT_YOUR_TURN`, `INVALID_ACTION`, `ILLEGAL_ACTION`, `AMOUNT_TOO_SMALL`, `AMOUNT_TOO_LARGE` (die letzten fünf aus der Engine), `INTERNAL`.
 
 - **Tisch-Einstellungen:** Defaults `DEFAULT_TABLE_SETTINGS`: öffentlich, 9 Plätze, Startstack `DEFAULT_STARTING_STACK` = 1.500, Standard-Blind-Struktur der Engine (steigend, D-012), 20 s Zug, 60 s Zeitbank (D-013); keine Antes (D-016). Grenzen: Name 1–50 Zeichen, 2–9 Plätze (D-007), Startstack 1 … 10⁸ (D-015), Zug 1–600 s, Zeitbank 0–3.600 s, Big Blind des ersten Levels ≤ Startstack (DB-Constraint). In der DB: `small_blind`/`big_blind` = erstes Level, `blind_structure` = die `BlindStructure` der Engine als JSON.
-- **`TableView`:** `id`, `inviteCode`, `createdBy`, `settings`, `status` (`open` → `running` → `finished`), `seats[]` (`seat`, `user`, `connected`), `spectators` (Anzahl), `round` (`RoundView` oder `null`), `you { userId, seat, isCreator }`. `RoundView` = `toClientView(round, viewerId, nowMs)`: Phase, Handnummer, `blindLevel` (aktuelles Level, `nextLevelAtMs`), Stacks/Platzierungen, `hand` (`HandView`), `standings`.
+- **`TableView`:** `id`, `inviteCode`, `createdBy`, `settings`, `status` (`open` → `running` → `finished`), `seats[]` (`seat`, `user`, `connected`, `timeBankMs`), `spectators` (Anzahl), `round` (`RoundView` oder `null`), `turnClock` (`TurnClockView` oder `null`), `serverNowMs`, `you { userId, seat, isCreator }` – Zeitfelder siehe „Timer und Verbindungsmodell“. `RoundView` = `toClientView(round, viewerId, nowMs)`: Phase, Handnummer, `blindLevel` (aktuelles Level, `nextLevelAtMs`), Stacks/Platzierungen, `hand` (`HandView`), `standings`.
 
 ### Filterung pro Empfänger (D-003)
 `toClientView(round, viewerId, nowMs)` bzw. `toHandView(hand, handNumber, viewerId)` (rein, `view.ts`): eigene Hole Cards immer; fremde nie vor dem Showdown und im Showdown nur `shownCards` (gemuckte nie); Deck und verbrannte Karten nie (die Felder fehlen); Handbewertungen (`reveals[].hand`) nur für gezeigte und die eigene Hand; `legalActions` nur für den Empfänger, wenn er am Zug ist; Zuschauer (`viewerId = null`) sehen keine Hole Cards. Zusätzlich: `actionSeq` (= Länge des Hand-Protokolls), `pot`, öffentliches `log`, `payouts`, Pots mit Gewinnern. Der Server berechnet die Sicht für jede Verbindung einzeln.
@@ -293,18 +295,46 @@ Fehlercodes (`ErrorCode`): `BAD_MESSAGE`, `UNSUPPORTED_VERSION`, `HELLO_REQUIRED
 
 ### Tische im Speicher, Robustheit
 - Ein Prozess hält alle Tische (`GameServer` → `Table`); Zustandsänderungen sind synchron, nur DB-Zugriffe und Hooks asynchron. Nachrichten einer Verbindung werden nacheinander verarbeitet. Jede Nachricht läuft in einem `try/catch`: Fehler → `error` an den Absender (`INTERNAL`), andere Tische und der Server laufen weiter. Schlägt das Speichern des Starts fehl, bleibt der Tisch `open`.
-- **Verbindungsstatus:** pro Tisch zählt der Server offene Verbindungen je User (`Table.isConnected`, `seats[].connected`). Getrennte Spieler bleiben sitzen (D-012); ein Tab-Wechsel oder mehrere Tabs desselben Users sind möglich (Regeln dafür: WP-012).
+- **Verbindungsstatus:** pro Tisch zählt der Server Verbindungen je User, die den Tisch beobachten (`Table.isConnected`, `seats[].connected`). Getrennte Spieler bleiben sitzen (D-012); Regeln für Abbrüche und mehrere Tabs: „Timer und Verbindungsmodell“.
 - **Aufräumen:** Ein offener Tisch ohne Beobachter und ohne Spieler wird geschlossen (`closed`, verschwindet aus der Lobby); ein beendeter Tisch verschwindet aus dem Speicher, sobald ihn niemand mehr beobachtet. Laufende Tische bleiben im Speicher.
 - **Repository:** `TableRepository` (`createTable`, `startRound`, `finishRound`, `closeTable`) mit `createPgTableRepository(db)` (Betrieb) und `InMemoryTableRepository` (Tests ohne DB).
 - **Neustart:** Tische und laufende Runden gehen verloren. Beim Start ruft `main.ts` `closeOrphanedTables(db)` auf: laufende Runden → `aborted` (ohne Platz/Punkte), offene und laufende Tische → `closed`. Clients verbinden sich neu und sehen eine leere Lobby. WP-013 präzisiert das Verhalten.
 
 ### Erweiterungspunkte
 - **Hooks** (`GameHooks`, `buildApp({ game: { hooks } })`) für WP-013: `onHandStarted` (Hand nach Austeilen und Blinds), `onHandComplete` (abgeschlossene Hand + Runde danach), `onRoundComplete` (Ergebnis mit `userId`). Sie bekommen den vollständigen Serverzustand inkl. Deck und Hole Cards (nie an Clients geben), laufen pro Tisch strikt nacheinander in Ereignisreihenfolge (zusammen mit den DB-Schreibvorgängen), werden vom Spielablauf aber nicht abgewartet; Fehler werden geloggt und stören den Tisch nicht. `app.game.idle()` wartet auf alle eingereihten Hooks.
-- **WP-012** (Timer, Reconnect): `Table.actFor(userId, action)` (Aktion im Namen eines Spielers ohne `seq`-Prüfung), `Table.autoCheckOrFold(userId)` (D-013), `Table.isConnected(userId)`, `GameServer.getTable(id)`; Zug-Timer setzen in `Table.afterTransition` an (dort ist bekannt, wer als Nächstes am Zug ist). Reconnect funktioniert bereits über `table.join` mit derselben Session (liefert sofort die gefilterte Sicht inkl. eigener Karten).
+- **Server-Aktionen:** `Table.actFor(userId, action)` (Aktion im Namen eines Spielers ohne `seq`-Prüfung), `Table.autoCheckOrFold(userId)` (D-013), `Table.isConnected(userId)`, `GameServer.getTable(id)` – genutzt vom Zug-Timer (WP-012).
 
 ### Tests
 - `packages/engine/src/protocol/validate.test.ts` (gültige/ungültige Nachrichten, Defaults, Grenzen), `view.test.ts` (eigene/fremde Karten, Zuschauer, `legalActions`, Showdown mit Mucks, All-in, Fold-out, keine geteilten Referenzen).
 - `apps/server/src/ws.test.ts` (Upgrade `401`/`403`/`404`/`500`, Handshake, Versionsfehler, ungültige und zu große Nachrichten, Heartbeat), `game/game-server.test.ts` (ohne Netzwerk, `ManualClock`: Pause nach der Hand, Blind-Level, WP-012-Erweiterungspunkte, DB-Fehler beim Start), `game/game.ws.test.ts` (echte WebSockets, Port 0, In-Memory: 3 Bots spielen eine Runde bis zum Sieger, kein Client sieht je fremde Hole Cards – geprüft über alle empfangenen Nachrichten, strukturell und per Textsuche gegen die echten Karten aus `onHandStarted`; unerlaubte Aktionen, Start durch Nicht-Ersteller, Beitritt nach Start, 10. Spieler; Lobby-Updates; private Tische; Hook-Fehler), `game/game.db.test.ts` (mit `TEST_DATABASE_URL`: echte Sessions, Runde mit DB-Einträgen, `401` bei abgelaufener Session, geteilte Plätze, Neustart-Aufräumen). Hilfen: `game/ws-test-client.ts` (Client mit Mitschnitt, Bot, Leak-Prüfung).
+- WP-012: `game/timer.test.ts` (ohne Netzwerk, `ManualClock`: Deadline/Zeitbank/`serverNowMs` in der Sicht, Ablauf → Fold bzw. Check, anteiliger Zeitbank-Verbrauch, Zeitbank 0, getrennter Spieler → Gnadenfrist ohne Zeitbank, alle Spieler getrennt → Runde läuft mit Blinds bis zum Ende, Reconnect in der Gnadenfrist, Ablösung durch neuere Verbindung, `ping`), `game/reconnect.ws.test.ts` (echte WebSockets mit `ManualClock`: harter Abbruch mitten in der Hand → neue Verbindung → identischer Zustand, Auto-Fold nach Gnadenfrist, zweiter Tab → 4001, `ping`/`pong`).
+
+### Timer und Verbindungsmodell
+Umsetzung: `Table` (`syncTurn`, `endTurn`, `scheduleDeadline`) und `GameServer` (`takeOver`, `ping`). Timer laufen nur auf dem Server (D-013) über die injizierte `Clock`.
+
+- **Zug-Timer:** Nach jedem Spielschritt (`afterTransition`, vor dem Senden der Sichten) gleicht `syncTurn` den Timer mit der Hand ab. Ein Zug ist `(handNumber, actionSeq)` – jede neue Aktion startet einen neuen Zug, auch wenn derselbe Spieler wieder dran ist (z. B. Big Blind preflop und dann zuerst auf dem Flop). Ein Zug hat `turnTimeSeconds` normale Zeit, danach läuft die **Zeitbank** des Spielers. Es gibt genau einen Timer pro Tisch, geplant auf `deadlineMs = turnEndsAtMs + Zeitbank zu Zugbeginn`; bei Ablauf `autoCheckOrFold` (Check, wenn erlaubt, sonst Fold). Der Übergang „normale Zeit → Zeitbank“ erzeugt keine Nachricht – die Deadline steht von Anfang an fest.
+- **Zeitbank:** pro Spieler und Runde (`timeBankSeconds`, Standard 60 s, D-013), im Speicher des Tisches. Abgezogen wird beim Ende des Zugs nur die Zeit über `turnEndsAtMs` hinaus (`min(Zeitbank, max(0, Ende − turnEndsAtMs))`); wer innerhalb der normalen Zeit handelt, verliert nichts. Ein Timeout verbraucht die gesamte Restbank; danach hat der Spieler nur noch die normale Zugzeit.
+- **Getrennte Spieler (D-012):** bleiben sitzen, zahlen Blinds wie alle (Engine). Ist der Spieler am Zug ohne Verbindung zum Tisch (oder trennt er sich während seines Zugs), wird die Deadline auf `min(normale Deadline, jetzt + DISCONNECT_GRACE_MS)` verkürzt (`DEFAULT_DISCONNECT_GRACE_MS` = 3 s, `GameServerOptions.disconnectGraceMs`). Kommt er in der Frist zurück, gilt wieder die normale Deadline. Eine Auto-Aktion innerhalb der normalen Zugzeit kostet keine Zeitbank. Der Tisch wartet so pro Zug höchstens 3 s auf einen Getrennten; sind alle getrennt, läuft die Runde allein weiter (mit steigenden Blinds bis zum Ende). Als „verbunden“ zählt, wer mindestens eine Verbindung hat, die den Tisch beobachtet – wer `table.leave` sendet, gilt also auch als getrennt.
+- **Zeit in der Sicht:** `TableView.serverNowMs` (Server-Uhr beim Erstellen der Sicht), `seats[].timeBankMs` (Restbank zu `serverNowMs`; vor dem Start der volle Wert) und `turnClock` (`null`, wenn niemand am Zug ist):
+
+  | `TurnClockView` | Bedeutung |
+  |---|---|
+  | `playerId`, `seat`, `handNumber`, `actionSeq` | wer am Zug ist, zu welcher Aktion |
+  | `startedAtMs` | Zugbeginn |
+  | `turnEndsAtMs` | Ende der normalen Zugzeit |
+  | `deadlineMs` | automatische Aktion; `> turnEndsAtMs` → dazwischen läuft die Zeitbank; `≤ turnEndsAtMs` → keine Zeitbank-Phase (leer oder Spieler getrennt) |
+
+  Alle Zeitpunkte sind Server-Uhr (ms seit Epoche). Client: beim Empfang `offset = serverNowMs − Date.now()` merken, Restzeit = `deadlineMs − (Date.now() + offset)`; Ring Phase 1 bis `turnEndsAtMs`, Phase 2 (Zeitbank) bis `deadlineMs`. Neue `table.state` kommen nur bei Änderungen (Aktion, Verbindungswechsel, neue Hand), nicht im Sekundentakt.
+- **Mehrere Verbindungen desselben Users:** Pro User ist höchstens eine Verbindung aktiv. Sendet eine neue Verbindung `hello`, wird die ältere sofort von Lobby und Tischen abgemeldet, ihre weiteren Nachrichten werden ignoriert, und sie wird mit Close-Code **4001** (`CLOSE_REPLACED`, Grund `replaced by newer connection`) geschlossen. Die neue Verbindung erbt **keine** Abos – sie sendet selbst `lobby.subscribe`/`table.join`. Bis dahin gilt der Spieler kurz als getrennt (Gnadenfrist deckt das ab).
+- **Reconnect:** Session = Cookie; eine neue WebSocket-Verbindung mit `hello` und `table.join { tableId }` liefert sofort die gefilterte Sicht inkl. eigener Hole Cards, Zeitbank und Zug-Uhr. Spieler am Tisch dürfen auch private Tische per `tableId` wieder betreten. Eine halb-offene alte Verbindung (Netz weg ohne Close) wird dabei per 4001 abgelöst.
+- **Heartbeat:** Der Server pingt alle 30 s (`HEARTBEAT_INTERVAL_MS`, D-014) und beendet Verbindungen ohne Pong; Browser beantworten Pings automatisch, sehen sie aber nicht. Deshalb gibt es zusätzlich `ping` → `pong { requestId, serverNowMs }` auf Anwendungsebene.
+- **Was der Client tun muss (WP-018, nicht Teil von WP-012):**
+  1. Verbinden auf `/ws` (relativ, `ws:`/`wss:` aus `location`, D-014), sofort `hello { protocolVersion: 1 }`, auf `welcome` warten.
+  2. Danach die gewünschten Abos neu herstellen: `lobby.subscribe` bzw. `table.join { tableId }` für den offenen Tisch. Der erste `table.state` ersetzt den lokalen Zustand vollständig (keine Diffs).
+  3. Alle ~20 s `ping` senden (hält auch Cloudflare-Idle-Timeouts fern); kommt binnen ~10 s kein `pong` (oder irgendeine Nachricht), Verbindung als tot behandeln, schließen und neu verbinden. `serverNowMs` aus `pong`/`table.state` für den Uhrabgleich nutzen.
+  4. Bei `close`/`error`: neu verbinden mit exponentiellem Backoff (z. B. 0,5 s, 1 s, 2 s … max. 10 s, mit Zufallsanteil), Zähler nach erfolgreichem `welcome` zurücksetzen. Zusätzlich sofort versuchen bei `online` und wenn der Tab wieder sichtbar wird.
+  5. **Nicht** automatisch neu verbinden bei Close-Code **4000** (falsche Protokollversion → Hinweis „Seite neu laden“) und **4001** (anderer Tab/Gerät hat übernommen → Hinweis mit Knopf „Hier weiterspielen“, der bewusst neu verbindet). HTTP-Ablehnung beim Upgrade (401: Session abgelaufen) zeigt der Browser nur als Fehler/1006 – nach mehreren Fehlversuchen `GET /api/me` prüfen und ggf. zum Login.
+  6. Aktionen nicht puffern: Nach dem Reconnect zählt nur der neue `table.state` (`handNumber`/`actionSeq` für `table.action`); veraltete Klicks lehnt der Server mit `STALE_ACTION` ab.
 
 ## Datenmodell
 Postgres 16 (D-010). Schema in `apps/server/migrations/*.sql`, Runner und Zeilentypen in `apps/server/src/db/`.

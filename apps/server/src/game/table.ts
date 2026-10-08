@@ -19,6 +19,7 @@ import {
   type TableSettings,
   type TableStatus,
   type TableView,
+  type TurnClockView,
 } from '@poker/engine/protocol';
 import type { Cancel, Clock } from './clock';
 import type { GameHooks } from './hooks';
@@ -50,6 +51,11 @@ export interface TableDeps {
   hooks: GameHooks;
   /** Pause nach jeder Hand, bevor die nächste startet (Showdown-Anzeige); in Tests 0. */
   handPauseMs: number;
+  /**
+   * Gnadenfrist für getrennte Spieler am Zug (WP-012): so lange nach Zugbeginn bzw. Abbruch wartet der
+   * Server höchstens, bevor er für sie checkt/foldet (Reload/Netzwechsel ohne Fold); in Tests frei wählbar.
+   */
+  disconnectGraceMs: number;
   log: Logger;
   /** Zustand hat sich geändert → Sichten neu senden, Lobby aktualisieren. */
   onChange(table: Table): void;
@@ -60,6 +66,20 @@ export interface TableDeps {
 /** Engine-Spieler-ID eines Users (D-003: die Engine kennt nur Strings). */
 export const playerIdOf = (userId: number): string => String(userId);
 
+/** Laufender Zug (WP-012, D-013): wer am Zug ist und wann der Server automatisch handelt. */
+interface Turn {
+  userId: number;
+  seat: number;
+  handNumber: number;
+  actionSeq: number;
+  startedAtMs: number;
+  turnEndsAtMs: number;
+  /** Zeitbank des Spielers zu Zugbeginn. */
+  bankAtStartMs: number;
+  deadlineMs: number;
+  cancel: Cancel;
+}
+
 export class Table {
   status: TableStatus = 'open';
   /** Sitz → Spieler. */
@@ -69,6 +89,10 @@ export class Table {
   /** Offene Verbindungen je User, die diesen Tisch beobachten (Verbindungsstatus pro Spieler, WP-012). */
   private readonly watchers = new Map<number, number>();
   private cancelPending: Cancel | null = null;
+  /** Aktueller Zug mit Timer (WP-012). */
+  private turn: Turn | null = null;
+  /** Verbleibende Zeitbank je User in ms (pro Runde); fehlt = volle Zeitbank aus den Einstellungen. */
+  private readonly timeBanks = new Map<number, number>();
   private hookQueue: Promise<void> = Promise.resolve();
   private closed = false;
 
@@ -86,12 +110,13 @@ export class Table {
 
   addWatcher(userId: number): void {
     this.watchers.set(userId, (this.watchers.get(userId) ?? 0) + 1);
+    if (this.watchers.get(userId) === 1) this.onConnectivityChange(userId);
   }
 
   removeWatcher(userId: number): void {
     const n = (this.watchers.get(userId) ?? 0) - 1;
     if (n > 0) this.watchers.set(userId, n);
-    else this.watchers.delete(userId);
+    else if (this.watchers.delete(userId)) this.onConnectivityChange(userId);
   }
 
   /** Hat der User mindestens eine Verbindung, die diesen Tisch beobachtet? (WP-012: Auto-Check/Fold) */
@@ -226,6 +251,90 @@ export class Table {
     this.closed = true;
     this.cancelPending?.();
     this.cancelPending = null;
+    this.turn?.cancel();
+    this.turn = null;
+  }
+
+  // -------------------------------------------------------------------------
+  // Zug-Timer und Zeitbank (WP-012, D-013)
+  // -------------------------------------------------------------------------
+
+  /**
+   * Gleicht den Zug-Timer mit dem Spielzustand ab: Ist ein neuer Spieler (bzw. eine neue Aktion) am Zug,
+   * wird der alte Zug abgerechnet (verbrauchte Zeitbank) und ein neuer Timer gestartet.
+   */
+  private syncTurn(): void {
+    const now = this.deps.clock.now();
+    const round = this.round;
+    const hand = round?.phase === 'hand' ? round.hand : null;
+    const actorId = !this.closed && hand?.phase === 'betting' ? hand.toActId : null;
+    if (round === null || hand === null || actorId === null) {
+      this.endTurn(now);
+      return;
+    }
+    const seq = hand.log.length;
+    if (this.turn?.handNumber === round.handNumber && this.turn.actionSeq === seq) return;
+    this.endTurn(now);
+    const userId = Number(actorId);
+    const player = hand.players.find((p) => p.id === actorId);
+    this.turn = {
+      userId,
+      seat: player?.seat ?? -1,
+      handNumber: round.handNumber,
+      actionSeq: seq,
+      startedAtMs: now,
+      turnEndsAtMs: now + this.settings.turnTimeSeconds * 1000,
+      bankAtStartMs: this.timeBankOf(userId),
+      deadlineMs: now,
+      cancel: () => undefined,
+    };
+    this.scheduleDeadline(now);
+  }
+
+  /** Rechnet den laufenden Zug ab: nur die über die normale Zugzeit hinaus verbrauchte Zeit kostet Zeitbank. */
+  private endTurn(now: number): void {
+    const turn = this.turn;
+    if (turn === null) return;
+    turn.cancel();
+    this.turn = null;
+    this.timeBanks.set(turn.userId, turn.bankAtStartMs - this.bankUsed(turn, now));
+  }
+
+  private bankUsed(turn: Turn, now: number): number {
+    return Math.min(turn.bankAtStartMs, Math.max(0, now - turn.turnEndsAtMs));
+  }
+
+  private timeBankOf(userId: number): number {
+    return this.timeBanks.get(userId) ?? this.settings.timeBankSeconds * 1000;
+  }
+
+  /** Plant die automatische Aktion; getrennte Spieler bekommen nur die Gnadenfrist ab `now`. */
+  private scheduleDeadline(now: number): void {
+    const turn = this.turn;
+    if (turn === null) return;
+    turn.cancel();
+    const full = turn.turnEndsAtMs + turn.bankAtStartMs;
+    turn.deadlineMs = this.isConnected(turn.userId) ? full : Math.min(full, now + this.deps.disconnectGraceMs);
+    turn.cancel = this.deps.clock.schedule(Math.max(0, turn.deadlineMs - now), () => {
+      this.onDeadline(turn);
+    });
+  }
+
+  private onDeadline(turn: Turn): void {
+    if (this.turn !== turn || this.closed) return;
+    try {
+      const result = this.autoCheckOrFold(turn.userId);
+      if (!result.ok) {
+        this.deps.log.error({ tableId: this.id, userId: turn.userId, result }, 'Automatische Aktion fehlgeschlagen');
+      }
+    } catch (error) {
+      this.deps.log.error({ err: error, tableId: this.id }, 'Fehler bei der automatischen Aktion');
+    }
+  }
+
+  /** Spieler am Zug hat sich getrennt bzw. ist zurück → Frist neu berechnen (Sicht sendet der Aufrufer). */
+  private onConnectivityChange(userId: number): void {
+    if (this.turn?.userId === userId) this.scheduleDeadline(this.deps.clock.now());
   }
 
   private dealNextHand(): void {
@@ -256,8 +365,8 @@ export class Table {
     const round = this.round;
     if (round === null) return;
     if (round.phase === 'finished') this.status = 'finished';
+    this.syncTurn();
     this.deps.onChange(this);
-    // Hier setzt WP-012 an: läuft die Hand weiter, Zug-Timer für `round.hand.toActId` starten.
     if (round.hand?.phase !== 'complete') return;
 
     const now = this.deps.clock.now();
@@ -330,9 +439,28 @@ export class Table {
   /** Gefilterte Sicht für einen Empfänger (D-003). */
   view(viewer: PublicUser): TableView {
     const seat = this.seatOf(viewer.id);
+    const now = this.deps.clock.now();
+    const turn = this.turn;
     const seats = [...this.seats]
       .sort(([a], [b]) => a - b)
-      .map(([s, user]) => ({ seat: s, user: { ...user }, connected: this.isConnected(user.id) }));
+      .map(([s, user]) => ({
+        seat: s,
+        user: { ...user },
+        connected: this.isConnected(user.id),
+        timeBankMs: turn?.userId === user.id ? turn.bankAtStartMs - this.bankUsed(turn, now) : this.timeBankOf(user.id),
+      }));
+    const turnClock: TurnClockView | null =
+      turn === null
+        ? null
+        : {
+            playerId: playerIdOf(turn.userId),
+            seat: turn.seat,
+            handNumber: turn.handNumber,
+            actionSeq: turn.actionSeq,
+            startedAtMs: turn.startedAtMs,
+            turnEndsAtMs: turn.turnEndsAtMs,
+            deadlineMs: turn.deadlineMs,
+          };
     const seatedIds = new Set(seats.map((s) => s.user.id));
     return {
       id: this.id,
@@ -342,10 +470,9 @@ export class Table {
       status: this.status,
       seats,
       spectators: [...this.watchers.keys()].filter((id) => !seatedIds.has(id)).length,
-      round:
-        this.round === null
-          ? null
-          : toClientView(this.round, seat === null ? null : playerIdOf(viewer.id), this.deps.clock.now()),
+      round: this.round === null ? null : toClientView(this.round, seat === null ? null : playerIdOf(viewer.id), now),
+      turnClock,
+      serverNowMs: now,
       you: { userId: viewer.id, seat, isCreator: viewer.id === this.createdBy.id },
     };
   }

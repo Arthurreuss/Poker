@@ -9,6 +9,7 @@ describe('parseClientMessage', () => {
   it.each([
     [{ type: 'hello', protocolVersion: PROTOCOL_VERSION }],
     [{ type: 'lobby.subscribe' }],
+    [{ type: 'ping', requestId: 'p1' }],
     [{ type: 'lobby.unsubscribe', requestId: 'r1' }],
     [{ type: 'table.join', tableId: 3 }],
     [{ type: 'table.join', inviteCode: 'abc_DEF-123' }],
