@@ -50,6 +50,7 @@ Parallel in Arbeit: WP-003 (Prod/Cloudflare), WP-007 (Side Pots/Showdown), WP-01
 ## Log
 Neueste Einträge oben. Pro Session 1–3 Zeilen.
 
+- 2026-10-08: WP-003 done – `poker-prod` (nginx 4320, Server, Postgres, cloudflared-Profil), Release-/Smoke-Skripte, docs/OPERATIONS.md. Merge-Fix: Prod-Image enthält Migrationen (`MIGRATIONS_DIR`); Prod-Lauf mit Smoke-Test und Migration verifiziert. D-016: keine Antes.
 - 2026-10-08: WP-009 done – eigener Migrations-Runner (D-015), Schema mit 7 Tabellen, 27 DB-Tests (`npm run test:db -w @poker/server`). WP-010 gestartet.
 - 2026-10-08: WP-006 done – Setzrunden als reine Zustandsmaschine (TDA-Auslegungen im WP-Log), Property-Test über 400 Hände. Merge-Fix: `HandResult` (Setzrunden) → `ActionResult`. Offen für Arthur: Antes pro Spieler vs. Big-Blind-Ante. WP-007 gestartet.
 - 2026-10-08: WP-005 done – Handbewertung per Bitmasken, alle 2.598.960 Hände verifiziert (1,3 s), ~0,6 µs pro 7-Karten-Hand. WP-009 gestartet.

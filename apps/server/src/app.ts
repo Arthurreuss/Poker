@@ -1,9 +1,16 @@
 import Fastify, { type FastifyInstance } from 'fastify';
 import type { Database } from './db';
+import { registerWebSocket } from './ws';
 
 export interface AppOptions {
   db: Database;
+  /** Erlaubte Origin für WebSocket-Upgrades (D-014). */
+  publicOrigin: string;
   logger?: boolean;
+  /** Proxy-Header vertrauen – nur in prod (D-014), siehe `loadConfig`. */
+  trustProxy?: boolean;
+  /** Nur für Tests: kürzerer Heartbeat. */
+  heartbeatIntervalMs?: number;
 }
 
 export interface HealthResponse {
@@ -12,14 +19,26 @@ export interface HealthResponse {
 }
 
 /** Baut die Fastify-App ohne `listen` – Tests nutzen `app.inject()`. */
-export function buildApp({ db, logger = false }: AppOptions): FastifyInstance {
-  const app = Fastify({ logger });
+export function buildApp({
+  db,
+  publicOrigin,
+  logger = false,
+  trustProxy = false,
+  heartbeatIntervalMs,
+}: AppOptions): FastifyInstance {
+  const app = Fastify({ logger, trustProxy });
 
   app.addHook('onClose', async () => {
     await db.close();
   });
 
-  app.get('/api/health', async (request, reply): Promise<HealthResponse> => {
+  registerWebSocket(app, {
+    publicOrigin,
+    ...(heartbeatIntervalMs === undefined ? {} : { heartbeatIntervalMs }),
+  });
+
+  // logLevel warn: Healthchecks (alle paar Sekunden) erzeugen keine Request-Logs, Fehler schon.
+  app.get('/api/health', { logLevel: 'warn' }, async (request, reply): Promise<HealthResponse> => {
     try {
       await db.ping();
       return { status: 'ok', db: 'ok' };

@@ -115,3 +115,9 @@ Format: Kontext → Entscheidung → Konsequenzen. Status: `akzeptiert`, `offen`
 - **Kontext:** WP-009 brauchte ein Migrationswerkzeug und Zahlentypen für Chips/Punkte.
 - **Entscheidung:** Kleiner eigener Runner (`apps/server/src/db/migrate.ts`): reine SQL-Dateien `NNNN_name.sql`, Tabelle `schema_migrations` mit SHA-256-Checksumme, `pg_advisory_lock` gegen parallele Starts, eine Transaktion pro Migration, Abbruch bei geänderter oder fehlender Migration. Angewendete Migrationen werden nie geändert, nur durch neue ergänzt. IDs, Chips und Punkte sind `integer` (pg liefert sie als JS-Zahl), Startstack ist auf 10⁸ begrenzt.
 - **Konsequenzen:** Keine ORM-/Migrations-Abhängigkeit. Das Prod-Image muss `apps/server/migrations/` enthalten.
+
+## D-016: Keine Antes, Setz-Detailregeln nach TDA
+- **Status:** akzeptiert
+- **Kontext:** WP-006 hat Antes optional implementiert und einige Grenzfälle nach TDA ausgelegt (siehe WP-006-Log).
+- **Entscheidung:** Es gibt nur Small und Big Blind, keine Antes (weder pro Spieler noch Big-Blind-Ante). Die TDA-Auslegungen aus WP-006 gelten, insbesondere: Big Blind All-in für weniger → andere callen trotzdem den vollen Big Blind; ein unvollständiger All-in-Raise öffnet die Setzrunde für bereits agierte Spieler (auch nach Check) nicht wieder.
+- **Konsequenzen:** Tisch- und Rundenkonfiguration (WP-008, WP-015) bieten kein Ante an. Die optionale Ante-Unterstützung der Engine bleibt ungenutzt und kann später entfernt werden.

@@ -20,7 +20,7 @@ describe('GET /api/health ohne Datenbank', () => {
         return Promise.resolve();
       },
     };
-    app = buildApp({ db: unreachable });
+    app = buildApp({ db: unreachable, publicOrigin: 'http://example.test' });
 
     const res = await app.inject({ method: 'GET', url: '/api/health' });
 
@@ -36,7 +36,7 @@ const databaseUrl = process.env['DATABASE_URL'];
 
 describe.skipIf(databaseUrl === undefined)('GET /api/health mit Datenbank', () => {
   it('meldet ok inkl. DB-Verbindung', async () => {
-    app = buildApp({ db: createPgDatabase(databaseUrl ?? '') });
+    app = buildApp({ db: createPgDatabase(databaseUrl ?? ''), publicOrigin: 'http://example.test' });
 
     const res = await app.inject({ method: 'GET', url: '/api/health' });
 
