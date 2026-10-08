@@ -292,12 +292,15 @@ export function RoundResultDialog({
   youUserId,
   onClose,
   onRematch = null,
+  away = [],
 }: {
   standings: readonly StandingView[];
   youUserId: number | null;
   onClose: () => void;
   /** „Nochmal“ (D-020) – nur für den Ersteller nach Rundenende; `null` = kein Knopf. */
   onRematch?: (() => void) | null;
+  /** Getrennte Spieler am Tisch – stehen bei „Nochmal“ automatisch auf (D-024); Hinweis nur beim Knopf. */
+  away?: readonly string[];
 }) {
   const titleId = useId();
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -343,6 +346,11 @@ export function RoundResultDialog({
             ))}
           </tbody>
         </table>
+        {onRematch !== null && away.length > 0 && (
+          <p className="gp-panel-text gp-muted" data-testid="rematch-away">
+            Nicht verbunden, spielt bei „Nochmal“ nicht mit: {away.join(', ')}
+          </p>
+        )}
         <div className="gp-panel-row">
           <button ref={closeRef} type="button" className="gp-btn gp-btn--muted" onClick={onClose}>
             Schließen

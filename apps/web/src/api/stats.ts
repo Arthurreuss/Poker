@@ -20,7 +20,8 @@ export interface Rate {
 
 export interface PlayerStats {
   player: { id: number; name: string };
-  rank: number;
+  /** `null` = noch keine beendete Runde, nicht in der Rangliste (D-024). */
+  rank: number | null;
   points: number;
   rounds: number;
   wins: number;
@@ -44,6 +45,8 @@ export interface RoundSummary {
   finishedAt: string;
   handCount: number;
   viewerParticipated: boolean;
+  /** Öffentlicher Tisch – Ergebnis für alle Eingeloggten; private Runden liefert der Server nur Teilnehmern (D-024). */
+  isPublic: boolean;
   players: RoundPlayerSummary[];
 }
 
@@ -119,7 +122,11 @@ export async function fetchRecentRounds(player?: string, signal?: AbortSignal): 
   return (await apiRequest<{ rounds: RoundSummary[] }>(`/api/rounds/recent${query}`, opts(signal))).rounds;
 }
 
-export function fetchRound(id: string, signal?: AbortSignal): Promise<{ round: RoundSummary; hands: HandSummary[] }> {
+/** Runde mit Händen; `hands: null` = Ergebnis eines öffentlichen Tisches ohne eigene Teilnahme (D-024). */
+export function fetchRound(
+  id: string,
+  signal?: AbortSignal,
+): Promise<{ round: RoundSummary; hands: HandSummary[] | null }> {
   return apiRequest(`/api/rounds/${seg(id)}`, opts(signal));
 }
 

@@ -173,14 +173,62 @@ describe('„Nochmal“ nach Rundenende (D-020)', () => {
     for (const c of conns) s.game.disconnect(c.client);
     expect(s.game.getTable(id)).toBeDefined();
 
-    // Ersteller kommt zurück (Reload) und startet „Nochmal“.
+    // Ersteller kommt zurück (Reload); allein reicht es nicht für „Nochmal“ (D-024: nur verbundene spielen).
     const back = await s.connect(1);
     await s.send(back, { type: 'table.join', tableId: id });
     s.clock.advance(DEFAULT_IDLE_TABLE_TIMEOUT_MS);
     expect(s.game.getTable(id)).toBeDefined();
     await s.send(back, { type: 'table.rematch', tableId: id });
+    expect(errors(back).at(-1)).toMatchObject({ code: 'NOT_ENOUGH_PLAYERS', tableId: id });
+    expect(s.last(back).seats).toHaveLength(2);
+
+    // Der zweite Spieler kommt auch zurück → „Nochmal“ klappt.
+    const back2 = await s.connect(2);
+    await s.send(back2, { type: 'table.join', tableId: id });
+    await s.send(back, { type: 'table.rematch', tableId: id });
     expect(s.last(back).status).toBe('running');
     expect(s.last(back).you.isCreator).toBe(true);
+  });
+
+  it('getrennte Spieler stehen bei „Nochmal“ automatisch auf; es spielen nur verbundene (D-024)', async () => {
+    const s = setup();
+    const { id, conns, creator } = await started(s, 3);
+    await playToEnd(s, id, conns);
+    await s.game.idle();
+
+    // Spieler 3 trennt sich nach Rundenende (Tab zu, Netz weg).
+    const gone = conns[2] as Conn;
+    s.game.disconnect(gone.client);
+    expect(s.last(creator).seats.find((x) => x.user.id === 3)?.connected).toBe(false);
+
+    await s.send(creator, { type: 'table.rematch', tableId: id });
+    const again = s.last(creator);
+    expect(again.status).toBe('running');
+    expect(again.seats.map((x) => [x.seat, x.user.id])).toEqual([
+      [0, 1],
+      [1, 2],
+    ]);
+    expect(again.round?.players.map((p) => p.id).sort()).toEqual(['1', '2']);
+    expect(s.game.getTable(id)?.seatOf(3)).toBeNull();
+    // In der DB hat die neue Runde nur die verbundenen Teilnehmer.
+    const latest = [...s.repository.rounds.values()].at(-1);
+    expect(latest?.status).toBe('running');
+    expect(latest?.players.map((p) => p.userId).sort()).toEqual([1, 2]);
+
+    // Die neue Runde läuft normal zu Ende.
+    await playToEnd(s, id, conns.slice(0, 2));
+    expect(s.last(creator).status).toBe('finished');
+  });
+
+  it('„Nochmal“ mit weniger als 2 verbundenen Spielern: NOT_ENOUGH_PLAYERS, niemand steht auf', async () => {
+    const s = setup();
+    const { id, conns, creator } = await started(s, 2);
+    await playToEnd(s, id, conns);
+    s.game.disconnect((conns[1] as Conn).client);
+    await s.send(creator, { type: 'table.rematch', tableId: id, requestId: 'r' });
+    expect(errors(creator).at(-1)).toMatchObject({ code: 'NOT_ENOUGH_PLAYERS', requestId: 'r', tableId: id });
+    expect(s.game.getTable(id)?.status).toBe('finished');
+    expect(s.game.getTable(id)?.seats.size).toBe(2);
   });
 
   it('beendeter Tisch: explizit verlassen → sofort weg; ohne Beobachter → nach dem Timeout weg', async () => {

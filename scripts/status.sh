@@ -22,7 +22,7 @@ mtime() { stat -f %m "$1" 2>/dev/null || stat -c %Y "$1"; }
 require_env_file
 
 echo "Container ($PROD_PROJECT):"
-expected="db server web backup"
+expected="db server web backup logrotate"
 running="$($COMPOSE --env-file "$ENV_FILE" ps -a --format '{{.Service}} {{.State}} {{.Health}}' 2>/dev/null || true)"
 if [ -n "$(env_value TUNNEL_TOKEN)" ]; then expected="$expected cloudflared"; fi
 for service in $expected; do

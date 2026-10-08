@@ -1,4 +1,5 @@
-// Eine Runde (WP-019): Ergebnis mit (geteilten) Plätzen und die Hände zum Nachlesen – nur für Teilnehmer.
+// Eine Runde (WP-019): Ergebnis mit (geteilten) Plätzen und die Hände zum Nachlesen. D-024: Ergebnis öffentlicher
+// Tische für alle Eingeloggten, privater nur für Teilnehmer; Hände nur für Teilnehmer.
 import { Link, useParams } from 'react-router';
 import { fetchRound } from '../api/stats';
 import { formatDate, formatNet, formatNumber, placementLabel, playerName, pointsLabel } from '../stats/format';
@@ -43,8 +44,10 @@ export function RoundPage() {
               </ol>
             </section>
             <section className={styles.section}>
-              <h2 className={styles.sectionTitle}>Hände ({hands.length})</h2>
-              {hands.length === 0 ? (
+              <h2 className={styles.sectionTitle}>Hände{hands === null ? '' : ` (${String(hands.length)})`}</h2>
+              {hands === null ? (
+                <p className={styles.muted}>Die Hände sehen nur die Teilnehmer der Runde.</p>
+              ) : hands.length === 0 ? (
                 <p className={styles.muted}>Keine gespeicherten Hände.</p>
               ) : (
                 <ul className={styles.list}>

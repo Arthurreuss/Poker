@@ -70,13 +70,20 @@ describe.skipIf(testDatabaseUrl === undefined)('Statistiken mit Postgres', () =>
   async function round(
     ids: number[],
     status: 'finished' | 'aborted' | 'running',
-    options: { placements?: number[]; points?: number[]; seed?: number; tableName?: string; finishedAt?: string } = {},
+    options: {
+      placements?: number[];
+      points?: number[];
+      seed?: number;
+      tableName?: string;
+      finishedAt?: string;
+      isPublic?: boolean;
+    } = {},
   ): Promise<number> {
     const { rows: t } = await s.pool.query<{ id: number }>(
       `INSERT INTO tables (created_by, name, is_public, invite_code, starting_stack, small_blind, big_blind,
                            blind_structure, status, closed_at)
-       VALUES ($1, $2, true, md5(random()::text), 600, 10, 20, '{}', 'closed', now()) RETURNING id`,
-      [ids[0], options.tableName ?? 'Testtisch'],
+       VALUES ($1, $2, $3, md5(random()::text), 600, 10, 20, '{}', 'closed', now()) RETURNING id`,
+      [ids[0], options.tableName ?? 'Testtisch', options.isPublic ?? true],
     );
     const finishedAt = status === 'running' ? null : (options.finishedAt ?? new Date().toISOString());
     const { rows: r } = await s.pool.query<{ id: number }>(
@@ -153,7 +160,7 @@ describe.skipIf(testDatabaseUrl === undefined)('Statistiken mit Postgres', () =>
     expect(all.vpip.count).toBeLessThan(all.vpip.of);
   }, 30_000);
 
-  it('Rangliste: Punkte, Runden, Siege, geteilte Plätze; ohne gelöschte Accounts und abgebrochene Runden', async () => {
+  it('Rangliste: Punkte, Runden, Siege, geteilte Plätze; ohne gelöschte Accounts, abgebrochene Runden und Spieler ohne beendete Runde', async () => {
     const [anna, ben, cleo, dora, emil, gone] = await users('anna', 'Ben', 'cleo', 'dora', 'emil', 'gone');
     if (anna === undefined || ben === undefined || cleo === undefined || dora === undefined || gone === undefined) {
       throw new Error('User fehlen');
@@ -173,10 +180,10 @@ describe.skipIf(testDatabaseUrl === undefined)('Statistiken mit Postgres', () =>
       [1, 'Ben', 5, 2, 1],
       [3, 'cleo', 0, 1, 0],
       [3, 'dora', 0, 1, 0],
-      [3, 'emil', 0, 0, 0],
     ]);
     expect(board.some((e) => e.userId === gone)).toBe(false);
-    expect(emil).toBeDefined();
+    // D-024: emil hat keine beendete Runde → nicht in der Rangliste.
+    expect(board.some((e) => e.userId === emil)).toBe(false);
   });
 
   it('API nur mit Session; Rangliste, Profil, letzte Runden mit gelöschtem Spieler', async () => {
@@ -311,14 +318,89 @@ describe.skipIf(testDatabaseUrl === undefined)('Statistiken mit Postgres', () =>
     expect(shown).toBeGreaterThan(0);
     expect(hidden).toBeGreaterThan(0);
 
-    // Unbeteiligte: 403; laufende Runde und Unsinn: 404.
+    // Unbeteiligte (öffentlicher Tisch, D-024): Ergebnis ja, Hände nein; laufende Runde und Unsinn: 404.
     const outsider = await cookieFor(out);
-    expect((await get(a, `/api/rounds/${String(roundId)}`, outsider)).status).toBe(403);
+    const outside = (await get(a, `/api/rounds/${String(roundId)}`, outsider)) as Res<{
+      round: { id: number; isPublic: boolean; viewerParticipated: boolean; players: unknown[] };
+      hands: unknown;
+    }>;
+    expect(outside.status).toBe(200);
+    expect(outside.body.round).toMatchObject({ id: roundId, isPublic: true, viewerParticipated: false });
+    expect(outside.body.round.players).toHaveLength(3);
+    expect(outside.body.hands).toBeNull();
     expect((await get(a, `/api/hands/${String(stored[0]?.id)}`, outsider)).status).toBe(403);
     expect((await get(a, `/api/rounds/${String(running)}`, cookie)).status).toBe(404);
     const { rows } = await s.pool.query<{ id: number }>('SELECT id FROM hands WHERE round_id = $1', [running]);
     expect((await get(a, `/api/hands/${String(rows[0]?.id)}`, cookie)).status).toBe(404);
     expect((await get(a, '/api/hands/abc', cookie)).status).toBe(404);
     expect((await get(a, '/api/hands/999999', cookie)).status).toBe(404);
+  }, 30_000);
+
+  it('Private Tische (D-024): Ergebnis, Hände und „letzte Runden“ nur für Teilnehmer', async () => {
+    const [anna, ben, cleo] = await users('anna', 'ben', 'cleo');
+    if (anna === undefined || ben === undefined || cleo === undefined) throw new Error('User fehlen');
+    const pub = await round([anna, ben], 'finished', {
+      tableName: 'Offen',
+      finishedAt: '2026-10-01T20:00:00Z',
+      seed: 7,
+    });
+    const priv = await round([anna, ben], 'finished', {
+      tableName: 'Geheim',
+      finishedAt: '2026-10-02T20:00:00Z',
+      isPublic: false,
+      seed: 8,
+    });
+    const privAborted = await round([anna, cleo], 'aborted', {
+      tableName: 'Geheim abgebrochen',
+      finishedAt: '2026-10-03T20:00:00Z',
+      isPublic: false,
+    });
+    const a = await start();
+    const asAnna = await cookieFor(anna);
+    const asCleo = await cookieFor(cleo);
+    const ids = async (url: string, cookie: string) =>
+      ((await get(a, url, cookie)) as Res<{ rounds: { id: number }[] }>).body.rounds.map((r) => r.id);
+
+    // Teilnehmer sehen private Runden (eigene Liste und Profil des Mitspielers).
+    expect(await ids('/api/rounds/recent', asAnna)).toEqual([privAborted, priv, pub]);
+    expect(await ids('/api/rounds/recent?player=ben', asAnna)).toEqual([priv, pub]);
+    const own = (await get(a, `/api/rounds/${String(priv)}`, asAnna)) as Res<{
+      round: { isPublic: boolean };
+      hands: unknown[];
+    }>;
+    expect(own.status).toBe(200);
+    expect(own.body.round.isPublic).toBe(false);
+    expect(own.body.hands.length).toBeGreaterThan(0);
+
+    // Nicht-Teilnehmer: private Runden fehlen im Profil, Ergebnis und Hände → 403; öffentliche bleiben sichtbar.
+    expect(await ids('/api/rounds/recent?player=ben', asCleo)).toEqual([pub]);
+    expect(await ids('/api/rounds/recent?player=anna', asCleo)).toEqual([privAborted, pub]);
+    const denied = (await get(a, `/api/rounds/${String(priv)}`, asCleo)) as Res<{ error: string }>;
+    expect(denied.status).toBe(403);
+    expect(denied.body.error).toBe('forbidden');
+    const { rows } = await s.pool.query<{ id: number }>('SELECT id FROM hands WHERE round_id = $1 LIMIT 1', [priv]);
+    expect((await get(a, `/api/hands/${String(rows[0]?.id)}`, asCleo)).status).toBe(403);
+    const open = (await get(a, `/api/rounds/${String(pub)}`, asCleo)) as Res<{ hands: unknown }>;
+    expect(open.status).toBe(200);
+    expect(open.body.hands).toBeNull();
+
+    // Die Statistik-Zahlen enthalten private Runden weiterhin (nur Summen, keine einzelnen Ergebnisse).
+    const stats = (await get(a, '/api/players/ben/stats', asCleo)) as Res<{ rounds: number }>;
+    expect(stats.body.rounds).toBe(2);
+  }, 30_000);
+
+  it('Profil eines Spielers ohne beendete Runde: kein Platz (D-024)', async () => {
+    const [anna, ben, neu] = await users('anna', 'ben', 'neu');
+    if (anna === undefined || ben === undefined || neu === undefined) throw new Error('User fehlen');
+    await round([anna, ben], 'finished');
+    await round([neu, ben], 'aborted');
+    const a = await start();
+    const res = (await get(a, '/api/players/neu/stats', await cookieFor(anna))) as Res<{
+      rank: number | null;
+      rounds: number;
+      points: number;
+    }>;
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ rank: null, rounds: 0, points: 0 });
   }, 30_000);
 });

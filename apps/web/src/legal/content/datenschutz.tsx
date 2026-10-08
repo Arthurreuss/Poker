@@ -1,17 +1,19 @@
-// Datenschutzerklärung (WP-022). Verantwortlicher: Angaben aus impressum.tsx (PROVIDER). ENTWURF – beschreibt die tatsächliche Datenverarbeitung der App (Stand WP-022/WP-024),
-// ist aber keine Rechtsberatung: Arthur prüft und ergänzt den Text, bevor er als final gilt.
-// Platzhalter: <Placeholder>…</Placeholder> (gelb markiert). Ändert sich die Datenverarbeitung (neue Daten, neue
-// Dienste, andere Speicherdauer), muss dieser Text im selben Commit angepasst werden.
+// Datenschutzerklärung (WP-022), von Arthur abgenommen; Speicherdauern nach D-025. Verantwortlicher: Angaben aus
+// impressum.tsx (PROVIDER), Domains aus DOMAINS (D-023). Beschreibt die tatsächliche Datenverarbeitung der App.
+// Ändert sich die Datenverarbeitung (neue Daten, neue Dienste, andere Speicherdauer), muss dieser Text im selben
+// Commit angepasst werden – inkl. „Stand“. Keine Platzhalter (Test in legal.test.tsx).
+// Technische Umsetzung der Fristen: Logs → docker/logrotate/rotate.sh, Feedback → apps/server/src/feedback/retention.ts.
 import { Link } from 'react-router';
-import { Placeholder } from '../Placeholder';
 import { IMPRESSUM_PATH } from '../LegalFooter';
-import { PROVIDER } from './impressum';
+import { DOMAINS, PROVIDER } from './impressum';
 
 export function DatenschutzContent() {
   return (
     <>
+      <p>Stand: 8. Oktober 2026</p>
       <p>
-        Stand: <Placeholder>Datum</Placeholder>
+        Diese Datenschutzerklärung gilt für die Web-App unter {DOMAINS.join(' und ')}. Beide Adressen führen zur selben
+        Anwendung mit denselben Konten.
       </p>
 
       <h2>1. Verantwortlicher</h2>
@@ -39,25 +41,22 @@ export function DatenschutzContent() {
         insbesondere IP-Adresse, Zeitpunkt, aufgerufene Adresse und technische Angaben des Browsers.
       </p>
       <p>
-        Cloudflare ist als Auftragsverarbeiter tätig (Art. 28 DSGVO, Data Processing Addendum von Cloudflare). Eine
-        Übermittlung in die USA ist möglich; sie stützt sich auf die Zertifizierung von Cloudflare nach dem EU-U.S. Data
-        Privacy Framework (Angemessenheitsbeschluss, Art. 45 DSGVO) und ergänzend auf Standardvertragsklauseln.
-        Rechtsgrundlage ist unser berechtigtes Interesse an einem sicheren und erreichbaren Betrieb (Art. 6 Abs. 1 lit.
-        f DSGVO).{' '}
-        <Placeholder>
-          prüfen: Auftragsverarbeitungsvertrag im Cloudflare-Konto akzeptiert, DPF-Zertifizierung aktuell
-        </Placeholder>
+        Cloudflare ist als Auftragsverarbeiter tätig; mit Cloudflare besteht ein Vertrag zur Auftragsverarbeitung nach
+        Art. 28 DSGVO (Data Processing Addendum von Cloudflare). Eine Übermittlung in die USA ist möglich; sie stützt
+        sich auf die Zertifizierung von Cloudflare nach dem EU-U.S. Data Privacy Framework (Angemessenheitsbeschluss,
+        Art. 45 DSGVO) und ergänzend auf Standardvertragsklauseln (Art. 46 Abs. 2 lit. c DSGVO). Rechtsgrundlage ist
+        unser berechtigtes Interesse an einem sicheren und erreichbaren Betrieb (Art. 6 Abs. 1 lit. f DSGVO).
       </p>
 
       <h2>4. Server-Logs</h2>
       <p>
         Bei jedem Aufruf protokollieren der Webserver und der Spielserver technische Daten: IP-Adresse, Datum und
-        Uhrzeit, aufgerufene Adresse, Statuscode, übertragene Datenmenge, Referrer und Browser-Kennung (User-Agent)
-        sowie Fehlermeldungen. Passwörter, Session-Cookies und Formularinhalte werden nicht protokolliert. Die Logs
-        dienen der Fehlersuche und der Abwehr von Missbrauch (Art. 6 Abs. 1 lit. f DSGVO) und werden nach{' '}
-        <Placeholder>Speicherdauer, z. B. 14 Tagen</Placeholder> gelöscht. Zum Schutz vor Passwort-Raten wird die
-        IP-Adresse bei Anmeldung, Registrierung und Konto-Löschung zusätzlich kurzzeitig (eine Minute) im
-        Arbeitsspeicher gezählt.
+        Uhrzeit, aufgerufene Adresse, Statuscode, übertragene Datenmenge, Antwortzeit, Referrer und Browser-Kennung
+        (User-Agent) sowie Fehlermeldungen; bei manchen Vorgängen (z. B. Konto löschen) auch die interne Nummer des
+        Kontos. Passwörter, Session-Cookies und Formularinhalte werden nicht protokolliert. Die Logs dienen der
+        Fehlersuche und der Abwehr von Missbrauch (Art. 6 Abs. 1 lit. f DSGVO). Sie werden täglich rotiert und
+        spätestens nach 14 Tagen automatisch gelöscht. Zum Schutz vor Passwort-Raten wird die IP-Adresse bei Anmeldung,
+        Registrierung und Konto-Löschung zusätzlich kurzzeitig (eine Minute) im Arbeitsspeicher gezählt.
       </p>
 
       <h2>5. Konto</h2>
@@ -106,18 +105,18 @@ export function DatenschutzContent() {
         Wenn du über die App Feedback schickst, speichern wir Kategorie, Text, Zeitpunkt, dein Konto und zur Einordnung
         technischen Kontext: aktuelle Seite bzw. Tisch, App-Version, Browser-Kennung (User-Agent) und
         Bildschirm-Ausrichtung. Lesen kann das nur der Administrator. Rechtsgrundlage ist unser berechtigtes Interesse,
-        Fehler zu beheben und die App zu verbessern (Art. 6 Abs. 1 lit. f DSGVO). Feedback wird gelöscht, wenn es nicht
-        mehr gebraucht wird, spätestens nach <Placeholder>Speicherdauer Feedback</Placeholder>.
+        Fehler zu beheben und die App zu verbessern (Art. 6 Abs. 1 lit. f DSGVO). Ist ein Feedback erledigt, wird es 30
+        Tage danach automatisch gelöscht; jedes Feedback wird spätestens 1 Jahr nach dem Absenden automatisch gelöscht.
+        Löschst du dein Konto, wird dein Feedback sofort von deinem Konto getrennt und die Browser-Kennung entfernt.
       </p>
 
       <h2>9. Backups</h2>
       <p>
-        Die Datenbank wird täglich gesichert. Aufbewahrt werden die Sicherungen der letzten 7 Tage, 4 Wochen und 6
-        Monate; sie liegen auf dem Rechner des Verantwortlichen{' '}
-        <Placeholder>ggf. und einer externen Sicherung, z. B. Time Machine</Placeholder>. Gelöschte oder anonymisierte
-        Daten können daher bis zu etwa 6 Monate in Sicherungen enthalten sein. Sicherungen werden nur zur
-        Wiederherstellung nach einem Fehler verwendet; wird eine Sicherung eingespielt, werden zwischenzeitlich
-        gelöschte Konten erneut gelöscht.
+        Die Datenbank wird täglich gesichert. Aufbewahrt werden 7 tägliche, 4 wöchentliche und 6 monatliche Sicherungen.
+        Sie liegen nur lokal auf dem Rechner des Verantwortlichen und werden nicht an Dritte oder Cloud-Dienste
+        übertragen. Gelöschte oder anonymisierte Daten können daher bis zu etwa 6 Monate in Sicherungen enthalten sein.
+        Sicherungen werden nur zur Wiederherstellung nach einem Fehler verwendet; wird eine Sicherung eingespielt,
+        werden zwischenzeitlich gelöschte Konten erneut gelöscht.
       </p>
 
       <h2>10. Konto löschen</h2>

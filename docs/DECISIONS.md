@@ -166,3 +166,31 @@ Format: Kontext → Entscheidung → Konsequenzen. Status: `akzeptiert`, `offen`
 - **Kontext:** Arthur hat eine zweite Domain gekauft. Wer sie eingibt, soll sie auch in der Adresszeile sehen, also keine Weiterleitung.
 - **Entscheidung:** Beide Domains liefern die App über denselben Tunnel aus (zweiter Public Hostname → `web:8080`). `PUBLIC_ORIGIN` darf mehrere, kommagetrennte Origins enthalten. Der WebSocket-Origin-Check (D-014) akzeptiert jede davon. Die erste ist die Hauptadresse (Smoke-Test, Status). Alles andere bleibt relativ (eine Origin pro Aufruf).
 - **Konsequenzen:** Login, PWA-Installation und lokale Einstellungen gelten pro Domain getrennt; Accounts und Punkte sind gemeinsam. Impressum und Datenschutz gelten für beide Domains. HSTS muss pro Domain in Cloudflare eingeschaltet werden.
+
+## D-024: Tisch-, Zugangs- und Statistikregeln (Abnahme WP-015/WP-019)
+- **Status:** akzeptiert
+- **Kontext:** Offene Detailfragen aus WP-015 (Lobby) und WP-019 (Statistiken).
+- **Entscheidung:**
+  - Ein Tisch ohne Spieler und Beobachter wird nach 10 Minuten geschlossen.
+  - „Nochmal“: Es spielen nur Spieler mit, die gerade verbunden sind; getrennte Spieler stehen automatisch auf.
+  - Wer einmal per Einladungscode an einem privaten Tisch war, darf ihn danach per Tisch-ID wieder betreten (Server merkt sich das im Speicher).
+  - Ergebnisse und Hände privater Tische sehen nur deren Teilnehmer; bei öffentlichen Tischen sieht jeder Eingeloggte das Ergebnis, Hände nur die Teilnehmer.
+  - Hände, in denen ein Spieler abwesend war (erste eigene Aktion automatisch), zählen nicht in seine Quoten (VPIP, PFR, WTSD, W$SD).
+  - Die Rangliste zeigt nur Spieler mit mindestens einer beendeten Runde; Punktgleichheit ergibt denselben Platz.
+- **Konsequenzen:** Umsetzung der Abweichungen vom Ist-Stand in WP-026.
+
+## D-025: Speicherdauern (Datenschutz)
+- **Status:** akzeptiert
+- **Kontext:** Die Datenschutzerklärung (WP-022) braucht feste Speicherdauern.
+- **Entscheidung:** Server-Logs (enthalten IP-Adressen) werden höchstens 14 Tage aufbewahrt. Erledigtes Feedback wird 30 Tage nach dem Erledigen gelöscht, jedes Feedback spätestens 1 Jahr nach dem Absenden. Backups liegen nur lokal auf dem Mac (Aufbewahrung 7/4/6). Cloudflare ist Auftragsverarbeiter (DPA im Dashboard akzeptiert).
+- **Konsequenzen:** Umsetzung in WP-022: Request-Logs mit IP schreiben server und nginx in Dateien, die der Dienst `logrotate` täglich rotiert und nach 12 Tagen löscht; Container-Logs enthalten keine IPs und rotieren nach Größe. Ein Server-Job löscht Feedback nach den Fristen. Der Backup-Ordner wird nicht in Time Machine oder eine Cloud gesichert (sonst gälten längere Fristen).
+
+## D-026: Spiel-UI-Details (Abnahme WP-018)
+- **Status:** akzeptiert
+- **Kontext:** Offene Fragen aus WP-018.
+- **Entscheidung:**
+  - „Platz nehmen“, „Aufstehen“ und „Runde starten“ liegen vor dem Start in der Aktionsleiste.
+  - Der Client berechnet die Pots der laufenden Hand selbst mit `calculatePots` aus der Engine (Engine im Web-Bundle ist ok).
+  - Lobby und Tisch haben vorerst je eine eigene WebSocket-Verbindung; eine gemeinsame Verbindung für die ganze App ist eine spätere Verbesserung.
+  - Die Server-Uhrzeit für den Timer-Abgleich kommt nur aus `table.state` (`serverNowMs`).
+- **Konsequenzen:** Beim Wechsel Lobby → Tisch baut der Browser eine neue Verbindung auf (ca. 100–300 ms).

@@ -45,9 +45,10 @@ function RoundItem({ round, subject }: { round: RoundSummary; subject: string | 
       )}
     </>
   );
+  // Der Server liefert nur Runden, deren Ergebnis der Betrachter sehen darf (D-024): eigene und öffentliche.
   return (
     <li>
-      {round.viewerParticipated ? (
+      {round.viewerParticipated || round.isPublic ? (
         <Link className={styles.card} to={`/rounds/${String(round.id)}`}>
           {content}
         </Link>
@@ -77,7 +78,7 @@ export function PlayerPage() {
           <>
             <section className={styles.section} aria-label="Rangliste">
               <div className={styles.tiles}>
-                <Tile label="Platz" value={`${String(s.rank)}.`} />
+                <Tile label="Platz" value={s.rank === null ? '–' : `${String(s.rank)}.`} />
                 <Tile label="Punkte" value={formatNumber(s.points)} />
                 <Tile label="Runden" value={formatNumber(s.rounds)} />
                 <Tile label="Siege" value={formatNumber(s.wins)} />

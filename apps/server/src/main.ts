@@ -3,6 +3,7 @@ import { buildApp } from './app';
 import { loadConfig } from './config';
 import { createPgDatabase } from './db';
 import { runMigrations } from './db/migrate';
+import { startFeedbackPurgeJob } from './feedback/retention';
 import { closeOrphanedTables } from './game/pg-repository';
 import { serverInfo } from './index';
 
@@ -12,7 +13,8 @@ const app = buildApp({
   db,
   publicOrigin: config.publicOrigins,
   trustProxy: config.trustProxy,
-  logger: true,
+  // prod: in eine Datei, die der Dienst logrotate täglich rotiert und nach spätestens 14 Tagen löscht (D-025).
+  logger: config.logFile === null ? true : { file: config.logFile },
 });
 // Schema aktualisieren, bevor Anfragen angenommen werden (WP-009); bei Fehler startet der Server nicht.
 // MIGRATIONS_DIR setzt das Prod-Image (gebündelter Server, D-015); in dev gilt der Standardpfad.
@@ -31,7 +33,11 @@ if (orphaned.rounds > 0 || orphaned.tables > 0) {
   app.log.warn(orphaned, 'Nach Neustart: verwaiste Runden abgebrochen und Tische geschlossen');
 }
 
+// Speicherdauer von Feedback (D-025): jetzt und dann täglich abgelaufene Einträge löschen.
+const feedbackPurge = startFeedbackPurgeJob({ db, log: app.log });
+
 async function shutdown(): Promise<void> {
+  feedbackPurge.stop();
   await app.close();
   process.exit(0);
 }

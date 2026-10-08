@@ -5,13 +5,16 @@ const base = { PORT: '1234', DATABASE_URL: 'postgres://u:p@db/x', PUBLIC_ORIGIN:
 
 describe('loadConfig', () => {
   it('liest alle Werte aus der Umgebung', () => {
-    expect(loadConfig({ ...base, HOST: '0.0.0.0', NODE_ENV: 'production' })).toEqual({
+    expect(
+      loadConfig({ ...base, HOST: '0.0.0.0', NODE_ENV: 'production', LOG_FILE: '/var/log/poker/server.log' }),
+    ).toEqual({
       host: '0.0.0.0',
       port: 1234,
       databaseUrl: 'postgres://u:p@db/x',
       publicOrigins: ['http://example.test'],
       nodeEnv: 'production',
       trustProxy: true,
+      logFile: '/var/log/poker/server.log',
     });
   });
 
@@ -20,6 +23,9 @@ describe('loadConfig', () => {
     expect(config.host).toBe('127.0.0.1');
     expect(config.nodeEnv).toBe('development');
     expect(config.trustProxy).toBe(false);
+    // Ohne LOG_FILE (bzw. leer) loggt der Server nach stdout.
+    expect(config.logFile).toBeNull();
+    expect(loadConfig({ ...base, LOG_FILE: ' ' }).logFile).toBeNull();
   });
 
   it.each(['PORT', 'DATABASE_URL', 'PUBLIC_ORIGIN'])('wirft, wenn %s fehlt', (name) => {

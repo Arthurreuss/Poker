@@ -95,7 +95,13 @@ export async function updateFeedbackStatus(
   status: FeedbackStatus,
 ): Promise<FeedbackItem | null> {
   const { rows } = await db.query<FeedbackRowWithUser>(
-    `WITH updated AS (UPDATE feedback SET status = $2 WHERE id = $1 RETURNING *)
+    // done_at (D-025, Löschfrist): beim Wechsel auf 'done' setzen, bei erneutem 'done' behalten, sonst leeren.
+    `WITH updated AS (
+       UPDATE feedback
+          SET status = $2,
+              done_at = CASE WHEN $2 <> 'done' THEN NULL ELSE coalesce(done_at, now()) END
+        WHERE id = $1
+    RETURNING *)
      SELECT f.*, u.username FROM updated f LEFT JOIN users u ON u.id = f.user_id`,
     [id, status],
   );
