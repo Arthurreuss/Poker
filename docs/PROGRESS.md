@@ -31,6 +31,9 @@
 | M4 | [WP-024](work-packages/WP-024.md) | Feedback-Button | done | WP-010, WP-014 |
 | M5 | [WP-025](work-packages/WP-025.md) | Zweite Domain poker.deinemudda.win | done | WP-003 |
 | M5 | [WP-026](work-packages/WP-026.md) | Nacharbeiten aus der Abnahme (Tische, Zugang, Rangliste) | done | WP-015, WP-019 |
+| M6 | [WP-027](work-packages/WP-027.md) | Gemeinsame WebSocket-Verbindung für die ganze App | todo | WP-026 |
+| M6 | [WP-028](work-packages/WP-028.md) | Admin-Rolle und Berechtigungen | todo | WP-026 |
+| M6 | [WP-029](work-packages/WP-029.md) | Admin-Dashboard | todo | WP-028 |
 <!-- END GENERATED -->
 
 ## Meilensteine
@@ -42,6 +45,7 @@
 | M3 | Server | Accounts, WebSocket-Tische, Timer, Reconnect, Persistenz |
 | M4 | Frontend | Spielbare mobile App (Hoch/Quer), Lobby, Rangliste → **Prototyp** |
 | M5 | Go-Live | E2E, Backups, Rechtliches, öffentlich unter poker.arthur-reuss.de |
+| M6 | Ausbau | Eine Verbindung mit „Du bist dran“, Admin-Rolle, Admin-Dashboard |
 
 ## Parallelisierung
 - Nach WP-001 können drei Stränge parallel laufen: **Infra** (002 → 003, 009 → 010), **Engine** (004 → 005/006 → 007 → 008), später **Frontend** (014 → 016 → 017).
