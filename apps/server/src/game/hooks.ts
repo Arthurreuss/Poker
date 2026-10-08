@@ -22,6 +22,8 @@ export interface HandCompleteEvent {
   hand: HandState;
   /** Runde nach der Abrechnung dieser Hand (Stacks, Platzierungen). */
   round: RoundState;
+  /** Positionen (`seq` ab 1 im Hand-Protokoll) der Aktionen, die der Server automatisch ausgeführt hat (D-013). */
+  autoActionSeqs: number[];
   atMs: number;
 }
 

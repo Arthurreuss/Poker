@@ -5,6 +5,9 @@ import { getUserFromCookieHeader } from './auth/session';
 import type { Database } from './db';
 import { GameServer, type GameServerOptions } from './game/game-server';
 import { createPgTableRepository } from './game/pg-repository';
+import { combineHooks, createHandHistoryHooks } from './history/hooks';
+import { DEFAULT_RETRY_DELAYS_MS, withFinishRoundRetry } from './history/retry';
+import { createPgHandHistoryStore, type HandHistoryStore } from './history/store';
 import { registerWebSocket, type Authenticate } from './ws';
 
 export interface AppOptions {
@@ -26,8 +29,19 @@ export interface AppOptions {
   game?: Partial<Omit<GameServerOptions, 'log'>> & {
     /** Standard: Session aus dem Cookie per `getUserFromCookieHeader(db, …)`. */
     authenticate?: Authenticate;
+    /**
+     * Hand-Historie (WP-013). Standard: Postgres (`createPgHandHistoryStore(db)`), wenn auch das Repository
+     * der Standard ist; mit eigenem `repository` (Tests ohne DB) keine Historie. `null` schaltet sie ab.
+     * Die Hooks aus `hooks` laufen zusätzlich, nach der Historie.
+     */
+    history?: HandHistoryStore | null;
+    /** Wartezeiten der Retries beim Speichern (Historie, Rundenergebnis). Standard: `DEFAULT_RETRY_DELAYS_MS`. */
+    retryDelaysMs?: readonly number[];
   };
 }
+
+/** Beim Herunterfahren höchstens so lange auf ausstehende Schreibvorgänge warten. */
+const SHUTDOWN_FLUSH_TIMEOUT_MS = 10_000;
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -52,11 +66,31 @@ export function buildApp({
   game: gameOptions = {},
 }: AppOptions): FastifyInstance {
   const app = Fastify({ logger, trustProxy });
-  const { authenticate = (cookie) => getUserFromCookieHeader(db, cookie), ...rest } = gameOptions;
-  const game = new GameServer({ repository: createPgTableRepository(db), ...rest, log: app.log });
+  const {
+    authenticate = (cookie) => getUserFromCookieHeader(db, cookie),
+    history = gameOptions.repository === undefined ? createPgHandHistoryStore(db) : null,
+    retryDelaysMs = DEFAULT_RETRY_DELAYS_MS,
+    repository,
+    hooks,
+    ...rest
+  } = gameOptions;
+  const retry = { delaysMs: retryDelaysMs, log: app.log };
+  const game = new GameServer({
+    ...rest,
+    repository: repository ?? withFinishRoundRetry(createPgTableRepository(db), retry),
+    hooks: combineHooks(history === null ? {} : createHandHistoryHooks(history, retry), hooks ?? {}),
+    log: app.log,
+  });
   app.decorate('game', game);
 
   app.addHook('onClose', async () => {
+    // Ausstehende Hand-Historie und Rundenergebnisse noch schreiben (WP-013), aber nicht ewig warten.
+    let timer: NodeJS.Timeout | undefined;
+    const timeout = new Promise<void>((resolve) => {
+      timer = setTimeout(resolve, SHUTDOWN_FLUSH_TIMEOUT_MS);
+    });
+    await Promise.race([game.idle(), timeout]);
+    clearTimeout(timer);
     await db.close();
   });
 

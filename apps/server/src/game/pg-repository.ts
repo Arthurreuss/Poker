@@ -68,7 +68,7 @@ export function createPgTableRepository(db: Queryable): TableRepository {
 /**
  * Tische und Runden leben nur im Speicher des Prozesses. Nach einem Neustart sind laufende Runden verloren:
  * sie werden `aborted` (ohne Punkte), offene und laufende Tische `closed`. Aufruf beim Serverstart (`main.ts`).
- * Details präzisiert WP-013.
+ * Bereits gespeicherte Hände der Runde bleiben (D-019, getestet in `history/history.db.test.ts`).
  */
 export async function closeOrphanedTables(db: Queryable): Promise<{ rounds: number; tables: number }> {
   const { rows } = await db.query<{ rounds: number; tables: number }>(
