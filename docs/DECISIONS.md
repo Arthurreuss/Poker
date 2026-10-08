@@ -203,6 +203,7 @@ Format: Kontext → Entscheidung → Konsequenzen. Status: `akzeptiert`, `offen`
   - Jedes Aufdecken wird in der Datenbank protokolliert (wer, welcher Tisch/welche Hand, welcher Spieler, wann).
   - Die Mitspieler sehen davon nichts: kein Hinweis am Tisch, keine Anzeige im Spiel.
 - **Konsequenzen:** Ein Admin hat am Tisch einen Informationsvorteil; Admin-Rechte nur an Vertrauenspersonen vergeben. Das Protokoll macht Missbrauch im Nachhinein nachvollziehbar. Die Datenschutzerklärung nennt das Protokoll als Admin-Protokoll.
+- **Umsetzung (WP-033):** Nachricht `admin.revealCards { tableId, seat }`, Antwort `admin.cards` nur an die anfragende Verbindung. Aufdecken nur während einer laufenden Hand (Setzphase) und nur für Mitspieler mit Karten (nicht gefoldet). Das Admin-Recht wird zweimal geprüft: Flag der Session an der Verbindung und beim Protokollieren in derselben SQL-Anweisung aus der DB (entzogenes Flag greift sofort). Erst protokollieren, dann Karten senden; scheitert das Protokoll, gibt es keine Karten. Protokolliert wird das erste Aufdecken je Admin, Hand und Platz (Cache auf dem Server); Zurückdrehen und erneutes Umdrehen derselben Hand sind reine Client-Sache und werden nicht protokolliert. Nach Handende vergisst der Client die Karten. `welcome` meldet `isAdmin` (additiv), damit der Client das Tippen freischaltet.
 
 ## D-028: E2E-Smoke-Test gegen prod über einen lokalen Origin-Proxy (WP-020)
 - **Status:** akzeptiert

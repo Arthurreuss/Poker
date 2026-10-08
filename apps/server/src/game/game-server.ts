@@ -16,6 +16,7 @@ import {
   type TableSettings,
   type TableSettingsInput,
 } from '@poker/engine/protocol';
+import { CardRevealer, type CardRevealAuditSink } from './admin-reveal';
 import { systemClock, type Cancel, type Clock } from './clock';
 import type { GameHooks } from './hooks';
 import type { TableRepository } from './repository';
@@ -68,6 +69,17 @@ export interface GameServerOptions {
   hooks?: GameHooks;
   /** Standard: 12 Zeichen base64url aus 9 Zufallsbytes. */
   generateInviteCode?: () => string;
+  /**
+   * Admin-Protokoll für `admin.revealCards` (WP-033, D-027): schreibt den Eintrag und bestätigt das Admin-Recht.
+   * Ohne Angabe ist Aufdecken abgeschaltet (`FORBIDDEN`). Betrieb: `recordCardReveal(db, …)` (siehe `buildApp`).
+   */
+  revealAudit?: CardRevealAuditSink;
+}
+
+/** Zusätzliche Angaben zur Verbindung aus der Session (nie vom Client). */
+export interface ConnectOptions {
+  /** Admin-Flag der Session (WP-028/WP-033). */
+  isAdmin?: boolean;
 }
 
 /** Ergebnis von {@link GameServer.closeTableByAdmin}. */
@@ -89,6 +101,8 @@ export interface GameClient {
 
 interface Client extends GameClient {
   conn: Connection;
+  /** Admin-Flag aus der Session beim Verbinden (WP-033). */
+  isAdmin: boolean;
   hello: boolean;
   lobby: boolean;
   tables: Set<number>;
@@ -122,6 +136,7 @@ export class GameServer {
   private readonly idleTableTimeoutMs: number;
   private readonly hooks: GameHooks;
   private readonly generateInviteCode: () => string;
+  private readonly revealer: CardRevealer;
 
   constructor(private readonly options: GameServerOptions) {
     this.clock = options.clock ?? systemClock;
@@ -132,17 +147,19 @@ export class GameServer {
     this.idleTableTimeoutMs = options.idleTableTimeoutMs ?? DEFAULT_IDLE_TABLE_TIMEOUT_MS;
     this.hooks = options.hooks ?? {};
     this.generateInviteCode = options.generateInviteCode ?? (() => randomBytes(9).toString('base64url'));
+    this.revealer = new CardRevealer(options.revealAudit);
   }
 
   // -------------------------------------------------------------------------
   // Verbindungen
   // -------------------------------------------------------------------------
 
-  connect(user: PublicUser, conn: Connection): GameClient {
+  connect(user: PublicUser, conn: Connection, options: ConnectOptions = {}): GameClient {
     const client: Client = {
       id: this.nextClientId++,
       user: { id: user.id, username: user.username },
       conn,
+      isAdmin: options.isAdmin === true,
       hello: false,
       lobby: false,
       tables: new Set(),
@@ -245,7 +262,12 @@ export class GameServer {
       }
       client.hello = true;
       this.takeOver(client);
-      this.send(client, { type: 'welcome', protocolVersion: PROTOCOL_VERSION, user: { ...client.user } });
+      this.send(client, {
+        type: 'welcome',
+        protocolVersion: PROTOCOL_VERSION,
+        user: { ...client.user },
+        isAdmin: client.isAdmin,
+      });
       return OK;
     }
     if (msg.type === 'ping') {
@@ -285,7 +307,30 @@ export class GameServer {
         return this.withTable(client, msg.tableId, (t) => t.rematch(client.user.id));
       case 'table.action':
         return this.withTable(client, msg.tableId, (t) => t.act(client.user.id, msg.handNumber, msg.seq, msg.action));
+      case 'admin.revealCards':
+        return this.withTable(client, msg.tableId, (t) => this.revealCards(client, t, msg.seat, msg.requestId ?? null));
     }
+  }
+
+  /** WP-033 (D-027): Karten nur an genau diese Verbindung; Mitspieler bekommen keine Nachricht. */
+  private async revealCards(
+    client: Client,
+    table: Table,
+    seat: number,
+    requestId: string | null,
+  ): Promise<TableResult> {
+    const result = await this.revealer.reveal(table, { id: client.user.id, isAdmin: client.isAdmin }, seat);
+    if (!result.ok) return result;
+    if (client.replaced || !client.tables.has(table.id)) return OK; // Verbindung inzwischen weg
+    this.send(client, {
+      type: 'admin.cards',
+      requestId,
+      tableId: table.id,
+      handNumber: result.handNumber,
+      seat: result.seat,
+      cards: result.cards,
+    });
+    return OK;
   }
 
   /**
@@ -446,6 +491,7 @@ export class GameServer {
     this.pendingDispose.get(table.id)?.();
     this.pendingDispose.delete(table.id);
     this.tables.delete(table.id);
+    this.revealer.forget(table.id);
     this.byInviteCode.delete(table.inviteCode);
     this.tableClients.delete(table.id);
     this.updateLobby(table);

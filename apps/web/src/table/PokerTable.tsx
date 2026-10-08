@@ -4,6 +4,7 @@ import { Card } from './Card';
 import { formatChips } from './format';
 import { placeSeats, seatMarker, type PlacedSeat, type TableLayout } from './layout';
 import { BetChips, Board, DealerButton, PotDisplay } from './parts';
+import { RevealableCards, type CardReveal } from './RevealableCards';
 import { SeatPlate } from './SeatPlate';
 import type { TableView } from './types';
 
@@ -17,6 +18,8 @@ export interface PokerTableProps {
   readonly layout?: TableLayout;
   /** Tisch-Menü oben links (z. B. `TableMenu`, WP-017). */
   readonly menu?: ReactNode;
+  /** Nur für Admins (WP-033, D-027): verdeckte Karten der Mitspieler per Tipp umdrehen. */
+  readonly reveal?: CardReveal | undefined;
 }
 
 function at(x: number, y: number): CSSProperties {
@@ -31,9 +34,12 @@ function blindsText(view: TableView): string {
   return parts.join(' · ');
 }
 
-function SeatCards({ placed, fourColor }: { placed: PlacedSeat; fourColor: boolean }) {
+function SeatCards({ placed, fourColor, reveal }: { placed: PlacedSeat; fourColor: boolean; reveal?: CardReveal }) {
   const { holeCards } = placed.player;
   if (holeCards.kind === 'none') return null;
+  if (holeCards.kind === 'hidden' && reveal !== undefined && !placed.isHero) {
+    return <RevealableCards seat={placed.seat} name={placed.player.name} reveal={reveal} fourColor={fourColor} />;
+  }
   const big = placed.isHero && holeCards.kind !== 'hidden';
   const size = big ? 'hero' : 'seat';
   const cards = holeCards.kind === 'hidden' ? [undefined, undefined] : [...holeCards.cards];
@@ -49,7 +55,17 @@ function SeatCards({ placed, fourColor }: { placed: PlacedSeat; fourColor: boole
   );
 }
 
-function TableSeat({ placed, view, fourColor }: { placed: PlacedSeat; view: TableView; fourColor: boolean }) {
+function TableSeat({
+  placed,
+  view,
+  fourColor,
+  reveal,
+}: {
+  placed: PlacedSeat;
+  view: TableView;
+  fourColor: boolean;
+  reveal: CardReveal | undefined;
+}) {
   const { slot, player, seat, isHero } = placed;
   const toAct = view.toActSeat === seat;
   const marker = seatMarker(view, seat);
@@ -65,7 +81,7 @@ function TableSeat({ placed, view, fourColor }: { placed: PlacedSeat; view: Tabl
       data-to-act={toAct ? 'true' : undefined}
       data-connected={player.connected ? 'true' : 'false'}
     >
-      <SeatCards placed={placed} fourColor={fourColor} />
+      <SeatCards placed={placed} fourColor={fourColor} {...(reveal === undefined ? {} : { reveal })} />
       <SeatPlate
         name={player.name}
         stack={player.stack}
@@ -89,7 +105,7 @@ function TableSeat({ placed, view, fourColor }: { placed: PlacedSeat; view: Tabl
  * Containergröße. Beide Layouts haben denselben Elementbaum – ein Wechsel ändert nur Klassen und
  * Positionen, nichts wird neu gemountet (Aktionsleiste und Menü behalten ihren Zustand).
  */
-export function PokerTable({ view, fourColor = false, actionBar, layout = 'portrait', menu }: PokerTableProps) {
+export function PokerTable({ view, fourColor = false, actionBar, layout = 'portrait', menu, reveal }: PokerTableProps) {
   const placed = placeSeats(view, layout);
   return (
     <div className="pt-host">
@@ -104,7 +120,7 @@ export function PokerTable({ view, fourColor = false, actionBar, layout = 'portr
             <Board cards={view.board} fourColor={fourColor} />
           </div>
           {placed.map((p) => (
-            <TableSeat key={p.seat} placed={p} view={view} fourColor={fourColor} />
+            <TableSeat key={p.seat} placed={p} view={view} fourColor={fourColor} reveal={reveal} />
           ))}
           {placed
             .filter((p) => p.player.bet > 0)

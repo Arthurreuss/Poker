@@ -1,5 +1,6 @@
 import Fastify, { type FastifyInstance, type FastifyServerOptions } from 'fastify';
 import { registerAdminGuard } from './admin/guard';
+import { recordCardReveal } from './admin/reveal';
 import { adminRoutes } from './admin/routes';
 import { loadAuthConfig, type AuthConfig } from './auth/config';
 import { authRoutes } from './auth/routes';
@@ -79,6 +80,8 @@ export function buildApp({
     authenticate = (cookie) => getUserFromCookieHeader(db, cookie),
     history = gameOptions.repository === undefined ? createPgHandHistoryStore(db) : null,
     retryDelaysMs = DEFAULT_RETRY_DELAYS_MS,
+    // Aufdecken durch Admins (WP-033): Protokolleintrag + Admin-Prüfung in der DB.
+    revealAudit = (entry) => recordCardReveal(db, entry),
     repository,
     hooks,
     ...rest
@@ -86,6 +89,7 @@ export function buildApp({
   const retry = { delaysMs: retryDelaysMs, log: app.log };
   const game = new GameServer({
     ...rest,
+    revealAudit,
     repository: repository ?? withFinishRoundRetry(createPgTableRepository(db), retry),
     hooks: combineHooks(history === null ? {} : createHandHistoryHooks(history, retry), hooks ?? {}),
     log: app.log,

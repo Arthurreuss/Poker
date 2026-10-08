@@ -1,6 +1,6 @@
 // Spielseite eines Tisches (WP-018): verbindet Store/Verbindung mit der Tischansicht (WP-016/017),
 // Aktionsleiste, Showdown, Rundenende und Verbindungshinweis. Layout (Hoch/Quer) macht `TableScreen`.
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { Link } from 'react-router';
 import { useFeedbackDialog } from '../feedback';
 import { DATENSCHUTZ_PATH, IMPRESSUM_PATH } from '../legal/LegalFooter';
@@ -8,6 +8,7 @@ import { invitePath, tablePath } from '../lobby/invite';
 import { InviteShare } from '../lobby/InviteShare';
 import { useAnimationsPreference } from '../settings/animations';
 import { cx } from '../styles/cx';
+import type { CardReveal } from '../table/RevealableCards';
 import { TableScreen } from '../table/TableScreen';
 import { toTableView } from './adapter';
 import { ConnectionBanner, ErrorToast, GameActionArea, RoundResultDialog, TableClosedNotice } from './GamePanels';
@@ -41,6 +42,22 @@ export function GameTable({ snapshot, store, onLeave }: GameTableProps) {
     store.rematch();
   }, [store]);
   const feedback = useFeedbackDialog({ tableId: store.tableId });
+  // Admin am Tisch (WP-033, D-027): verdeckte Karten der Mitspieler per Tipp umdrehen.
+  const adminSeated = snapshot.isAdmin && table !== null && table.you.seat !== null;
+  const { reveal: revealState } = snapshot;
+  const reveal = useMemo<CardReveal | undefined>(
+    () =>
+      adminSeated
+        ? {
+            cards: revealState.cards,
+            faceUp: revealState.faceUp,
+            onToggle: (seat) => {
+              store.toggleReveal(seat);
+            },
+          }
+        : undefined,
+    [adminSeated, revealState, store],
+  );
 
   return (
     <div className={cx('gp-page', 'safe-area', animations && 'pg-anim')} data-testid="game-table">
@@ -63,6 +80,7 @@ export function GameTable({ snapshot, store, onLeave }: GameTableProps) {
           <TableScreen
             view={toTableView(table, { turnClock, nowMs: now })}
             actionBar={<GameActionArea snapshot={snapshot} store={store} />}
+            reveal={reveal}
             menuItems={
               <div className="gp-menu-items">
                 <p className="gp-menu-info">{table.settings.name}</p>

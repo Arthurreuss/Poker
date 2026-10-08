@@ -8,8 +8,9 @@ import type { AdminAuditLogRow, Json } from '../db/types';
 import { startPeriodicJob, type PeriodicJob } from '../periodic-job';
 
 /**
- * Erlaubte Aktionen (Format `bereich.aktion`, DB-Check in 0007). Neue Admin-Aktionen ergänzen hier ihren Code,
- * z. B. WP-033 `table.reveal_cards` (Quelle `ws`, Ziel = Tisch und Spieler, Details z. B. `{ roundId, handNumber }`).
+ * Erlaubte Aktionen (Format `bereich.aktion`, DB-Check in 0007). Neue Admin-Aktionen ergänzen hier ihren Code.
+ * `table.reveal_cards` (WP-033, D-027): Quelle `ws`, Ziel = Tisch und Spieler, Details `{ roundId, handNumber, seat }`
+ * (geschrieben von `admin/reveal.ts`).
  */
 export type AuditAction =
   | 'user.ban'
@@ -18,7 +19,8 @@ export type AuditAction =
   | 'user.password_reset'
   | 'user.admin_grant'
   | 'user.admin_revoke'
-  | 'table.close';
+  | 'table.close'
+  | 'table.reveal_cards';
 
 /** Weg, über den die Aktion kam. */
 export type AuditSource = 'api' | 'cli' | 'ws';

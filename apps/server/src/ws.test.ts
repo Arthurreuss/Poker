@@ -68,6 +68,7 @@ describe('WebSocket /ws: Upgrade', () => {
       type: 'welcome',
       protocolVersion: PROTOCOL_VERSION,
       user: { id: 7, username: 'user7' },
+      isAdmin: false,
     });
     c.close();
   });
