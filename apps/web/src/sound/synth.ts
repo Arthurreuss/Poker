@@ -92,10 +92,24 @@ export function playSound(name: SoundName, ctx: BaseAudioContext, out: AudioNode
       chipClicks(ctx, out, t, 5, 0.45);
       break;
     case 'check':
-      // zweimal auf den Tisch klopfen
-      for (const dt of [0, 0.12]) {
-        tone(ctx, out, t + dt, { freq: 190, freqEnd: 80, duration: 0.09, gain: 0.8 });
-        burst(ctx, out, t + dt, { duration: 0.04, gain: 0.35, type: 'lowpass', freq: 900 });
+      // zweimal mit dem Knöchel auf den Holzrand klopfen. Tiefe Anteile (< 300 Hz) geben Handy-Lautsprecher
+      // kaum wieder, deshalb trägt der Holzkörper (400–700 Hz) plus ein heller Anschlag den Klang.
+      for (const [dt, gain] of [
+        [0, 1],
+        [0.14, 0.8],
+      ] as const) {
+        const at = t + dt;
+        burst(ctx, out, at, { duration: 0.012, gain: 0.5 * gain, type: 'highpass', freq: 2500 });
+        burst(ctx, out, at, { duration: 0.08, gain: 0.9 * gain, type: 'bandpass', freq: 620, freqEnd: 480, q: 5 });
+        tone(ctx, out, at, {
+          freq: 430,
+          freqEnd: 330,
+          duration: 0.07,
+          gain: 0.55 * gain,
+          type: 'triangle',
+          attack: 0.002,
+        });
+        tone(ctx, out, at, { freq: 160, freqEnd: 90, duration: 0.06, gain: 0.4 * gain });
       }
       break;
     case 'fold':
