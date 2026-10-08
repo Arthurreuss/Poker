@@ -5,7 +5,7 @@
 | MS | ID | Titel | Status | Abhängig von |
 |---|---|---|---|---|
 | M0 | [WP-000](work-packages/WP-000.md) | Arbeitsweise und Doku-System | done | — |
-| M1 | [WP-001](work-packages/WP-001.md) | Monorepo-Grundgerüst und Tooling | todo | WP-000 |
+| M1 | [WP-001](work-packages/WP-001.md) | Monorepo-Grundgerüst und Tooling | in-progress | WP-000 |
 | M1 | [WP-002](work-packages/WP-002.md) | Docker-Entwicklungsumgebung (dev, localhost) | todo | WP-001 |
 | M1 | [WP-003](work-packages/WP-003.md) | Prod-Setup und Cloudflare-Tunnel vorbereiten | todo | WP-002 |
 | M2 | [WP-004](work-packages/WP-004.md) | Engine: Karten, Deck, Mischen | todo | WP-001 |
