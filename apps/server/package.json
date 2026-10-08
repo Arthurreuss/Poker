@@ -5,10 +5,17 @@
   "type": "module",
   "description": "Game-Server (HTTP + WebSocket)",
   "dependencies": {
-    "@poker/engine": "*"
+    "@poker/engine": "*",
+    "fastify": "^5.12.5",
+    "pg": "^8.23.1"
   },
   "scripts": {
+    "dev": "tsx watch --clear-screen=false src/main.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.23.1",
+    "tsx": "^4.23.15"
   }
 }
