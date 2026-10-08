@@ -182,8 +182,8 @@ Format: Kontext → Entscheidung → Konsequenzen. Status: `akzeptiert`, `offen`
 ## D-025: Speicherdauern (Datenschutz)
 - **Status:** akzeptiert
 - **Kontext:** Die Datenschutzerklärung (WP-022) braucht feste Speicherdauern.
-- **Entscheidung:** Server-Logs (enthalten IP-Adressen) werden höchstens 14 Tage aufbewahrt. Feedback wird gelöscht, sobald es erledigt ist, spätestens nach 1 Jahr. Backups liegen nur lokal auf dem Mac (Aufbewahrung 7/4/6). Cloudflare ist Auftragsverarbeiter (DPA im Dashboard akzeptiert).
-- **Konsequenzen:** Technische Durchsetzung (Log-Rotation, automatisches Löschen von Feedback) in WP-022.
+- **Entscheidung:** Server-Logs (enthalten IP-Adressen) werden höchstens 14 Tage aufbewahrt. Erledigtes Feedback wird 30 Tage nach dem Erledigen gelöscht, jedes Feedback spätestens 1 Jahr nach dem Absenden. Backups liegen nur lokal auf dem Mac (Aufbewahrung 7/4/6). Cloudflare ist Auftragsverarbeiter (DPA im Dashboard akzeptiert).
+- **Konsequenzen:** Umsetzung in WP-022: Request-Logs mit IP schreiben server und nginx in Dateien, die der Dienst `logrotate` täglich rotiert und nach 12 Tagen löscht; Container-Logs enthalten keine IPs und rotieren nach Größe. Ein Server-Job löscht Feedback nach den Fristen. Der Backup-Ordner wird nicht in Time Machine oder eine Cloud gesichert (sonst gälten längere Fristen).
 
 ## D-026: Spiel-UI-Details (Abnahme WP-018)
 - **Status:** akzeptiert
