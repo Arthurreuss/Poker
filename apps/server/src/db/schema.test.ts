@@ -22,7 +22,9 @@ describe.skipIf(testDatabaseUrl === undefined)('Schema (Test-DB)', () => {
   });
 
   beforeEach(async () => {
-    await s.pool.query('TRUNCATE users, sessions, tables, rounds, round_players, hands, hand_actions RESTART IDENTITY');
+    await s.pool.query(
+      'TRUNCATE users, sessions, tables, rounds, round_players, hands, hand_actions RESTART IDENTITY CASCADE',
+    );
   });
 
   async function insertUser(username: string): Promise<UserRow> {

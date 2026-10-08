@@ -62,13 +62,18 @@ printf '%s\n' 'neues-passwort' | npm run admin:reset-password -w @poker/server -
 # Admin-Flag setzen bzw. entziehen
 npm run admin:make-admin -w @poker/server -- <benutzername>
 npm run admin:make-admin -w @poker/server -- <benutzername> --revoke
+
+# Feedback der Spieler lesen (neueste zuerst, Standard: 20, alle Status)
+npm run admin:feedback -w @poker/server -- [--status new|read|done|all] [--limit N]
 ```
 
 In **prod** sind die Skripte mitgebündelt (kein `tsx` nötig) und laufen im Server-Container:
 ```sh
 docker compose -p poker-prod exec server node cli/reset-password.mjs <benutzername>
 docker compose -p poker-prod exec server node cli/make-admin.mjs <benutzername> [--revoke]
+docker compose -p poker-prod exec server node cli/feedback.mjs [--status new|read|done|all] [--limit N]
 ```
+Feedback lässt sich auch im Browser unter `/admin/feedback` lesen und dort auf gelesen/erledigt setzen (Details: [docs/OPERATIONS.md](docs/OPERATIONS.md#feedback-lesen)).
 Im dev-Container geht es auch ohne `DATABASE_URL` (ist dort gesetzt): `docker compose -p poker-dev exec server npm run admin:reset-password -w @poker/server -- <benutzername>`. Exit-Code `1` bei unbekanntem User oder ungültigem Passwort, `2` bei falschem Aufruf.
 
 Arbeitsweise, Stand und Entscheidungen: [CLAUDE.md](CLAUDE.md) → [docs/WORKFLOW.md](docs/WORKFLOW.md), [docs/PROGRESS.md](docs/PROGRESS.md), [docs/DECISIONS.md](docs/DECISIONS.md).

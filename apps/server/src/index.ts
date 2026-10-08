@@ -20,6 +20,7 @@ export { createPgTableRepository, closeOrphanedTables } from './game/pg-reposito
 export { loadConfig, type ServerConfig } from './config';
 export { createPgDatabase, type Database, type Queryable } from './db';
 export { loadAuthConfig, type AuthConfig } from './auth/config';
+export { loadFeedbackConfig, type FeedbackConfig } from './feedback/config';
 export { getUserFromCookieHeader, getUserFromSessionToken, SESSION_COOKIE, type AuthUser } from './auth/session';
 
 export function serverInfo(): { name: string; engine: string } {

@@ -105,3 +105,23 @@ export interface SchemaMigrationRow {
   checksum: string;
   applied_at: Date;
 }
+
+/** 0004 (WP-024): Feedback der Spieler. */
+export interface FeedbackRow {
+  id: number;
+  /** `null` = Account gelöscht/anonymisiert. */
+  user_id: number | null;
+  category: 'bug' | 'idea' | 'other';
+  /** 1–2000 Zeichen. */
+  message: string;
+  /** Pfad der Seite, z. B. `/table/42`. */
+  page: string | null;
+  /** Tisch laut Client, ohne Fremdschlüssel. */
+  table_id: number | null;
+  app_version: string | null;
+  /** Wird bei Account-Löschung geleert. */
+  user_agent: string | null;
+  orientation: 'auto' | 'portrait' | 'landscape' | null;
+  status: 'new' | 'read' | 'done';
+  created_at: Date;
+}

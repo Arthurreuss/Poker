@@ -3,6 +3,8 @@ import { loadAuthConfig, type AuthConfig } from './auth/config';
 import { authRoutes } from './auth/routes';
 import { getUserFromCookieHeader } from './auth/session';
 import type { Database } from './db';
+import { loadFeedbackConfig, type FeedbackConfig } from './feedback/config';
+import { feedbackRoutes } from './feedback/routes';
 import { GameServer, type GameServerOptions } from './game/game-server';
 import { createPgTableRepository } from './game/pg-repository';
 import { combineHooks, createHandHistoryHooks } from './history/hooks';
@@ -22,6 +24,8 @@ export interface AppOptions {
   heartbeatIntervalMs?: number;
   /** Standard: `loadAuthConfig(process.env)`. */
   auth?: AuthConfig;
+  /** Feedback (WP-024), z. B. Rate-Limit. Standard: `loadFeedbackConfig(process.env)`. */
+  feedback?: FeedbackConfig;
   /**
    * Game-Server (WP-011). Standard: Tische in Postgres (`createPgTableRepository(db)`), echte Uhr, `cryptoRng`,
    * Pause nach jeder Hand `DEFAULT_HAND_PAUSE_MS`. Tests übergeben z. B. In-Memory-Repository und Pause 0.
@@ -63,6 +67,7 @@ export function buildApp({
   trustProxy = false,
   heartbeatIntervalMs,
   auth = loadAuthConfig(process.env),
+  feedback = loadFeedbackConfig(process.env),
   game: gameOptions = {},
 }: AppOptions): FastifyInstance {
   const app = Fastify({ logger, trustProxy });
@@ -113,6 +118,7 @@ export function buildApp({
   });
 
   void app.register(authRoutes, { db, config: auth });
+  void app.register(feedbackRoutes, { db, config: feedback });
 
   return app;
 }

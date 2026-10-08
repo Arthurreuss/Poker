@@ -16,6 +16,7 @@ npm-Workspaces-Monorepo (D-004). Alle Workspaces sind TypeScript (ESM, `strict`)
 - `db.ts` – `Database`-Schnittstelle (`ping`, `query`, `close`; `Queryable` = nur `query`, passt auch auf `pg.Pool`) und `createPgDatabase(url | poolConfig)` mit `pg.Pool`.
 - `app.ts` – `buildApp({ db, publicOrigin, trustProxy, auth?, game? })` baut die Fastify-App ohne `listen`; Tests nutzen `app.inject()` und können eine Fake-DB übergeben. `game` überschreibt Teile des Game-Servers (Repository, `authenticate`, Uhr, Rng, Pause nach der Hand, Hooks); der Game-Server hängt als `app.game` an der Instanz. `GET /api/health` → `200 { status: "ok", db: "ok" }` bzw. `503 { status: "error", db: "error" }`; die Route loggt nur Warnungen. Registriert das Auth-Plugin (`auth/routes.ts`, siehe „Auth“); `auth` ist optional eine `AuthConfig` (Standard: aus `process.env`).
 - `auth/` – Registrierung, Login, Sessions, Rate-Limit (Abschnitt „Auth“); `cli/` – Admin-Skripte.
+- `feedback/` – Feedback-API, Speicherung und Kernlogik der CLI `admin:feedback` (Abschnitt „Datenmodell“ → „Feedback“).
 - `ws.ts` – `registerWebSocket(app, { publicOrigin, authenticate, game })`: `ws`-Server (`noServer`) am `upgrade`-Event des HTTP-Servers, nur Pfad `/ws` (sonst `404`). `Origin` muss exakt `PUBLIC_ORIGIN` sein, sonst `403` (D-014); dann Session aus dem `Cookie`-Header (`getUserFromCookieHeader`), ohne gültige Session `401`, Fehler der Prüfung `500`. Nachrichten (max. 64 KiB, sonst Trennung mit 1009) gehen pro Verbindung strikt nacheinander an den `GameServer`. Heartbeat: Ping alle 30 s, Clients ohne Pong bis zum nächsten Ping werden getrennt. Beim Schließen der App werden Tisch-Timer beendet und offene Verbindungen getrennt. Tests: `ws.test.ts` (Transport), `game/*.test.ts` (Spielablauf).
 - `game/` – Game-Server, siehe „Game-Server: Protokoll und Tische“.
 - `main.ts` – Einstiegspunkt: Config laden, App bauen, Migrationen, verwaiste Tische/Runden schließen (`closeOrphanedTables`), `listen`, sauberes Beenden bei SIGTERM/SIGINT.
@@ -24,6 +25,7 @@ npm-Workspaces-Monorepo (D-004). Alle Workspaces sind TypeScript (ESM, `strict`)
 ### Web (`apps/web`)
 - `vite.config.ts` – Dev-Server-Einstellungen nur aus Umgebungsvariablen: `WEB_DEV_HOST`, `WEB_DEV_PORT`, `API_PROXY_TARGET` (Proxy für `/api` und `/ws` mit `ws: true`), `VITE_USE_POLLING`.
   Dazu das PWA-Plugin (siehe „Frontend“) und ein kleines Plugin, das `%THEME_COLOR%` in `index.html` durch `--color-bg` aus `tokens.css` ersetzt.
+  `define: __APP_VERSION__` = `APP_VERSION` (Docker-Build-Argument, `scripts/prod.sh` setzt den Commit des Prod-Worktrees) oder `git rev-parse --short HEAD`, sonst „unbekannt“ (Typ in `src/vite-env.d.ts`; `vitest.config.ts` setzt `test`).
 - `vitest.config.ts` – eigene Test-Konfiguration (jsdom, `src/test/setup.ts`), damit das PWA-Plugin in Tests nicht läuft.
 - `src/health.ts` – `fetchHealth()` mit relativer URL `/api/health` (eine Origin, D-014) und `appTitle(mode)` („Poker – dev“ außerhalb von prod); die Lobby zeigt den Health-Status.
 - Aufbau von `src/`, Routing, API-Client, Styling und PWA: Abschnitt „Frontend“.
@@ -358,7 +360,7 @@ users 1─n tables (created_by) 1─n rounds 1─n round_players n─1 users
                                      rounds 1─n hands 1─n hand_actions n─1 users
 ```
 
-- **Löschverhalten:** Alle Verweise auf `users` (außer `sessions`) sind `ON DELETE RESTRICT`. Accounts werden nie hart gelöscht, sondern anonymisiert (`username`/`password_hash` → `NULL`, `deleted_at` setzen, WP-022) – so bleibt die Hand-Historie der anderen Spieler vollständig, und der Name wird wieder frei. `sessions` kaskadieren mit dem User. Innerhalb eines Aggregats wird kaskadiert: Runde → `round_players`, `hands`; Hand → `hand_actions`. Tische werden nicht gelöscht, sondern auf `closed` gesetzt (`rounds.table_id` ist `RESTRICT`).
+- **Löschverhalten:** Alle Verweise auf `users` (außer `sessions` und `feedback`, siehe „Feedback“) sind `ON DELETE RESTRICT`. Accounts werden nie hart gelöscht, sondern anonymisiert (`username`/`password_hash` → `NULL`, `deleted_at` setzen, WP-022) – so bleibt die Hand-Historie der anderen Spieler vollständig, und der Name wird wieder frei. `sessions` kaskadieren mit dem User. Innerhalb eines Aggregats wird kaskadiert: Runde → `round_players`, `hands`; Hand → `hand_actions`. Tische werden nicht gelöscht, sondern auf `closed` gesetzt (`rounds.table_id` ist `RESTRICT`).
 - **Indizes für spätere Abfragen:** Rangliste `SUM(points) GROUP BY user_id` über `round_players (user_id, points)` (Index-Only-Scan); Runden und Hand-Historie eines Users über `round_players (user_id, round_id)` → `hands (round_id, hand_number)`; Statistiken pro User (VPIP, PFR) über `hand_actions (user_id, hand_id)`.
 - **Zahlentypen:** IDs, Chips und Punkte sind `integer`. Grund: `pg` liefert `integer` als JS-`number`, `bigint` dagegen als String (eigene Parser nötig). Die Größenordnung passt: `starting_stack` ist per Constraint auf 10⁸ begrenzt, damit die Summe aller Stacks (max. 9 Spieler) unter 2³¹ bleibt; Punkte pro Runde sind ≤ 9; 2³¹ Zeilen pro Tabelle erreicht eine Freundesrunde nicht. Achtung: `sum()`/`count()` liefern in Postgres `bigint` → in Queries `::int` casten.
 - **Typen:** `src/db/types.ts` enthält handgeschriebene Zeilentypen (`UserRow`, `TableRow`, `HandRow` …, Spalten 1:1 in snake_case) für `pool.query<T>()` – kein ORM. Ändert eine Migration eine Tabelle, wird der Typ im selben Commit angepasst.
@@ -408,6 +410,29 @@ Host 127.0.0.1:4321 (Debug) ─────────────────�
 - **Proxy-Header:** nginx setzt `X-Forwarded-For` auf `CF-Connecting-IP` (hinter dem Tunnel) bzw. die Peer-Adresse und reicht `X-Forwarded-Proto` von cloudflared durch; der Server vertraut ihnen nur in prod (`trustProxy`).
 - **cloudflared:** eigener Tunnel für Poker, unabhängig vom Jarvis-Tunnel (D-014); `TUNNEL_TOKEN` aus `.env.prod`. Public Hostname `poker.arthur-reuss.de` → `http://web:8080`.
 
+### Feedback (WP-024)
+Spieler schicken aus der App Feedback (Bug, Idee, Sonstiges); Admins lesen es unter `/admin/feedback` oder per CLI (`admin:feedback`, Aufruf: README „Admin“, Betrieb: OPERATIONS.md „Feedback lesen“). Code: `apps/server/src/feedback/`, Migration `0004_feedback.sql`, Web: `apps/web/src/feedback/`, `pages/AdminFeedbackPage.tsx`.
+
+**Tabelle `feedback`:** `user_id` (`NULL` = Account gelöscht), `category` (`bug`/`idea`/`other`), `message` (1–2000 Zeichen, getrimmt), Kontext `page` (Pfad, ≤ 200), `table_id` (laut Client, ohne Fremdschlüssel), `app_version` (≤ 100, Build-Version/Commit), `user_agent` (≤ 500, vom Server aus dem Request-Header), `orientation` (`auto`/`portrait`/`landscape`, Einstellung aus `useOrientationPreference`), `status` (`new`/`read`/`done`, Standard `new`), `created_at`. Indizes für die Admin-Liste (`status, created_at DESC`, `created_at DESC`) und `user_id`. Codes sind englisch wie die übrigen Status-Spalten; die UI zeigt Bug/Idee/Sonstiges und Neu/Gelesen/Erledigt.
+
+**Account-Löschung:** Feedback bleibt erhalten, wird aber anonymisiert. `user_id` ist `ON DELETE SET NULL` (eine harte Löschung des Users wird nie blockiert). Zusätzlich leeren zwei Trigger auf `users` (`BEFORE DELETE` und `AFTER UPDATE OF deleted_at`, sobald `deleted_at` gesetzt wird) `user_id` **und** `user_agent` aller Feedbacks des Users – der User-Agent ist zusammen mit Zeitpunkt und Freitext ein Wiedererkennungsmerkmal. Seite, Tisch, App-Version und Ausrichtung bleiben. Der Freitext selbst bleibt unverändert (kann Personenbezug enthalten, den der Spieler selbst hineingeschrieben hat).
+
+**API** (gekapseltes Fastify-Plugin `feedbackRoutes`, Session aus dem Cookie wie beim WebSocket; Fehler im Format `{ error, message }`):
+
+| Methode und Pfad | Zugriff | Body / Query | Erfolg | Fehler |
+|---|---|---|---|---|
+| `POST /api/feedback` | eingeloggt | `{ category, message, page?, tableId?, appVersion?, orientation? }` (max. 16 KiB) | `201 { feedback: { id, createdAt } }` | `401 unauthorized`, `400 invalid_request` (Kategorie, Text leer/zu lang, Kontext ungültig), `429 rate_limited` |
+| `GET /api/admin/feedback` | `isAdmin` | `?status=new\|read\|done\|all` (Standard alle), `?limit=` (Standard 100, max. 500) | `200 { feedback: FeedbackItem[], counts: { new, read, done } }`, neueste zuerst | `401`, `403 forbidden`, `400` |
+| `PATCH /api/admin/feedback/:id` | `isAdmin` | `{ status }` | `200 { feedback: FeedbackItem }` | `401`, `403`, `400`, `404 not_found` |
+
+`FeedbackItem` = `{ id, userId, username, category, message, page, tableId, appVersion, userAgent, orientation, status, createdAt }` (`username`/`userId` `null` bei gelöschtem Account).
+
+**Rate-Limit:** `@fastify/rate-limit` nur für `POST /api/feedback`, pro **User** (nicht IP), erst nach der Session-Prüfung (`preHandler`) – ohne Session zählt nichts. Standard 5 pro Stunde; `FEEDBACK_RATE_LIMIT_MAX` (`0` = aus) und `FEEDBACK_RATE_LIMIT_WINDOW_SECONDS` (Standard 3600), `loadFeedbackConfig(env)`, Tests übergeben `buildApp({ feedback })`. Zähler im Speicher des Prozesses (Neustart setzt zurück).
+
+**Web:** Knopf „Feedback“ im `FeedbackSlot` der App-Shell öffnet einen Dialog (Portal in `document.body`, Escape/Hintergrund schließen) mit Kategorie, Text (`maxLength` 2000, Zähler) und Bestätigung. Kontext automatisch: `page` = `window.location.pathname`, `tableId` aus `/table/<zahl>` (überschreibbar), `appVersion` = `__APP_VERSION__`, `orientation` aus `useOrientationPreference`. Für Stellen außerhalb der App-Shell (Tisch-Menü) liefert `useFeedbackDialog({ tableId })` `{ open, close, isOpen, dialog }`: `open` an den Menüeintrag, `dialog` außerhalb des Menüs rendern.
+
+**Tests:** `feedback/feedback.unit.test.ts` (Validierung, User-Agent, Config, CLI) und `feedback/feedback.db.test.ts` (Test-DB: Speichern mit Kontext, 401/400/429, Admin-API 401/403/404, Filter, Statuswechsel, Anonymisierung bei hartem Löschen und bei `deleted_at`).
+
 ## Frontend
 React 19 + Vite, Routing mit `react-router` (Deklarativ: `BrowserRouter`/`Routes`). Keine UI-Bibliothek.
 
@@ -415,10 +440,10 @@ React 19 + Vite, Routing mit `react-router` (Deklarativ: `BrowserRouter`/`Routes
 | Pfad | Inhalt |
 |---|---|
 | `main.tsx`, `App.tsx` | Einstieg; `App` = `AuthProvider` + `BrowserRouter` + `AppRoutes` (Tests rendern `AppRoutes` in einem `MemoryRouter`) |
-| `api/` | `client.ts` (`apiRequest`, `ApiError`), `auth.ts` (`register`, `login`, `logout`, `me`), `ws.ts` (`wsUrl`); Export über `api/index.ts` |
+| `api/` | `client.ts` (`apiRequest`, `ApiError`), `auth.ts` (`register`, `login`, `logout`, `me`), `feedback.ts` (`sendFeedback`, `listFeedback`, `updateFeedbackStatus`), `ws.ts` (`wsUrl`); Export über `api/index.ts` |
 | `auth/` | `AuthContext.tsx` (`AuthProvider`, `useAuth`), `guards.tsx` (`RequireAuth`, `RequireAdmin`, `RedirectIfAuthenticated`), `validation.ts` (Regeln wie der Server) |
 | `layout/AppShell.tsx` | Kopfzeile mit App-Name, Menü (Lobby, Rangliste, Einstellungen, Admin nur für Admins, Abmelden) und Feedback-Slot; `<Outlet>` für die Seite |
-| `feedback/FeedbackSlot.tsx` | leerer Platzhalter (`data-slot="feedback"`) für den Feedback-Button aus WP-024 |
+| `feedback/` | Feedback (WP-024): `FeedbackSlot` (Knopf „Feedback“ in der App-Shell, `data-slot="feedback"`), `FeedbackForm`, `FeedbackDialog`/`FeedbackButton`/`useFeedbackDialog` (Einstieg von überall, z. B. Tisch-Menü), `context.ts` (automatischer Kontext); Export über `feedback/index.ts` |
 | `pages/` | Login, Registrierung, Lobby, Rangliste, Einstellungen, Admin, Tisch – außer Login/Registrierung/Einstellungen noch Platzhalter |
 | `settings/orientation.ts` | `useOrientationPreference()` (D-009) |
 | `styles/` | `tokens.css` (Vertrag, siehe „Design-Tokens (Web)“), `global.css`, `cx.ts` (Klassen verbinden) |
@@ -432,7 +457,7 @@ React 19 + Vite, Routing mit `react-router` (Deklarativ: `BrowserRouter`/`Routes
 | `/` | Lobby (Platzhalter bis WP-015) | eingeloggt, in der App-Shell |
 | `/leaderboard` | Rangliste (Platzhalter bis WP-019) | eingeloggt, App-Shell |
 | `/settings` | Einstellungen (Ausrichtung) | eingeloggt, App-Shell |
-| `/admin/*` | Admin (Platzhalter; WP-024: `/admin/feedback`) | nur `isAdmin`, sonst Umleitung auf `/` |
+| `/admin/*` | Admin (`pages/AdminPage.tsx` mit Unterrouten): Übersicht, `/admin/feedback` (`AdminFeedbackPage`, WP-024) | nur `isAdmin`, sonst Umleitung auf `/` |
 | `/table/:id` | Tisch (`pages/TablePage.tsx`, Platzhalter bis WP-016/018) | eingeloggt, **ohne** App-Shell (volle Fläche, eigenes Tisch-Menü) |
 | sonst | „Seite nicht gefunden“ | eingeloggt, App-Shell |
 
@@ -458,7 +483,7 @@ CSS-Modules (`*.module.css` neben der Komponente, von Vite ohne Zusatzpaket unte
 - nginx (prod) liefert `sw.js`, `registerSW.js`, Manifest und `index.html` mit `Cache-Control: no-cache`, gehashte `/assets/` langlebig.
 
 ### Tests
-Vitest mit jsdom und Testing Library (`*.test.ts(x)` neben dem Code): `App.test.tsx` (Routen-Schutz, Rücksprung nach Login, Login-/Registrierungsfehler 400/401/409/429/Netzwerk, Admin-Menü, Abmelden, Einstellungen), `api/api.test.ts` (Client, Fehler, `wsUrl`), `auth/validation.test.ts`, `settings/orientation.test.ts`. `fetch` wird mit `test/mockApi.ts` ersetzt.
+Vitest mit jsdom und Testing Library (`*.test.ts(x)` neben dem Code): `App.test.tsx` (Routen-Schutz, Rücksprung nach Login, Login-/Registrierungsfehler 400/401/409/429/Netzwerk, Admin-Menü, Abmelden, Einstellungen), `api/api.test.ts` (Client, Fehler, `wsUrl`), `auth/validation.test.ts`, `settings/orientation.test.ts`, `feedback/Feedback.test.tsx` (Formular, Zähler, Kontext, Dialog, Einstieg in der App-Shell), `pages/AdminFeedbackPage.test.tsx` (Liste, Filter, Statuswechsel, Fehler). `fetch` wird mit `test/mockApi.ts` ersetzt.
 
 ## Design-Tokens (Web)
 Gemeinsamer Vertrag für alle Frontend-WPs (D-008: Anmutung PokerStars, eigene Werte). Definiert in [`apps/web/src/styles/tokens.css`](../apps/web/src/styles/tokens.css) (WP-014); Komponenten nutzen nur diese CSS-Variablen.
