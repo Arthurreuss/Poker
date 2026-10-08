@@ -41,7 +41,7 @@ Solange `main` noch nicht released wurde, fehlt im Prod-Worktree `compose.prod.y
 Alle `prod:*`-Befehle werden im Arbeitsordner aufgerufen, arbeiten aber mit `compose.prod.yml` und `.env.prod` aus dem Prod-Worktree (fehlt er, kommt ein Hinweis auf `npm run prod:setup`):
 ```sh
 npm run prod:up          # baut die Images aus dem Prod-Worktree (main) und startet db, server, web, backup (ohne Tunnel); wartet auf healthy
-npm run prod:smoke       # Smoke-Test: /api/health und WebSocket über http://localhost:4320
+npm run prod:smoke       # Smoke-Test: /api/health und WebSocket (401 ohne Session, 403 fremde Origin) über http://localhost:4320
 npm run prod:status      # Zustandsbericht (siehe Status)
 npm run prod:logs        # Logs folgen
 npm run prod:tunnel:up   # wie prod:up, zusätzlich cloudflared (braucht TUNNEL_TOKEN)
@@ -53,6 +53,7 @@ npm run prod:restore -- <dump.sql.gz> [--yes]   # Restore (siehe Restore)
 - Container haben `restart: unless-stopped`: nach einem Neustart von Docker Desktop laufen sie wieder, nach `prod:down` nicht (siehe [Betrieb nach Neustart](#betrieb-nach-neustart)).
 - `POSTGRES_PASSWORD` wirkt nur beim **ersten** Start mit leerem Volume. Passwort später ändern = in Postgres ändern (`ALTER USER`) oder – nur ohne echte Daten – Volume löschen: `docker volume rm poker-prod-db`.
 - Der Smoke-Test schickt als `Origin` den Wert von `PUBLIC_ORIGIN` aus `.env.prod`; andere Ziele per `SMOKE_URL=… SMOKE_ORIGIN=… npm run prod:smoke`.
+- WebSocket ohne Session muss `401` liefern (seit WP-011 braucht `/ws` ein Session-Cookie), fremde Origin `403`. Den vollen Handshake (`hello` → `welcome`) prüft er zusätzlich mit einem Session-Cookie aus dem Browser: `SMOKE_COOKIE='poker_session=…' npm run prod:smoke`.
 
 ## Release
 `npm run release` (Skript `scripts/release.sh`) – der Arbeitsordner wird dabei **nicht** umgeschaltet:
@@ -154,5 +155,7 @@ Einmalig einzurichten (Arthur, macOS-Systemeinstellungen – nicht automatisiert
 - `npm run prod:logs` bzw. `docker compose -p poker-prod ps` (Status inkl. Healthchecks).
 - Server direkt: `curl http://localhost:4321/api/health`.
 - WebSocket-Upgrade mit `403`: `Origin` passt nicht zu `PUBLIC_ORIGIN`.
+- WebSocket-Upgrade mit `401`: kein gültiges Session-Cookie (nicht eingeloggt, Session abgelaufen); `500`: Session-Prüfung fehlgeschlagen (DB nicht erreichbar).
+- Nach einem Server-Neustart sind alle Tische weg: Tische und laufende Runden leben nur im Speicher; beim Start werden laufende Runden `aborted` und offene/laufende Tische `closed` (siehe ARCHITECTURE.md, „Game-Server: Protokoll und Tische“).
 - Server startet nicht, Log „password authentication failed“: Volume `poker-prod-db` wurde mit einem anderen Passwort angelegt (siehe oben).
 - `backup` nicht healthy oder kein neues Backup: `docker logs poker-prod-backup-1`; häufig ist `BACKUP_DIR` nicht beschreibbar oder (externe Platte) nicht eingehängt.

@@ -7,22 +7,26 @@ npm-Workspaces-Monorepo (D-004). Alle Workspaces sind TypeScript (ESM, `strict`)
 
 | Workspace | Paket | Zweck |
 |---|---|---|
-| `packages/engine` | `@poker/engine` | reine Poker-Logik, keine I/O-Abhängigkeiten |
-| `apps/server` | `@poker/server` | Game-Server: Fastify mit `GET /api/health` (prüft die DB per `pg`), Auth-Endpunkten (`/api/register`, `/login`, `/logout`, `/me`) und Platzhalter-WebSocket `/ws` (`ws`); importiert `@poker/engine` |
-| `apps/web` | `@poker/web` | Frontend: React + Vite, derzeit Platzhalterseite mit Health-Anzeige (PWA folgt) |
+| `packages/engine` | `@poker/engine` | reine Poker-Logik, keine I/O-Abhängigkeiten; Subpfad `@poker/engine/protocol` = WebSocket-Protokoll (Typen, Validatoren, gefilterte Sichten) für Server und Web |
+| `apps/server` | `@poker/server` | Game-Server: Fastify mit `GET /api/health` (prüft die DB per `pg`), Auth-Endpunkten (`/api/register`, `/login`, `/logout`, `/me`) und Game-Server über WebSocket `/ws` (`ws`, Tische im Speicher); importiert `@poker/engine` |
+| `apps/web` | `@poker/web` | Frontend: React + Vite als installierbare PWA mit Routing, Login/Registrierung und App-Shell (Abschnitt „Frontend“) |
 
 ### Server (`apps/server/src`)
 - `config.ts` – `loadConfig(env)`: Konfiguration **nur** aus Umgebungsvariablen (D-014): `PORT`, `DATABASE_URL`, `PUBLIC_ORIGIN` (Pflicht), `HOST` (Standard `127.0.0.1`, im Container `0.0.0.0`), `NODE_ENV` (Standard `development`). Abgeleitet: `trustProxy` = `NODE_ENV === 'production'` (Proxy-Header nur in prod vertrauen, D-014).
 - `db.ts` – `Database`-Schnittstelle (`ping`, `query`, `close`; `Queryable` = nur `query`, passt auch auf `pg.Pool`) und `createPgDatabase(url | poolConfig)` mit `pg.Pool`.
-- `app.ts` – `buildApp({ db, publicOrigin, trustProxy, auth? })` baut die Fastify-App ohne `listen`; Tests nutzen `app.inject()` und können eine Fake-DB übergeben. `GET /api/health` → `200 { status: "ok", db: "ok" }` bzw. `503 { status: "error", db: "error" }`; die Route loggt nur Warnungen. Registriert das Auth-Plugin (`auth/routes.ts`, siehe „Auth“); `auth` ist optional eine `AuthConfig` (Standard: aus `process.env`).
+- `app.ts` – `buildApp({ db, publicOrigin, trustProxy, auth?, game? })` baut die Fastify-App ohne `listen`; Tests nutzen `app.inject()` und können eine Fake-DB übergeben. `game` überschreibt Teile des Game-Servers (Repository, `authenticate`, Uhr, Rng, Pause nach der Hand, Hooks); der Game-Server hängt als `app.game` an der Instanz. `GET /api/health` → `200 { status: "ok", db: "ok" }` bzw. `503 { status: "error", db: "error" }`; die Route loggt nur Warnungen. Registriert das Auth-Plugin (`auth/routes.ts`, siehe „Auth“); `auth` ist optional eine `AuthConfig` (Standard: aus `process.env`).
 - `auth/` – Registrierung, Login, Sessions, Rate-Limit (Abschnitt „Auth“); `cli/` – Admin-Skripte.
-- `ws.ts` – `registerWebSocket(app, { publicOrigin })`: **Platzhalter** bis WP-011. `ws`-Server (`noServer`) am `upgrade`-Event des HTTP-Servers, nur Pfad `/ws` (sonst 404). `Origin` muss exakt `PUBLIC_ORIGIN` sein, sonst `403` (D-014). Nach dem Verbinden sendet er `{"type":"hello","placeholder":true}` und echot jede Nachricht (max. 64 KiB). Heartbeat: Ping alle 30 s, Clients ohne Pong bis zum nächsten Ping werden getrennt. Beim Schließen der App werden offene Verbindungen beendet. Integrationstests mit echten Verbindungen in `ws.test.ts`.
-- `main.ts` – Einstiegspunkt: Config laden, App bauen, `listen`, sauberes Beenden bei SIGTERM/SIGINT.
+- `ws.ts` – `registerWebSocket(app, { publicOrigin, authenticate, game })`: `ws`-Server (`noServer`) am `upgrade`-Event des HTTP-Servers, nur Pfad `/ws` (sonst `404`). `Origin` muss exakt `PUBLIC_ORIGIN` sein, sonst `403` (D-014); dann Session aus dem `Cookie`-Header (`getUserFromCookieHeader`), ohne gültige Session `401`, Fehler der Prüfung `500`. Nachrichten (max. 64 KiB, sonst Trennung mit 1009) gehen pro Verbindung strikt nacheinander an den `GameServer`. Heartbeat: Ping alle 30 s, Clients ohne Pong bis zum nächsten Ping werden getrennt. Beim Schließen der App werden Tisch-Timer beendet und offene Verbindungen getrennt. Tests: `ws.test.ts` (Transport), `game/*.test.ts` (Spielablauf).
+- `game/` – Game-Server, siehe „Game-Server: Protokoll und Tische“.
+- `main.ts` – Einstiegspunkt: Config laden, App bauen, Migrationen, verwaiste Tische/Runden schließen (`closeOrphanedTables`), `listen`, sauberes Beenden bei SIGTERM/SIGINT.
 - `build.mjs` (neben `src/`) – Prod-Build `npm run build -w @poker/server`: esbuild bündelt `src/main.ts` samt `@poker/engine` zu `dist/server.mjs` (ESM, Node 22, keine Source-Maps); npm-Abhängigkeiten bleiben extern.
 
 ### Web (`apps/web`)
 - `vite.config.ts` – Dev-Server-Einstellungen nur aus Umgebungsvariablen: `WEB_DEV_HOST`, `WEB_DEV_PORT`, `API_PROXY_TARGET` (Proxy für `/api` und `/ws` mit `ws: true`), `VITE_USE_POLLING`.
-- `src/health.ts` – `fetchHealth()` mit relativer URL `/api/health` (eine Origin, D-014); `src/App.tsx` zeigt Titel („Poker – dev“) und Health-Status.
+  Dazu das PWA-Plugin (siehe „Frontend“) und ein kleines Plugin, das `%THEME_COLOR%` in `index.html` durch `--color-bg` aus `tokens.css` ersetzt.
+- `vitest.config.ts` – eigene Test-Konfiguration (jsdom, `src/test/setup.ts`), damit das PWA-Plugin in Tests nicht läuft.
+- `src/health.ts` – `fetchHealth()` mit relativer URL `/api/health` (eine Origin, D-014) und `appTitle(mode)` („Poker – dev“ außerhalb von prod); die Lobby zeigt den Health-Status.
+- Aufbau von `src/`, Routing, API-Client, Styling und PWA: Abschnitt „Frontend“.
 
 Workspaces importieren sich gegenseitig über den Paketnamen; `@poker/engine` exportiert direkt seine TypeScript-Quellen (`exports: ./src/index.ts`) und hat keinen eigenen Build-Schritt – Server (esbuild) und Web (Vite) bündeln es beim Prod-Build mit ein.
 
@@ -179,7 +183,7 @@ placementPoints(placement, playerCount, tiedCount = 1) → number
 - **Button und Blinds (`button.ts`, TDA „Dead Button“):** Erste Hand: Blinds sind die nächsten beiden Spieler links vom Button (Heads-up: Button = Small Blind). Danach rückt der **Big Blind immer genau einen Spieler weiter** (nächster noch spielender Spieler links vom vorigen Big Blind). Der Small Blind ist fällig auf dem Sitz des vorigen Big Blinds, der Button wandert auf die vorige Small-Blind-Position. Ist der Small-Blind-Sitz leer (voriger Big Blind ausgeschieden), gibt es **keinen Small Blind**; ist die Button-Position leer (voriger Small Blind ausgeschieden), steht der **Button auf dem leeren Sitz**. Niemand überspringt so den Big Blind. **Heads-up** (nur noch zwei Spieler, auch beim Übergang von drei oder mehr): Big Blind wie oben, der andere ist Button und Small Blind und handelt preflop zuerst – wer eben Big Blind war, zahlt ihn nicht direkt noch einmal. `round.positions` = `{ buttonSeat, smallBlindPositionSeat, smallBlindSeat | null, bigBlindSeat }` der aktuellen bzw. letzten Hand.
 - **Platzierung:** Wer nach einer Hand Stack 0 hat, scheidet aus und bekommt die Plätze direkt hinter den noch Spielenden. Scheiden mehrere in derselben Hand aus, ist der mit dem größeren Stack zu Handbeginn besser platziert; bei gleichem Stack teilen sie sich den besseren Platz (`sharedPlacement: true`, der nächste Platz wird übersprungen, z. B. 1, 2, 3, 3). Der letzte Spieler mit Chips ist Platz 1. `RoundPlayer` hält `stack`, `placement`, `sharedPlacement`, `eliminatedInHand`.
 - **Punkte (`points.ts`, einzige Stelle der Formel, D-012):** Platz k von n Spielern → (n − k), Sieger zusätzlich `WINNER_BONUS_POINTS` = 1. Bei geteiltem Platz bekommt jeder den abgerundeten Durchschnitt der belegten Plätze (TDA: geteilte Plätze teilen den Preis), z. B. zwei Spieler auf Platz 3 von 4 → (1 + 0) / 2 → je 0. Ohne geteilte Plätze ist die Summe n(n − 1)/2 + 1, mit geteilten höchstens das. `standings` = `{ playerId, seat, placement, sharedPlacement, points }[]`, nach Platz (bei Gleichstand nach Sitz) sortiert.
-- **Offen für die Persistenz (WP-013):** `round_players` hat `UNIQUE (round_id, placement)`; geteilte Plätze lassen sich so nicht speichern (Constraint lockern oder anders abbilden).
+- **Geteilte Plätze in der DB:** Migration `0002_shared_placements` hat `UNIQUE (round_id, placement)` durch einen normalen Index ersetzt, damit das Rundenergebnis auch mit geteilten Plätzen gespeichert werden kann (WP-011). Ob geteilte Plätze so bleiben, entscheidet Arthur noch.
 - **Nicht verbundene Spieler** behandelt die Engine nicht anders: Der Server (WP-012) schickt für sie automatische Aktionen (Check, sonst Fold) über `applyRoundAction`; Blinds zahlen sie wie alle anderen (D-012).
 - **Serialisierbar:** `RoundState` enthält nur JSON-Werte (inkl. `config` als Kopie und der vollständigen `HandState` – serverseitig, D-003). Eingabezustände werden nie verändert.
 - **Tests:** `points.test.ts` (Tabellen inkl. geteilter Plätze), `button.test.ts` (Dead-Button- und Heads-up-Tabellen), `round.test.ts` (Validierung, Ablauf, Level-Wechsel erst ab der nächsten Hand, gleichzeitiges Ausscheiden mit gezielt gemischten Decks, Dead Button und Heads-up-Übergang über die Rundenlogik, JSON-Roundtrip an jeder Stelle), `round.simulation.test.ts` (500 Runden mit 2, 200 mit 9 und 60 mit 3–8 seeded Zufalls-Bots: genau ein Sieger, Chip-Erhaltung über alle Hände, Platzierungen 1..n bzw. korrekt geteilt, Punktesumme, Big Blind rückt genau einen Spieler weiter).
@@ -241,6 +245,67 @@ Admin-Flag `users.is_admin` (in `/api/me` als `isAdmin`). CLI-Skripte in `src/cl
 ### Tests
 `auth/auth.unit.test.ts` (ohne DB: Validierung, Token/Hashing, argon2id-Parameter, Config, Client-IP) und `auth/auth.db.test.ts` (Integration gegen die Test-DB über `app.inject()`: alle Endpunkte inkl. Fehlerfälle, Cookie-Flags dev/prod, Ablauf, Rate-Limit, Logs, `getUserFromCookieHeader`, Admin-Funktionen). `npm run test:db -w @poker/server` führt alle Server-Tests mit Test-DB aus.
 
+## Game-Server: Protokoll und Tische
+Quellen: Protokoll in `packages/engine/src/protocol/` (Subpfad `@poker/engine/protocol`), Server in `apps/server/src/game/` und `ws.ts`. Der Server ist autoritativ (D-003): nur er mischt (`cryptoRng`), hält den Spielzustand und prüft jede Aktion über die Engine (`startRound`, `startNextHand`, `applyRoundAction`).
+
+### Protokoll (`@poker/engine/protocol`)
+- **Ort:** im Engine-Paket statt in einem eigenen Workspace – kein neues Paket in Root-Workspaces, Lockfile und Build; die Typen hängen ohnehin an Engine-Typen (`Action`, `LegalActions`, `ShowdownHand`, `RoundStanding`). Das Modul ist rein (fällt unter die Engine-Reinheitsregeln) und browser-tauglich, Web und Server importieren es gleich. `index.ts` der Engine bleibt unverändert.
+- **Validierung:** handgeschrieben (`validate.ts`) statt `zod`: keine neue Abhängigkeit, im Browser nutzbar, und die Regeln (ganze Zahlen, Bereiche, Blind-Struktur über `validateRoundConfig`) sind Engine-Wissen. `parseClientMessage(text)` parst JSON, prüft `type` und alle Felder und kopiert nur bekannte Felder in ein neues Objekt; `validateTableSettings(input)` ergänzt Defaults.
+- **Format:** JSON-Textframes, max. `MAX_MESSAGE_BYTES` = 64 KiB. Jede Nachricht hat `type` (diskriminierte Unions `ClientMessage`/`ServerMessage`). Client-Nachrichten dürfen eine `requestId` (≤ 64 Zeichen) tragen; sie kommt in `error` bzw. `table.created` zurück. Engine-Spieler-ID = `String(userId)`.
+
+| Client → Server | Felder | Wirkung |
+|---|---|---|
+| `hello` | `protocolVersion` | Handshake, muss zuerst kommen; andere Version → `error UNSUPPORTED_VERSION` und Schließen mit Code 4000 |
+| `lobby.subscribe` / `lobby.unsubscribe` | – | Lobby-Liste abonnieren (`lobby.snapshot`, danach Updates) bzw. abbestellen |
+| `table.create` | `settings` (`name` Pflicht; `isPublic`, `maxSeats`, `startingStack`, `blindStructure`, `turnTimeSeconds`, `timeBankSeconds` optional) | Tisch anlegen (DB `tables`), Ersteller beobachtet ihn automatisch |
+| `table.join` | `tableId` **oder** `inviteCode` | Tisch beobachten (Zuschauen). Private Tische nur per Code (außer Ersteller und Spieler am Tisch), sonst `TABLE_NOT_FOUND` |
+| `table.leave` | `tableId` | nicht mehr beobachten; vor dem Start steht man dabei auch auf |
+| `table.sit` / `table.stand` | `tableId`, `seat` (0 … `maxSeats` − 1) | Platz nehmen/aufstehen, nur vor dem Start |
+| `table.start` | `tableId` | nur Ersteller, ≥ 2 Spieler; danach kein Einstieg mehr (D-012) |
+| `table.action` | `tableId`, `handNumber`, `seq`, `action` (`fold`, `check`, `call`, `bet`/`raise` mit `amount` = „to“, `allIn`) | Aktion des Spielers am Zug |
+
+| Server → Client | Inhalt |
+|---|---|
+| `welcome` | `protocolVersion`, `user { id, username }` |
+| `error` | `code`, `message` (deutsch), `requestId`, `tableId` – nur an den Absender |
+| `lobby.snapshot` / `lobby.update` / `lobby.remove` | alle öffentlichen offenen/laufenden Tische bzw. ein geänderter Eintrag (`LobbyTable`: Name, Ersteller, Status, Spieler/Plätze, Startstack, Blinds des ersten Levels, Blind-Typ, Zeitlimit, Zeitbank) bzw. Tisch weg (privat nie) |
+| `table.created` | `requestId`, `tableId`, `inviteCode` |
+| `table.state` | `TableView` – vollständige, für den Empfänger gefilterte Sicht, nach **jeder** Änderung neu |
+| `table.left` | Bestätigung von `table.leave` |
+| `table.roundFinished` | `standings` mit `user`, Platz, `sharedPlacement`, Punkten |
+
+Fehlercodes (`ErrorCode`): `BAD_MESSAGE`, `UNSUPPORTED_VERSION`, `HELLO_REQUIRED`, `INVALID_SETTINGS`, `TABLE_NOT_FOUND`, `NOT_AT_TABLE`, `INVALID_SEAT`, `SEAT_TAKEN`, `TABLE_FULL`, `ALREADY_SEATED`, `NOT_SEATED`, `ROUND_STARTED`, `NOT_CREATOR`, `NOT_ENOUGH_PLAYERS`, `NO_HAND_IN_PROGRESS`, `STALE_ACTION`, `NOT_YOUR_TURN`, `INVALID_ACTION`, `ILLEGAL_ACTION`, `AMOUNT_TOO_SMALL`, `AMOUNT_TOO_LARGE` (die letzten fünf aus der Engine), `INTERNAL`.
+
+- **Tisch-Einstellungen:** Defaults `DEFAULT_TABLE_SETTINGS`: öffentlich, 9 Plätze, Startstack `DEFAULT_STARTING_STACK` = 1.500, Standard-Blind-Struktur der Engine (steigend, D-012), 20 s Zug, 60 s Zeitbank (D-013); keine Antes (D-016). Grenzen: Name 1–50 Zeichen, 2–9 Plätze (D-007), Startstack 1 … 10⁸ (D-015), Zug 1–600 s, Zeitbank 0–3.600 s, Big Blind des ersten Levels ≤ Startstack (DB-Constraint). In der DB: `small_blind`/`big_blind` = erstes Level, `blind_structure` = die `BlindStructure` der Engine als JSON.
+- **`TableView`:** `id`, `inviteCode`, `createdBy`, `settings`, `status` (`open` → `running` → `finished`), `seats[]` (`seat`, `user`, `connected`), `spectators` (Anzahl), `round` (`RoundView` oder `null`), `you { userId, seat, isCreator }`. `RoundView` = `toClientView(round, viewerId, nowMs)`: Phase, Handnummer, `blindLevel` (aktuelles Level, `nextLevelAtMs`), Stacks/Platzierungen, `hand` (`HandView`), `standings`.
+
+### Filterung pro Empfänger (D-003)
+`toClientView(round, viewerId, nowMs)` bzw. `toHandView(hand, handNumber, viewerId)` (rein, `view.ts`): eigene Hole Cards immer; fremde nie vor dem Showdown und im Showdown nur `shownCards` (gemuckte nie); Deck und verbrannte Karten nie (die Felder fehlen); Handbewertungen (`reveals[].hand`) nur für gezeigte und die eigene Hand; `legalActions` nur für den Empfänger, wenn er am Zug ist; Zuschauer (`viewerId = null`) sehen keine Hole Cards. Zusätzlich: `actionSeq` (= Länge des Hand-Protokolls), `pot`, öffentliches `log`, `payouts`, Pots mit Gewinnern. Der Server berechnet die Sicht für jede Verbindung einzeln.
+
+### Ablauf
+1. **Upgrade** auf `/ws`: Origin-Prüfung (`403`), Session aus dem Cookie (`401`), sonst Verbindung. Der Browser schickt das Cookie automatisch mit (gleiche Origin über Vite-Proxy in dev bzw. nginx in prod, D-014); geprüft in dev über den Vite-Proxy und im Prod-Smoke-Test (`401` ohne Session, mit `SMOKE_COOKIE` voller Handshake).
+2. `hello` → `welcome`; danach Lobby abonnieren, Tisch erstellen oder beitreten.
+3. **Vor dem Start:** Sitzen/Aufstehen; jede Änderung → `table.state` an alle Beobachter und (bei öffentlichen Tischen) `lobby.update`.
+4. **Start** (Ersteller, ≥ 2 Spieler): Status sofort `running` (kein Hinsetzen mehr), DB: `tables.status = running`, `rounds` + `round_players` (ohne Platz/Punkte) in einer SQL-Anweisung; Button zufällig per Rng; erste Hand.
+5. **Hand:** Aktionen nur vom Spieler am Zug; `handNumber`/`seq` müssen zur aktuellen Hand passen, sonst `STALE_ACTION` (veralteter Klick, Doppelklick). Engine-Fehler gehen als `error` an den Absender, der Tisch läuft unverändert weiter.
+6. **Hand beendet:** `table.state` mit Showdown/Auszahlungen; nach `handPauseMs` (Standard `DEFAULT_HAND_PAUSE_MS` = 4 s, Tests 0) startet die nächste Hand automatisch. Zeit kommt aus der injizierten `Clock` (`systemClock`, Tests `ManualClock`).
+7. **Rundenende:** Status `finished`, `table.roundFinished` an alle Beobachter, Lobby `lobby.remove`; DB: `rounds` → `finished`, `round_players.placement`/`points`, `tables` → `closed` (eine SQL-Anweisung).
+
+### Tische im Speicher, Robustheit
+- Ein Prozess hält alle Tische (`GameServer` → `Table`); Zustandsänderungen sind synchron, nur DB-Zugriffe und Hooks asynchron. Nachrichten einer Verbindung werden nacheinander verarbeitet. Jede Nachricht läuft in einem `try/catch`: Fehler → `error` an den Absender (`INTERNAL`), andere Tische und der Server laufen weiter. Schlägt das Speichern des Starts fehl, bleibt der Tisch `open`.
+- **Verbindungsstatus:** pro Tisch zählt der Server offene Verbindungen je User (`Table.isConnected`, `seats[].connected`). Getrennte Spieler bleiben sitzen (D-012); ein Tab-Wechsel oder mehrere Tabs desselben Users sind möglich (Regeln dafür: WP-012).
+- **Aufräumen:** Ein offener Tisch ohne Beobachter und ohne Spieler wird geschlossen (`closed`, verschwindet aus der Lobby); ein beendeter Tisch verschwindet aus dem Speicher, sobald ihn niemand mehr beobachtet. Laufende Tische bleiben im Speicher.
+- **Repository:** `TableRepository` (`createTable`, `startRound`, `finishRound`, `closeTable`) mit `createPgTableRepository(db)` (Betrieb) und `InMemoryTableRepository` (Tests ohne DB).
+- **Neustart:** Tische und laufende Runden gehen verloren. Beim Start ruft `main.ts` `closeOrphanedTables(db)` auf: laufende Runden → `aborted` (ohne Platz/Punkte), offene und laufende Tische → `closed`. Clients verbinden sich neu und sehen eine leere Lobby. WP-013 präzisiert das Verhalten.
+
+### Erweiterungspunkte
+- **Hooks** (`GameHooks`, `buildApp({ game: { hooks } })`) für WP-013: `onHandStarted` (Hand nach Austeilen und Blinds), `onHandComplete` (abgeschlossene Hand + Runde danach), `onRoundComplete` (Ergebnis mit `userId`). Sie bekommen den vollständigen Serverzustand inkl. Deck und Hole Cards (nie an Clients geben), laufen pro Tisch strikt nacheinander in Ereignisreihenfolge (zusammen mit den DB-Schreibvorgängen), werden vom Spielablauf aber nicht abgewartet; Fehler werden geloggt und stören den Tisch nicht. `app.game.idle()` wartet auf alle eingereihten Hooks.
+- **WP-012** (Timer, Reconnect): `Table.actFor(userId, action)` (Aktion im Namen eines Spielers ohne `seq`-Prüfung), `Table.autoCheckOrFold(userId)` (D-013), `Table.isConnected(userId)`, `GameServer.getTable(id)`; Zug-Timer setzen in `Table.afterTransition` an (dort ist bekannt, wer als Nächstes am Zug ist). Reconnect funktioniert bereits über `table.join` mit derselben Session (liefert sofort die gefilterte Sicht inkl. eigener Karten).
+
+### Tests
+- `packages/engine/src/protocol/validate.test.ts` (gültige/ungültige Nachrichten, Defaults, Grenzen), `view.test.ts` (eigene/fremde Karten, Zuschauer, `legalActions`, Showdown mit Mucks, All-in, Fold-out, keine geteilten Referenzen).
+- `apps/server/src/ws.test.ts` (Upgrade `401`/`403`/`404`/`500`, Handshake, Versionsfehler, ungültige und zu große Nachrichten, Heartbeat), `game/game-server.test.ts` (ohne Netzwerk, `ManualClock`: Pause nach der Hand, Blind-Level, WP-012-Erweiterungspunkte, DB-Fehler beim Start), `game/game.ws.test.ts` (echte WebSockets, Port 0, In-Memory: 3 Bots spielen eine Runde bis zum Sieger, kein Client sieht je fremde Hole Cards – geprüft über alle empfangenen Nachrichten, strukturell und per Textsuche gegen die echten Karten aus `onHandStarted`; unerlaubte Aktionen, Start durch Nicht-Ersteller, Beitritt nach Start, 10. Spieler; Lobby-Updates; private Tische; Hook-Fehler), `game/game.db.test.ts` (mit `TEST_DATABASE_URL`: echte Sessions, Runde mit DB-Einträgen, `401` bei abgelaufener Session, geteilte Plätze, Neustart-Aufräumen). Hilfen: `game/ws-test-client.ts` (Client mit Mitschnitt, Bot, Leak-Prüfung).
+
 ## Datenmodell
 Postgres 16 (D-010). Schema in `apps/server/migrations/*.sql`, Runner und Zeilentypen in `apps/server/src/db/`.
 
@@ -251,7 +316,7 @@ Postgres 16 (D-010). Schema in `apps/server/migrations/*.sql`, Runner und Zeilen
 | `sessions` | Login-Sessions: `token_hash` (SHA-256 des Tokens, 32 Byte), `user_id`, `created_at`, `expires_at` | PK `token_hash`; Indizes auf `user_id` und `expires_at` (Aufräumen) |
 | `tables` | Tisch: `created_by`, `name`, `is_public`, `invite_code` (Link-Code, jeder Tisch hat einen), `max_seats` (2–9, D-007), `starting_stack`, `small_blind`, `big_blind`, `blind_structure` (JSONB, Form legt der Game-Server fest), `turn_time_seconds` (Standard 20) und `time_bank_seconds` (Standard 60, D-013), `status` (`open`/`running`/`closed`), `created_at`, `closed_at` | `invite_code` eindeutig; Partial-Index für die Lobby (öffentlich, nicht geschlossen) |
 | `rounds` | Freezeout-Runde (D-012): `table_id`, `started_at`, `finished_at`, `status` (`running`/`finished`/`aborted`) | `finished_at` gesetzt ⇔ Status ≠ `running` |
-| `round_players` | Teilnahme: `round_id`, `user_id`, `seat` (0–8), `placement` (1 = Sieger), `points` | PK (`round_id`, `user_id`), Sitz und Platzierung je Runde eindeutig; `placement`/`points` sind `NULL`, solange die Runde läuft oder bei Abbruch |
+| `round_players` | Teilnahme: `round_id`, `user_id`, `seat` (0–8), `placement` (1 = Sieger), `points` | PK (`round_id`, `user_id`), Sitz je Runde eindeutig; Platzierung **nicht** eindeutig (geteilte Plätze, Migration 0002), Index (`round_id`, `placement`); `placement`/`points` sind `NULL`, solange die Runde läuft oder bei Abbruch |
 | `hands` | Hand einer Runde: `hand_number`, `button_seat`, Blinds, `board` (`text[]` mit Karten-Strings der Engine), `players` (JSONB: Sitz, User, Stack, Hole Cards zu Handbeginn), `result` (JSONB: Pots, Gewinner, gezeigte Karten), `started_at`, `finished_at` | Unique (`round_id`, `hand_number`) |
 | `hand_actions` | Aktion in einer Hand: `seq` (Reihenfolge ab 1), `user_id`, `street` (`preflop`…`river`), `action` (`small_blind`, `big_blind`, `fold`, `check`, `call`, `bet`, `raise`), `amount`, `is_all_in`, `created_at` | PK (`hand_id`, `seq`) |
 | `schema_migrations` | vom Migrations-Runner verwaltet: `version`, `checksum`, `applied_at` | PK `version` |
@@ -300,8 +365,60 @@ Host 127.0.0.1:4321 (Debug) ─────────────────�
 - **Proxy-Header:** nginx setzt `X-Forwarded-For` auf `CF-Connecting-IP` (hinter dem Tunnel) bzw. die Peer-Adresse und reicht `X-Forwarded-Proto` von cloudflared durch; der Server vertraut ihnen nur in prod (`trustProxy`).
 - **cloudflared:** eigener Tunnel für Poker, unabhängig vom Jarvis-Tunnel (D-014); `TUNNEL_TOKEN` aus `.env.prod`. Public Hostname `poker.arthur-reuss.de` → `http://web:8080`.
 
+## Frontend
+React 19 + Vite, Routing mit `react-router` (Deklarativ: `BrowserRouter`/`Routes`). Keine UI-Bibliothek.
+
+### Struktur (`apps/web/src`)
+| Pfad | Inhalt |
+|---|---|
+| `main.tsx`, `App.tsx` | Einstieg; `App` = `AuthProvider` + `BrowserRouter` + `AppRoutes` (Tests rendern `AppRoutes` in einem `MemoryRouter`) |
+| `api/` | `client.ts` (`apiRequest`, `ApiError`), `auth.ts` (`register`, `login`, `logout`, `me`), `ws.ts` (`wsUrl`); Export über `api/index.ts` |
+| `auth/` | `AuthContext.tsx` (`AuthProvider`, `useAuth`), `guards.tsx` (`RequireAuth`, `RequireAdmin`, `RedirectIfAuthenticated`), `validation.ts` (Regeln wie der Server) |
+| `layout/AppShell.tsx` | Kopfzeile mit App-Name, Menü (Lobby, Rangliste, Einstellungen, Admin nur für Admins, Abmelden) und Feedback-Slot; `<Outlet>` für die Seite |
+| `feedback/FeedbackSlot.tsx` | leerer Platzhalter (`data-slot="feedback"`) für den Feedback-Button aus WP-024 |
+| `pages/` | Login, Registrierung, Lobby, Rangliste, Einstellungen, Admin, Tisch – außer Login/Registrierung/Einstellungen noch Platzhalter |
+| `settings/orientation.ts` | `useOrientationPreference()` (D-009) |
+| `styles/` | `tokens.css` (Vertrag, siehe „Design-Tokens (Web)“), `global.css`, `cx.ts` (Klassen verbinden) |
+| `table/` | Tischansicht (WP-016 ff.) |
+| `test/` | Test-Setup (jest-dom, Cleanup) und `mockApi` (ersetzt `fetch` je `"METHODE /pfad"`) |
+
+### Routing
+| Pfad | Seite | Zugriff |
+|---|---|---|
+| `/login`, `/register` | Anmelden, Registrieren | nur ausgeloggt (eingeloggt → Zielseite bzw. `/`) |
+| `/` | Lobby (Platzhalter bis WP-015) | eingeloggt, in der App-Shell |
+| `/leaderboard` | Rangliste (Platzhalter bis WP-019) | eingeloggt, App-Shell |
+| `/settings` | Einstellungen (Ausrichtung) | eingeloggt, App-Shell |
+| `/admin/*` | Admin (Platzhalter; WP-024: `/admin/feedback`) | nur `isAdmin`, sonst Umleitung auf `/` |
+| `/table/:id` | Tisch (`pages/TablePage.tsx`, Platzhalter bis WP-016/018) | eingeloggt, **ohne** App-Shell (volle Fläche, eigenes Tisch-Menü) |
+| sonst | „Seite nicht gefunden“ | eingeloggt, App-Shell |
+
+Auth-Zustand: `AuthProvider` fragt beim Start einmal `GET /api/me` (`loading` → `authenticated` bzw. `anonymous`; auch ein nicht erreichbarer Server gilt als ausgeloggt). `RequireAuth` leitet Ausgeloggte auf `/login` und merkt sich die Zielseite in `location.state.from` (nur interne Pfade); nach Login/Registrierung leitet `RedirectIfAuthenticated` dorthin. Nach bewusstem Abmelden gibt es kein Rücksprungziel. Das Admin-Flag kommt aus `/api/me` (`isAdmin`); die echte Prüfung macht der Server.
+
+### API-Client (`src/api/`)
+- `apiRequest<T>(path, { method, body, signal })`: nur relative Pfade (`/api/...`, absolute URLs werfen – D-014), `credentials: 'same-origin'` (Session-Cookie), Body als JSON.
+- Antworten ≥ 400 werden zu `ApiError { status, code, message }`; `code`/`message` stammen aus dem Server-Format `{ error, message }` (siehe „Auth“). Clientseitige Codes: `network` (Server nicht erreichbar, `status` 0) und `unknown` (Antwort ohne Fehler-Body). Die UI zeigt `message` direkt an (deutsche Texte vom Server).
+- `wsUrl('/ws')` baut die WebSocket-URL aus `location` (`https:` → `wss:`, sonst `ws:`; gleicher Host inkl. Port). Die Verbindung selbst folgt mit WP-011/018.
+- Formular-Validierung (`auth/validation.ts`) spiegelt die Server-Regeln (Name 3–20 aus `[A-Za-z0-9_-]`, Passwort 8–128, Registrierung mit Wiederholung; Login prüft nur Pflichtfelder) – nur für schnelle Rückmeldung, der Server prüft selbst.
+
+### Styling
+CSS-Modules (`*.module.css` neben der Komponente, von Vite ohne Zusatzpaket unterstützt) für Komponenten, dazu `styles/global.css` (Reset, Body, `100dvh`, `overscroll-behavior: none` gegen Pull-to-Refresh/Gummiband, Klasse `.safe-area` mit `env(safe-area-inset-*)` für Notch/Home-Indikator, `viewport-fit=cover` in `index.html`) und `styles/tokens.css`. Farben, Abstände, Rundungen und Schrift nur über die Tokens. Klassen aus CSS-Modules sind `string | undefined` typisiert → zusammensetzen mit `cx(...)`.
+
+### Einstellungen
+`useOrientationPreference()` liefert `[preference, setPreference]` mit `'auto' | 'portrait' | 'landscape'` (D-009). Gespeichert in `localStorage` unter `poker.orientation` (Zugriffe in try/catch, sonst nur im Speicher); alle Hook-Nutzer und andere Tabs (`storage`-Event) sehen Änderungen sofort (`useSyncExternalStore`). Wie das Layout daraus folgt, entscheidet die Tischansicht (WP-017).
+
+### PWA
+- `vite-plugin-pwa` (`generateSW`, `registerType: 'autoUpdate'`, Registrierung per `registerSW.js` mit `defer`, kein Inline-Script). Der Service Worker precacht nur die Build-Dateien (`js, css, html, svg, png, webmanifest`); `navigateFallback: /index.html` für SPA-Navigation mit Denylist für `/api` und `/ws`, **kein** Runtime-Caching. API und WebSocket gehen immer ans Netz. Im Dev-Server ist der Service Worker aus.
+- Manifest (`manifest.webmanifest`, generiert): Name/Kurzname „Poker“, `display: standalone`, `orientation: any`, `start_url`/`scope` `/`, Theme- und Hintergrundfarbe = `--color-bg`, Icons 192/512, maskable 512, SVG.
+- iOS: `apple-mobile-web-app-capable`, `apple-mobile-web-app-status-bar-style: black-translucent` (Inhalt unter der Statusleiste, deshalb Safe-Area-Insets), `apple-touch-icon` 180 px; dazu `mobile-web-app-capable` und `theme-color`.
+- Icons in `public/icons/` sind eigene Grafiken, erzeugt von `scripts/generate-icons.mjs` (`npm run icons -w @poker/web`, rendert ein im Skript definiertes SVG mit `@resvg/resvg-js`; Farben aus `tokens.css`). Die PNGs sind eingecheckt, der Build braucht das Skript nicht. Herkunft/Lizenzen: [apps/web/ASSETS.md](../apps/web/ASSETS.md).
+- nginx (prod) liefert `sw.js`, `registerSW.js`, Manifest und `index.html` mit `Cache-Control: no-cache`, gehashte `/assets/` langlebig.
+
+### Tests
+Vitest mit jsdom und Testing Library (`*.test.ts(x)` neben dem Code): `App.test.tsx` (Routen-Schutz, Rücksprung nach Login, Login-/Registrierungsfehler 400/401/409/429/Netzwerk, Admin-Menü, Abmelden, Einstellungen), `api/api.test.ts` (Client, Fehler, `wsUrl`), `auth/validation.test.ts`, `settings/orientation.test.ts`. `fetch` wird mit `test/mockApi.ts` ersetzt.
+
 ## Design-Tokens (Web)
-Gemeinsamer Vertrag für alle Frontend-WPs (D-008: Anmutung PokerStars, eigene Werte). Definiert in `apps/web/src/styles/tokens.css` (WP-014); Komponenten nutzen nur diese CSS-Variablen.
+Gemeinsamer Vertrag für alle Frontend-WPs (D-008: Anmutung PokerStars, eigene Werte). Definiert in [`apps/web/src/styles/tokens.css`](../apps/web/src/styles/tokens.css) (WP-014); Komponenten nutzen nur diese CSS-Variablen.
 
 | Variable | Zweck |
 |---|---|
@@ -312,10 +429,38 @@ Gemeinsamer Vertrag für alle Frontend-WPs (D-008: Anmutung PokerStars, eigene W
 | `--color-fold`, `--color-call`, `--color-raise` | Aktionsbuttons (rot, grün, gelb/orange) |
 | `--color-danger`, `--color-success` | Fehler, Bestätigung |
 | `--color-card-face`, `--color-card-red`, `--color-card-black` | Kartenfarben |
+| `--color-card-blue`, `--color-card-green` | Karo und Kreuz im optionalen Vier-Farben-Deck |
 | `--radius-sm`, `--radius-md`, `--radius-lg`, `--radius-pill` | Rundungen |
 | `--space-1` … `--space-6` | Abstände (4, 8, 12, 16, 24, 32 px) |
 | `--font-sans`, `--font-size-sm`, `--font-size-md`, `--font-size-lg` | Typografie |
 | `--shadow-md` | Schatten für Plaketten/Karten |
+
+## Frontend: Tischansicht (Layout-Schicht)
+Code unter `apps/web/src/table/` (WP-016 Hochformat, WP-017 Querformat und Umschalter). Die Tischansicht ist eine **reine Funktion** eines bereits gefilterten Tischzustands (D-003, D-009): keine eigene Spiellogik, kein Netzwerk, kein Zustand außer Darstellung. Beide Layouts nutzen dieselben Komponenten mit anderen Positionen und Maßen.
+
+**View-Model `TableView`** (`types.ts`) – darstellungsorientiert, ohne Server-/Protokolltypen (nur der Typ `Card` kommt aus `@poker/engine`); das Mapping Protokoll → `TableView` folgt in WP-018.
+- `seats`: genau 9 Einträge (D-007), Index = Sitznummer; `{ kind: 'empty' }` oder Spieler mit `name`, `stack`, `bet` (Einsatz der laufenden Straße), `status` (`active` | `folded` | `allIn` | `eliminated`), `connected` und `holeCards` (`none` | `hidden` | `visible` = eigene | `shown` = im Showdown aufgedeckt).
+- `heroSeat` (eigener Sitz, `null` = Zuschauer), `buttonSeat`, `smallBlindSeat`, `bigBlindSeat`, `toActSeat`, optional `timeRemaining` (0–1, Timer läuft auf dem Server, D-013).
+- `board` (0–5 Karten), `pots` (Main Pot zuerst, dann Side Pots), `blinds` (`small`, `big`, optional `level`, `ante`).
+
+**Layout** (`layout.ts`, rein und unit-getestet): `placeSeats(view)` zeichnet nur belegte Sitze. Der eigene Sitz steht immer unten mittig (Position `B`), die übrigen folgen im Uhrzeigersinn in Sitzreihenfolge; ohne eigenen Sitz steht der niedrigste belegte Sitz unten. `SLOTS_BY_COUNT` wählt je Spielerzahl (1–9) Positionen aus `PORTRAIT_SLOTS`, sodass die Spieler gleichmäßig verteilt sind. Jede Position hat Plaketten-Mittelpunkt und Einsatz-Anker in % der Tischfläche sowie die Seite für Dealer-Button/Blind-Marker. Seitliche Sitze liegen in zwei Reihen (L2/R2 oben, L1/R1 unten), dazwischen bleibt ein Band für Pots und Board.
+
+**Querformat (WP-017):** `placeSeats(view, layout)` mit `layout: 'portrait' | 'landscape'` (Standard Hochformat); `LAYOUT_TABLES` liefert je Layout die Positionstabelle (`PORTRAIT_SLOTS` bzw. `LANDSCAPE_SLOTS`, gleiche Positions-IDs) und die Verteilung je Spielerzahl (`SLOTS_BY_COUNT` bzw. `LANDSCAPE_SLOTS_BY_COUNT`). Die Sitzrotation ist in beiden Layouts gleich (eigener Sitz unten mittig). Im Querformat ist der Tisch breit und flach: drei Plätze oben (TL/T/TR), je zwei an den Seiten (L2/R2 oben, L1/R1 halbe Höhe), BL unten links; die Ecke unten rechts gehört der Aktionsleiste, `BR` sitzt deshalb darüber und wird nur bei 9 Spielern genutzt – bis 8 Spieler ist die Verteilung links/rechts symmetrisch (6 Spieler: B, L1, TL, T, TR, R1). Der eigene Einsatz steht links neben den eigenen Karten.
+
+**Welches Layout gilt (D-009):** `resolveLayout(preference, deviceLandscape)` (rein, in `layout.ts`): `auto` folgt dem Viewport, `portrait`/`landscape` erzwingen das Layout auch gegen die Gerätelage. `useTableLayout(preference)` (`useTableLayout.ts`) liest die Lage live per `matchMedia('(orientation: landscape)')` (`useSyncExternalStore`; ohne `matchMedia` gilt Hochformat). Erzwungenes Layout gegen die Gerätelage wird nicht gedreht, sondern eingepasst (Querformat-Tisch höchstens `56cqw` hoch und vertikal zentriert, Hochformat wie bisher höchstens `60cqh` breit) – auf Handys ist das klein, aber vollständig.
+
+**Umschalter und Zustand:** `TableScreen` = `PokerTable` + Layoutwahl + `TableMenu`. Präferenz aus `useOrientationPreference()` (dieselbe wie auf der Einstellungsseite, Änderungen wirken sofort in beide Richtungen); optional gesteuert über `preference`/`onPreferenceChange` (Testseite). `TableMenu`: Knopf oben links (`.pt-menu-slot`, absolut über der Kopfzeile, nimmt keinen Platz im Raster), Panel mit Ausrichtung Auto/Hoch/Quer, schließt bei Escape und Klick außerhalb; weitere Einträge per `menuItems` (WP-018). `PokerTable` hat für beide Layouts **denselben Elementbaum** (nur Klasse `pt-root--<layout>`, `data-layout` und Positionen ändern sich): ein Wechsel mountet nichts neu, Zustand in Aktionsleiste und Menü bleibt erhalten (belegt in `TableScreen.test.tsx`). Wer später den Tischzustand und die Verbindung hält (WP-018), sitzt oberhalb von `TableScreen` und ist vom Layout unabhängig.
+
+**Komponenten:** `PokerTable` (Props `view`, `fourColor`, `actionBar`, `layout`, `menu`; Kopfzeile mit Level/Blinds, ovaler Filz, Sitze, Einsätze, Pots + Board in der Mitte, unten der freie Bereich `actionBar` für die Aktionsleiste aus WP-018), `SeatPlate` (Name, Stack bzw. „All-in“/„Ausgeschieden“, Etikett „Fold“/„Getrennt“, Symbol bei getrennter Verbindung, Leuchtrand am Zug, Restzeit-Balken als Platzhalter für den Timer-Ring aus WP-018), `Card` (Vorder-/Rückseite, Größen `seat`/`board`/`hero`, optional Vier-Farben-Deck), `BetChips`, `DealerButton` (auch SB/BB-Marker), `Board` (freie Plätze bleiben reserviert), `PotDisplay` („Pot“ bzw. „Main Pot“/„Side Pot n“). Öffentliche API: `src/table/index.ts`.
+
+**Skalierung:** `.pt-host` und `.pt-root` sind Size-Container; im Hochformat ist `.pt-root` höchstens `60cqh` breit. Alle Größen sind Vielfache der Grundeinheit `--u` (Hochformat `1cqw`, Querformat `min(0.95cqh, 0.48cqw)` der Tischfläche), Positionen Prozent der Tischfläche – kein festes Pixel-Layout. Im Querformat hat das Raster nur Kopfzeile + Tisch; die Aktionsleisten-Fläche (`.pt-action-slot`, gleiches Element) liegt absolut unten rechts (`--pt-action-w` 200–340 px, `--pt-action-h` 72–120 px). Schriften haben eine Untergrenze von 11 px. Farben nur über die Design-Tokens oben; `table.css` mappt sie einmal auf lokale Aliase mit Fallback (`--pt-felt: var(--color-felt, …)`), damit die Ansicht auch ohne `tokens.css` funktioniert. Einzige tischlokale Farben: Karo/Kreuz im Vier-Farben-Deck.
+
+**Assets:** Karten, Kartenrücken, Chip, Dealer-Button und Symbole sind selbst gezeichnete React-SVG-Komponenten (D-008), Herkunft in `apps/web/src/table/ASSETS.md`.
+
+**Testseite und Tests:**
+- `dev/TableDevPage.tsx` mit Mock-Zuständen (`dev/mocks.ts`: 2/6/9 Spieler, Preflop, Flop mit Einsätzen, All-in mit Side Pots, Showdown, getrennt/ausgeschieden, dazu 3/4/5/7/8 Spieler) und Umschaltern (Zustand, 4 Farben, Ausrichtung) sowie dem Tisch-Menü (`TableScreen`); URL-Parameter `state=<id>`, `four=1`, `bare=1` (ohne Umschalter-Leiste), `layout=auto|portrait|landscape` (gilt nur für die Seite, ohne die gespeicherte Einstellung zu ändern; ohne Parameter gilt die gespeicherte Einstellung). Eigene Vite-Entry `apps/web/table-dev.html` → `src/table/dev/main.tsx` (im Dev-Server unter `/table-dev.html`, für Playwright); zusätzlich im App-Router unter `/dev/table`, nur wenn `import.meta.env.DEV` (nicht im Prod-Build).
+- Komponenten-Tests (Vitest + Testing Library, `// @vitest-environment jsdom` pro Datei): `layout.test.ts` (inkl. Querformat, `resolveLayout`), `PokerTable.test.tsx`, `TableScreen.test.tsx` (Layoutwechsel ohne Neu-Mounten, Auto folgt `matchMedia`, Menü, Einstellung).
+- Screenshot-Tests (Playwright, `apps/web/e2e-visual/`, Dateien `*.pw.ts` – Vitest sammelt sie nicht ein): je Mock-Zustand auf 360×740 und 430×932 (Hochformat) sowie 740×360 und 932×430 (Querformat, jeweils per „Auto“) Bounding-Box-Prüfungen (keine Überlappung zwischen Sitzen, Einsätzen, Pots, Board, Kopfzeile, Menü-Knopf; alles im Viewport und außerhalb der Aktionsleisten-Fläche; kein abgeschnittener Text, Schrift ≥ 11 px) plus Screenshot-Vergleich für 2/6/9 Spieler; dazu Umschalter-Tests (erzwungenes Layout, Drehen bei „Auto“, Menü-Auswahl ohne Neu-Mounten). Baselines in `e2e-visual/__screenshots__/` mit Plattform-Suffix (`-darwin`). Ausführen: `npm run test:visual -w @poker/web` (startet Vite auf Port 4316, D-006; Chromium einmalig per `npx playwright install chromium` im Workspace). Baselines aktualisieren: `npm run test:visual -w @poker/web -- --update-snapshots=all`. Nicht Teil von `npm run check` (langsam, plattformabhängig).
 
 ## Datenfluss
 prod: Browser → `https://poker.arthur-reuss.de` → Cloudflare-Tunnel → `web:8080` (nginx) → statische Dateien bzw. `/api/*`, `/ws` an `server:4321` → `db:5432` (siehe [Prod-Umgebung](#prod-umgebung)). Lokal ohne Tunnel: `http://localhost:4320`.
@@ -336,7 +481,7 @@ packages/
   engine/               @poker/engine – Poker-Logik (src/, Tests als *.test.ts daneben)
 apps/
   server/               @poker/server – Game-Server (src/main.ts Einstieg, src/app.ts buildApp, build.mjs Prod-Bundle)
-  web/                  @poker/web – Frontend (index.html, vite.config.ts, src/)
+  web/                  @poker/web – Frontend (index.html, vite.config.ts, src/, public/icons/, scripts/generate-icons.mjs, ASSETS.md)
 docker/
   dev.Dockerfile        Node-Image für server/web in dev
   server.Dockerfile     Prod-Image Server (multi-stage)

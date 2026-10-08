@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Smoke-Test der Prod-Umgebung über den Web-Container (WP-003), ohne Abhängigkeiten.
-// Prüft: GET /api/health, WS-Handshake auf /ws mit gültiger Origin (inkl. Echo durch den Proxy)
-// und dass eine fremde Origin abgelehnt wird.
+// Prüft: GET /api/health, WS-Upgrade auf /ws mit gültiger Origin, aber ohne Session → 401 (Anfrage kommt
+// durch den Proxy beim Server an, WP-011), fremde Origin → 403. Mit SMOKE_COOKIE (z. B.
+// `poker_session=<token>` aus dem Browser) zusätzlich der volle Handshake: 101, hello → welcome.
 //   npm run prod:smoke
 //   SMOKE_URL=http://localhost:4320 SMOKE_ORIGIN=https://poker.arthur-reuss.de node scripts/smoke-prod.mjs
 // Ohne SMOKE_ORIGIN wird PUBLIC_ORIGIN aus der Umgebung bzw. aus .env.prod genommen
@@ -80,7 +81,7 @@ async function checkHealth() {
 }
 
 /** Startet ein WS-Upgrade; löst mit { status, socket?, head? } auf. */
-function upgrade(wsOrigin) {
+function upgrade(wsOrigin, cookie) {
   return new Promise((resolve, reject) => {
     const request = baseUrl.protocol === 'https:' ? httpsRequest : httpRequest;
     const req = request(new URL('/ws', baseUrl), {
@@ -90,6 +91,7 @@ function upgrade(wsOrigin) {
         'Sec-WebSocket-Version': '13',
         'Sec-WebSocket-Key': randomBytes(16).toString('base64'),
         Origin: wsOrigin,
+        ...(cookie ? { Cookie: cookie } : {}),
       },
     });
     req.on('upgrade', (res, socket, head) => resolve({ status: res.statusCode, socket, head }));
@@ -102,32 +104,34 @@ function upgrade(wsOrigin) {
   });
 }
 
-async function checkWebSocket() {
-  const { status, socket, head } = await withTimeout(upgrade(origin), 'WS-Handshake');
-  if (status !== 101 || !socket) throw new Error(`WS mit Origin ${origin}: HTTP ${status} statt 101`);
+async function checkWebSocketWithoutSession() {
+  const { status, socket } = await withTimeout(upgrade(origin), 'WS ohne Session');
+  socket?.destroy();
+  if (status !== 401) throw new Error(`WS mit Origin ${origin} ohne Session: HTTP ${status} statt 401`);
+  return `${status} (Server erreicht, Session-Prüfung aktiv)`;
+}
+
+/** Voller Handshake mit Session-Cookie (nur mit SMOKE_COOKIE): 101, hello → welcome. */
+async function checkWebSocketWithSession() {
+  const { status, socket, head } = await withTimeout(upgrade(origin, sessionCookie), 'WS-Handshake');
+  if (status !== 101 || !socket) throw new Error(`WS mit Session: HTTP ${status} statt 101`);
   try {
     const texts = await withTimeout(
       new Promise((resolve, reject) => {
         let buffer = head ?? Buffer.alloc(0);
-        let sent = false;
-        const received = [];
         const onData = (chunk) => {
           buffer = Buffer.concat([buffer, chunk]);
           const decoded = decodeServerFrames(buffer);
           buffer = decoded.rest;
-          received.push(...decoded.texts);
-          if (!sent && received.length >= 1) {
-            socket.write(encodeClientTextFrame('smoke-echo'));
-            sent = true;
-          }
-          if (received.includes('smoke-echo')) resolve(received);
+          if (decoded.texts.some((t) => t.includes('"welcome"'))) resolve(decoded.texts);
         };
         socket.on('data', onData);
         socket.on('error', reject);
         socket.on('close', () => reject(new Error('Verbindung vorzeitig geschlossen')));
+        socket.write(encodeClientTextFrame(JSON.stringify({ type: 'hello', protocolVersion: 1 })));
         if (buffer.length > 0) onData(Buffer.alloc(0));
       }),
-      'WS-Nachrichten',
+      'WS welcome',
     );
     return `101, empfangen: ${texts.join(' | ')}`;
   } finally {
@@ -143,10 +147,12 @@ async function checkForeignOrigin() {
   return `${status} für ${foreign}`;
 }
 
+const sessionCookie = process.env.SMOKE_COOKIE;
 const checks = [
   ['GET /api/health', checkHealth],
-  [`WS /ws (Origin ${origin})`, checkWebSocket],
+  [`WS /ws ohne Session abgelehnt (Origin ${origin})`, checkWebSocketWithoutSession],
   ['WS /ws mit fremder Origin abgelehnt', checkForeignOrigin],
+  ...(sessionCookie ? [['WS /ws mit Session: hello → welcome', checkWebSocketWithSession]] : []),
 ];
 
 console.log(`Smoke-Test gegen ${baseUrl.origin}`);

@@ -1,6 +1,7 @@
 // @ts-check
 import js from '@eslint/js';
 import globals from 'globals';
+import reactHooks from 'eslint-plugin-react-hooks';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
@@ -17,6 +18,7 @@ export default tseslint.config(
             'scripts/*.mjs',
             'scripts/test/*.mjs',
             'apps/web/vite.config.ts',
+            'apps/web/vitest.config.ts',
             'apps/server/build.mjs',
           ],
         },
@@ -84,8 +86,13 @@ export default tseslint.config(
     },
   },
   {
+    files: ['apps/web/src/**/*.{ts,tsx}'],
+    ...reactHooks.configs.flat.recommended,
+  },
+  {
     files: ['**/*.js', '**/*.mjs'],
     ...tseslint.configs.disableTypeChecked,
-    languageOptions: { globals: globals.node },
+    // languageOptions zusammenführen, sonst gehen die parserOptions von disableTypeChecked verloren.
+    languageOptions: { ...tseslint.configs.disableTypeChecked.languageOptions, globals: globals.node },
   },
 );

@@ -20,6 +20,8 @@ npm run dev:logs       # Logs folgen
 npm run dev:down       # stoppen (DB-Volume poker-dev-db bleibt)
 ```
 - App: http://localhost:4310 (Hot-Reload für `apps/web` und `apps/server`)
+- Frontend allein gegen den laufenden dev-Server (z. B. aus einem Worktree): `API_PROXY_TARGET=http://localhost:4311 WEB_DEV_PORT=4315 npm run dev -w @poker/web`
+- Prod-Build des Frontends inkl. PWA (Manifest, Service Worker): `npm run build -w @poker/web`, ansehen mit `npm run preview -w @poker/web`; Icons neu erzeugen: `npm run icons -w @poker/web` (Aufbau: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), Abschnitt „Frontend“)
 - Health: http://localhost:4310/api/health (über den Vite-Proxy) bzw. http://localhost:4311/api/health
 - Postgres: `localhost:4312`, Benutzer/Passwort/DB `poker` (nur dev)
 
