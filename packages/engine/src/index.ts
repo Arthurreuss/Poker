@@ -39,3 +39,22 @@ export {
   handValue,
 } from './hand-eval';
 export type { HandCategory, HandResult, ShowdownEntry, ShowdownWinners } from './hand-eval';
+
+// --- Setzrunden (WP-006) ---
+export { applyAction, legalActions, potTotal, startHand } from './betting';
+export type { StartHandOptions, StartHandPlayer } from './betting';
+export type {
+  Action,
+  HandError,
+  HandErrorCode,
+  HandEvent,
+  HandPhase,
+  HandPlayer,
+  ActionResult,
+  HandState,
+  LegalAction,
+  LegalActions,
+  Payout,
+  PlayerStatus,
+  Street,
+} from './hand-state';
