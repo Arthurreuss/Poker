@@ -27,3 +27,15 @@ export { createDeck, deal, shuffle, shuffledDeck } from './deck';
 export type { DealResult } from './deck';
 export { createSeededRng } from './rng';
 export type { Rng } from './rng';
+
+// --- Handbewertung (WP-005) ---
+export {
+  HAND_CATEGORIES,
+  HAND_CATEGORY_NAMES,
+  HandEvaluationError,
+  compareHands,
+  determineWinners,
+  evaluateHand,
+  handValue,
+} from './hand-eval';
+export type { HandCategory, HandResult, ShowdownEntry, ShowdownWinners } from './hand-eval';
