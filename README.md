@@ -2,11 +2,14 @@
 
 Texas Hold'em für Freunde – **nur Spielgeld**, läuft per Docker auf dem eigenen Rechner.
 
-## Start
+## Setup
+Voraussetzung: Node 22 (`.nvmrc`, z. B. `nvm use`).
 ```sh
+npm ci          # Abhängigkeiten aller Workspaces installieren
 npm run setup   # einmalig: aktiviert den Pre-Commit-Hook
-npm run check   # Doku-Konsistenz + Tests
+npm run check   # Doku-Check + Typecheck + Lint + Tests
 ```
+Einzeln: `npm run typecheck`, `npm run lint`, `npm test`, `npm run format`. Aufbau und Skripte: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 | Branch | Umgebung |
 |---|---|

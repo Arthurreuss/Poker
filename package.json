@@ -3,13 +3,32 @@
   "private": true,
   "type": "module",
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
+  "workspaces": [
+    "packages/engine",
+    "apps/server",
+    "apps/web"
+  ],
   "scripts": {
     "setup": "git config core.hooksPath .githooks",
-    "test": "node --test scripts/test/",
+    "typecheck": "npm run typecheck --workspaces",
+    "lint": "eslint --max-warnings=0 .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "node --test \"scripts/test/**/*.test.mjs\" && vitest run",
     "docs:check": "node scripts/docs.mjs check",
     "docs:sync": "node scripts/docs.mjs sync",
-    "check": "npm run docs:check && npm test"
+    "check": "npm run docs:check && npm run typecheck && npm run lint && npm test"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^22.20.5",
+    "eslint": "^10.12.0",
+    "globals": "^17.13.0",
+    "prettier": "^3.9.9",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.71.1",
+    "vitest": "^5.0.3"
   }
 }
