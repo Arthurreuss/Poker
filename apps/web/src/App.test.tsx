@@ -187,7 +187,10 @@ describe('App-Shell', () => {
   });
 
   it('zeigt Admin-Menü nur für Admins', async () => {
-    mockApi({ 'GET /api/me': json(200, { user: ADMIN }) });
+    mockApi({
+      'GET /api/me': json(200, { user: ADMIN }),
+      'GET /api/admin/overview': json(500, { error: 'internal', message: 'Interner Fehler' }),
+    });
     renderApp('/');
     await heading('Lobby');
     await userEvent.click(screen.getByRole('link', { name: 'Admin' }));

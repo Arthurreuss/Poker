@@ -210,7 +210,7 @@ Einmalig einzurichten (Arthur, macOS-Systemeinstellungen – nicht automatisiert
 ## Feedback lesen
 Spieler schicken Feedback über den Knopf „Feedback“ in der App (Bug, Idee, Sonstiges; WP-024). Es landet in der Tabelle `feedback` (Aufbau: [ARCHITECTURE.md](ARCHITECTURE.md), „Datenmodell“ → „Feedback“).
 
-- **Im Browser:** als Admin unter `/admin/feedback` (Menü „Admin“ → „Feedback“), z. B. https://poker.arthur-reuss.de/admin/feedback oder https://poker.deinemudda.win/admin/feedback. Filter Neu/Gelesen/Erledigt/Alle; den Status je Eintrag über die Auswahl „Status“ ändern. Admin-Flag setzen: README, Abschnitt „Admin“.
+- **Im Browser (Dashboard, WP-029):** als Admin unter `/admin/feedback` (Menü „Admin“ → Bereich „Feedback“; die Übersicht `/admin` zeigt die Zahl neuer Einträge), z. B. https://poker.arthur-reuss.de/admin/feedback oder https://poker.deinemudda.win/admin/feedback. Filter Neu/Gelesen/Erledigt/Alle; den Status je Eintrag über die Auswahl „Status“ ändern. Admin-Flag setzen: README, Abschnitt „Admin“.
 - **Im Terminal (prod):** die CLI ist im Server-Image gebündelt:
   ```sh
   docker compose -p poker-prod exec server node cli/feedback.mjs                 # die 20 neuesten, alle Status
@@ -227,9 +227,10 @@ Spieler schicken Feedback über den Knopf „Feedback“ in der App (Bug, Idee, 
 ## Admin anlegen und Admin-Aktionen
 Admin wird man nur per CLI (D-029): `admin:make-admin <benutzername>` (prod: `docker compose -p poker-prod exec server node cli/make-admin.mjs <benutzername>`, mit `--revoke` entziehen; Aufrufe: README, Abschnitt „Admin“). Danach im Browser neu laden – das Flag kommt aus `/api/me`. Admin-Rechte nur an Vertrauenspersonen (D-027: Admins können am Tisch verdeckte Karten sehen).
 
-- **Aktionen** (vorerst nur per API, Oberfläche folgt mit WP-029; Endpunkte: [ARCHITECTURE.md](ARCHITECTURE.md), „Auth“ → „Admin (WP-028)“): Spieler sperren/entsperren, alle Sessions eines Spielers beenden, Passwort zurücksetzen (neues Zufallspasswort steht einmalig in der Antwort), Tisch schließen (laufende Runde wird ohne Punkte abgebrochen).
+- **Dashboard** (WP-029): Menü „Admin“ bzw. `/admin`. Übersicht mit aktiven Tischen, Spielern online, Runden heute (Europe/Berlin) und in den letzten 7 Tagen, neuem Feedback und Server-Health (Datenbank, Laufzeit, Speicher). Das **letzte Backup** steht dort nicht – der Server sieht den Backup-Ordner nicht; dafür `npm run prod:status`.
+- **Aktionen** im Dashboard (jeweils mit Bestätigung) oder per API (Endpunkte: [ARCHITECTURE.md](ARCHITECTURE.md), „Auth“ → „Admin (WP-028)“): unter „Spieler“ sperren (optional mit Begründung)/entsperren, abmelden (alle Sessions beenden), Passwort zurücksetzen – das neue Zufallspasswort erscheint **genau einmal** im Dialog („Kopieren“, dann „Fertig“), danach ist es nirgends mehr abrufbar; unter „Tische“ Tisch schließen (laufende Runde wird ohne Punkte abgebrochen).
 - **Sperre:** beendet sofort alle Anmeldungen und Verbindungen des Spielers; am Tisch wird er automatisch gecheckt/gefoldet. Beim Login sieht er „Dein Konto ist gesperrt“. Admins lassen sich nicht sperren – erst `--revoke`.
-- **Admin-Protokoll:** jede Aktion (auch die CLI-Befehle `make-admin` und `reset-password`) steht in der Tabelle `admin_audit_log`; lesen per `GET /api/admin/audit` oder SQL: `SELECT * FROM admin_audit_log ORDER BY id DESC LIMIT 50;`. Einträge werden nach **1 Jahr** automatisch gelöscht (D-025, Log „Admin-Protokoll: abgelaufene Einträge gelöscht“).
+- **Admin-Protokoll:** jede Aktion (auch die CLI-Befehle `make-admin` und `reset-password`) steht in der Tabelle `admin_audit_log`; lesen im Dashboard unter „Protokoll“, per `GET /api/admin/audit` oder SQL: `SELECT * FROM admin_audit_log ORDER BY id DESC LIMIT 50;`. Einträge werden nach **1 Jahr** automatisch gelöscht (D-025, Log „Admin-Protokoll: abgelaufene Einträge gelöscht“).
 
 ## Security-Checkliste
 Grundschutz der öffentlichen Seite (WP-022). Vor jedem Release mit Änderungen an nginx, Abhängigkeiten oder Datenverarbeitung durchgehen.

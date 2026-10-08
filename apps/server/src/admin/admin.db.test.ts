@@ -191,6 +191,8 @@ describe.skipIf(testDatabaseUrl === undefined)('Admin-Rolle (Test-DB)', () => {
           'POST /api/admin/users/:id/password',
           'POST /api/admin/tables/:id/close',
           'GET /api/admin/audit',
+          'GET /api/admin/overview',
+          'GET /api/admin/tables',
         ]),
       );
 
