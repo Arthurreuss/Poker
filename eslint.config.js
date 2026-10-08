@@ -11,11 +11,15 @@ export default tseslint.config(
     languageOptions: {
       parserOptions: {
         projectService: {
-          allowDefaultProject: ['*.js', '*.ts', 'scripts/*.mjs', 'scripts/test/*.mjs'],
+          allowDefaultProject: ['*.js', '*.ts', 'scripts/*.mjs', 'scripts/test/*.mjs', 'apps/web/vite.config.ts'],
         },
         tsconfigRootDir: import.meta.dirname,
       },
     },
+  },
+  {
+    files: ['apps/web/src/**/*.{ts,tsx}'],
+    languageOptions: { globals: globals.browser },
   },
   {
     files: ['**/*.js', '**/*.mjs'],

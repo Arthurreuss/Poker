@@ -12,6 +12,9 @@
   ],
   "scripts": {
     "setup": "git config core.hooksPath .githooks",
+    "dev:up": "docker compose -f compose.dev.yml -p poker-dev up -d --build --renew-anon-volumes",
+    "dev:down": "docker compose -f compose.dev.yml -p poker-dev down",
+    "dev:logs": "docker compose -f compose.dev.yml -p poker-dev logs -f",
     "typecheck": "npm run typecheck --workspaces",
     "lint": "eslint --max-warnings=0 .",
     "format": "prettier --write .",

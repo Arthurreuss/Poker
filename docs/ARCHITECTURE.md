@@ -3,13 +3,23 @@
 _Wird mit den ersten Code-WPs gefüllt. Beschreibt immer den **aktuellen** Stand, nicht Pläne – Pläne stehen in den WPs._
 
 ## Komponenten
-npm-Workspaces-Monorepo (D-004). Alle Workspaces sind TypeScript (ESM, `strict`). `packages/engine` enthält Karten, Deck und Zufall (siehe unten); `apps/server` und `apps/web` sind noch Platzhalter.
+npm-Workspaces-Monorepo (D-004). Alle Workspaces sind TypeScript (ESM, `strict`).
 
 | Workspace | Paket | Zweck |
 |---|---|---|
 | `packages/engine` | `@poker/engine` | reine Poker-Logik, keine I/O-Abhängigkeiten |
-| `apps/server` | `@poker/server` | Game-Server (später Fastify + `ws`); importiert `@poker/engine` |
-| `apps/web` | `@poker/web` | Frontend (später React + Vite als PWA) |
+| `apps/server` | `@poker/server` | Game-Server: Fastify mit `GET /api/health` (prüft die DB per `pg`); `ws` folgt; importiert `@poker/engine` |
+| `apps/web` | `@poker/web` | Frontend: React + Vite, derzeit Platzhalterseite mit Health-Anzeige (PWA folgt) |
+
+### Server (`apps/server/src`)
+- `config.ts` – `loadConfig(env)`: Konfiguration **nur** aus Umgebungsvariablen (D-014): `PORT`, `DATABASE_URL`, `PUBLIC_ORIGIN` (Pflicht), `HOST` (Standard `127.0.0.1`, im Container `0.0.0.0`), `NODE_ENV` (Standard `development`).
+- `db.ts` – `Database`-Schnittstelle (`ping`, `close`) und `createPgDatabase(url)` mit `pg.Pool`.
+- `app.ts` – `buildApp({ db })` baut die Fastify-App ohne `listen`; Tests nutzen `app.inject()` und können eine Fake-DB übergeben. `GET /api/health` → `200 { status: "ok", db: "ok" }` bzw. `503 { status: "error", db: "error" }`.
+- `main.ts` – Einstiegspunkt: Config laden, App bauen, `listen`, sauberes Beenden bei SIGTERM/SIGINT.
+
+### Web (`apps/web`)
+- `vite.config.ts` – Dev-Server-Einstellungen nur aus Umgebungsvariablen: `WEB_DEV_HOST`, `WEB_DEV_PORT`, `API_PROXY_TARGET` (Proxy für `/api` und `/ws` mit `ws: true`), `VITE_USE_POLLING`.
+- `src/health.ts` – `fetchHealth()` mit relativer URL `/api/health` (eine Origin, D-014); `src/App.tsx` zeigt Titel („Poker – dev“) und Health-Status.
 
 Workspaces importieren sich gegenseitig über den Paketnamen; `@poker/engine` exportiert direkt seine TypeScript-Quellen (`exports: ./src/index.ts`), es gibt noch keinen Build-Schritt.
 
@@ -23,12 +33,13 @@ Workspaces importieren sich gegenseitig über den Paketnamen; `@poker/engine` ex
 | Skript | Wirkung |
 |---|---|
 | `setup` | aktiviert den Pre-Commit-Hook (`core.hooksPath`) |
+| `dev:up` / `dev:down` / `dev:logs` | Docker-Dev-Umgebung starten (mit Build) / stoppen / Logs folgen |
 | `typecheck` | `tsc --noEmit` in allen Workspaces |
 | `lint` | ESLint über das ganze Repo |
 | `format` / `format:check` | Prettier schreiben bzw. prüfen |
 | `test` | Doku-Check-Tests (`node --test`) + Vitest aller Workspaces |
 | `docs:check` / `docs:sync` | Doku-Konsistenz prüfen bzw. PROGRESS-Tabelle generieren |
-| `check` | `docs:check` + `typecheck` + `lint` + `test` (läuft im Pre-Commit-Hook) |
+| `check` | `docs:check` + `format:check` + `typecheck` + `lint` + `test` (läuft im Pre-Commit-Hook) |
 
 In einem Workspace gehen auch `npm run typecheck` und `npm test` einzeln (oder vom Root aus mit `-w @poker/engine`).
 
@@ -42,8 +53,22 @@ Quellen in `packages/engine/src/` (`cards.ts`, `deck.ts`, `rng.ts`, `crypto-rng.
   - `cryptoRng` – Produktion, nutzt `crypto.randomInt` (unverzerrt, kryptografisch sicher). Liegt in `crypto-rng.ts`, der **einzigen** Engine-Datei mit Node-Import, und wird nur über den Subpfad `@poker/engine/crypto-rng` exportiert, damit `@poker/engine` selbst browser-tauglich und frei von I/O bleibt. Der Server (D-003) übergibt `cryptoRng` an die Engine.
 - **Reinheit:** Ein Test (`purity.test.ts`) prüft, dass nur `crypto-rng.ts` Node-Module importiert und keine Engine-Datei `Math.random`, `Date`, `process` o. Ä. nutzt. Die Engine-`tsconfig.json` lädt `@types/node` (für `crypto-rng.ts` und Tests).
 
+## Docker-Entwicklungsumgebung (dev)
+`compose.dev.yml`, Compose-Projekt `poker-dev` (D-002, D-005). Start/Stopp über `npm run dev:up` / `dev:down`, Logs `dev:logs`.
+
+| Dienst | Image | Im Container | Host (nur `127.0.0.1`, D-006) | Healthcheck |
+|---|---|---|---|---|
+| `db` | `postgres:16-alpine` | 5432 | 4312 (`DB_PORT`) | `pg_isready` |
+| `server` | `poker-dev-node` (`docker/dev.Dockerfile`) | 4311, `tsx watch src/main.ts` | 4311 (`SERVER_PORT`) | `GET /api/health` |
+| `web` | `poker-dev-node` | 4310, `vite` | 4310 (`WEB_PORT`) | `GET /` |
+
+- Daten der DB im Named Volume `poker-dev-db` (bleibt bei `dev:down` erhalten).
+- `docker/dev.Dockerfile` (`node:22-alpine`) installiert die Abhängigkeiten per `npm ci` **im Image** (Linux-Binaries). Das Repo wird nach `/app` gebunden (Hot-Reload), ein anonymes Volume über `/app/node_modules` verhindert, dass die macOS-`node_modules` des Hosts im Container landen. `dev:up` nutzt `--renew-anon-volumes`, damit nach Abhängigkeitsänderungen das frische `node_modules` aus dem Image verwendet wird.
+- Hot-Reload: Server per `tsx watch` mit Polling (`CHOKIDAR_USEPOLLING=true`, Dateievents kommen über den macOS-Bind-Mount bei tsx nicht an); Web per Vite-HMR über Dateievents, Polling optional (`WEB_WATCH_POLLING=true`).
+- Alle Werte mit Defaults in `compose.dev.yml`, überschreibbar per `.env` (Vorlage `.env.example`, `.env` ist gitignored).
+
 ## Datenfluss
-_noch keiner_
+dev: Browser → `http://localhost:4310` (Vite im `web`-Container). Anfragen an `/api/*` und `/ws` leitet der Vite-Proxy an `http://server:4311` im Compose-Netz weiter; der Server fragt Postgres unter `db:5432`. Der Server-Port 4311 und der DB-Port 4312 sind zusätzlich direkt vom Host erreichbar (Debugging, DB-Integrationstest).
 
 ## Verzeichnisstruktur
 ```
@@ -57,8 +82,12 @@ docs/
 packages/
   engine/               @poker/engine – Poker-Logik (src/, Tests als *.test.ts daneben)
 apps/
-  server/               @poker/server – Game-Server
-  web/                  @poker/web – Frontend
+  server/               @poker/server – Game-Server (src/main.ts Einstieg, src/app.ts buildApp)
+  web/                  @poker/web – Frontend (index.html, vite.config.ts, src/)
+docker/
+  dev.Dockerfile        Node-Image für server/web in dev
+compose.dev.yml         Dev-Umgebung (poker-dev)
+.env.example            alle Umgebungsvariablen mit Defaults
 scripts/
   docs.mjs              Doku-Check und -Sync
   test/                 Tests für die Skripte
