@@ -21,9 +21,9 @@ function renderApp(path: string) {
 const ME = { 'GET /api/me': json(200, { user: PLAYER }) };
 
 const BOARD: LeaderboardEntry[] = [
-  { rank: 1, userId: 7, name: 'anna', points: 12, rounds: 4, wins: 2 },
-  { rank: 1, userId: PLAYER.id, name: PLAYER.username, points: 12, rounds: 5, wins: 1 },
-  { rank: 3, userId: 9, name: 'cleo', points: 3, rounds: 4, wins: 0 },
+  { rank: 1, userId: 7, name: 'anna', avatar: 'owl', points: 12, rounds: 4, wins: 2 },
+  { rank: 1, userId: PLAYER.id, name: PLAYER.username, avatar: 'fox', points: 12, rounds: 5, wins: 1 },
+  { rank: 3, userId: 9, name: 'cleo', avatar: null, points: 3, rounds: 4, wins: 0 },
 ];
 
 describe('format', () => {
@@ -54,8 +54,9 @@ describe('Rangliste', () => {
     expect(rows.slice(1).map((r) => r.textContent)).toEqual([
       '1.anna1242',
       `1.${PLAYER.username} (du)1251`,
-      '3.cleo340',
+      '3.Ccleo340', // ohne Avatar: Anfangsbuchstabe (WP-032)
     ]);
+    expect(rows.slice(1).map((r) => within(r).getByTestId('avatar').dataset['avatar'])).toEqual(['owl', 'fox', 'none']);
     const own = rows[2];
     expect(own).toHaveAttribute('aria-current', 'true');
     expect(within(own as HTMLElement).getByText('1.')).toHaveAttribute('title', 'geteilter Platz');
@@ -66,7 +67,7 @@ describe('Rangliste', () => {
     mockApi({
       ...ME,
       'GET /api/leaderboard': json(200, {
-        players: [...BOARD, { rank: 4, userId: 11, name: 'neu', points: 0, rounds: 0, wins: 0 }],
+        players: [...BOARD, { rank: 4, userId: 11, name: 'neu', avatar: null, points: 0, rounds: 0, wins: 0 }],
       }),
     });
     renderApp('/leaderboard');
@@ -132,7 +133,7 @@ const ROUND: RoundSummary = {
 describe('Profil', () => {
   it('eigenes Profil: Kennzahlen und letzte Runden mit Link zur Runde', async () => {
     const stats: PlayerStats = {
-      player: { id: PLAYER.id, name: PLAYER.username },
+      player: { id: PLAYER.id, name: PLAYER.username, avatar: 'rocket' },
       rank: 2,
       points: 12,
       rounds: 5,
@@ -153,6 +154,7 @@ describe('Profil', () => {
     renderApp(`/players/${PLAYER.username}`);
     await screen.findByRole('heading', { level: 1, name: 'Meine Statistiken' });
     expect(await screen.findByText('25 %')).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: `${PLAYER.username}: Rakete` })).toBeInTheDocument();
     expect(screen.getByText('10 %')).toBeInTheDocument();
     expect(screen.getAllByText('–')).toHaveLength(2);
     const links = await screen.findAllByRole('link', { name: /Freitag/ });
@@ -176,7 +178,7 @@ describe('Profil', () => {
 
   it('Profil ohne beendete Runde: Platz „–“ (D-024)', async () => {
     const stats: PlayerStats = {
-      player: { id: 11, name: 'neu' },
+      player: { id: 11, name: 'neu', avatar: null },
       rank: null,
       points: 0,
       rounds: 0,

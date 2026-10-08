@@ -20,6 +20,8 @@ export interface UserRow {
   deleted_at: Date | null;
   /** Gesperrt seit (WP-028); `null` = nicht gesperrt. */
   banned_at: Date | null;
+  /** Avatar-ID aus `AVATAR_IDS` (WP-032, Migration 0008); `null` = keiner bzw. gelöschter Account. */
+  avatar: string | null;
 }
 
 export interface SessionRow {

@@ -67,6 +67,7 @@ export function serverView(game: Game | null, viewerId: number | null, options: 
   const seats = USERS.slice(0, n).map((user, seat) => ({
     seat,
     user: { ...user },
+    avatar: seat === 0 ? ('fox' as const) : null,
     connected: options.connected ?? true,
     timeBankMs: 60_000,
   }));

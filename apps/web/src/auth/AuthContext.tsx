@@ -1,5 +1,6 @@
 // Auth-Zustand der App: beim Start einmal GET /api/me, danach durch Login/Register/Logout gesetzt.
 import { createContext, use, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import type { AvatarId } from '@poker/engine/protocol';
 import * as api from '../api';
 import { ApiError, type Credentials, type User } from '../api';
 
@@ -21,6 +22,8 @@ export interface AuthContextValue {
   logout: () => Promise<void>;
   /** Konto löschen (WP-022); danach ausgeloggt. Wirft `ApiError` z. B. bei falschem Passwort (403). */
   deleteAccount: (password: string) => Promise<void>;
+  /** Eigenen Avatar setzen (WP-032); wirft `ApiError`. Der User im Kontext wird danach aktualisiert. */
+  setAvatar: (avatar: AvatarId | null) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -73,6 +76,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState({ status: 'anonymous', loggedOut: true, accountDeleted: true });
   }, []);
 
+  const setAvatar = useCallback(async (avatar: AvatarId | null) => {
+    const user = await api.updateAvatar(avatar);
+    setState((previous) => (previous.status === 'authenticated' ? { status: 'authenticated', user } : previous));
+  }, []);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       state,
@@ -81,8 +89,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       register,
       logout,
       deleteAccount,
+      setAvatar,
     }),
-    [state, login, register, logout, deleteAccount],
+    [state, login, register, logout, deleteAccount, setAvatar],
   );
 
   return <AuthContext value={value}>{children}</AuthContext>;

@@ -1,5 +1,6 @@
 // Rangliste, Statistiken und Hand-Historie (WP-019). Formate: docs/ARCHITECTURE.md, Abschnitt „Statistiken“.
 import type { Card } from '@poker/engine';
+import type { AvatarId } from '@poker/engine/protocol';
 import { apiRequest } from './client';
 
 export interface LeaderboardEntry {
@@ -7,6 +8,8 @@ export interface LeaderboardEntry {
   rank: number;
   userId: number;
   name: string;
+  /** Gewählter Avatar (WP-032); `null` = keiner. */
+  avatar: AvatarId | null;
   points: number;
   rounds: number;
   wins: number;
@@ -19,7 +22,7 @@ export interface Rate {
 }
 
 export interface PlayerStats {
-  player: { id: number; name: string };
+  player: { id: number; name: string; avatar: AvatarId | null };
   /** `null` = noch keine beendete Runde, nicht in der Rangliste (D-024). */
   rank: number | null;
   points: number;

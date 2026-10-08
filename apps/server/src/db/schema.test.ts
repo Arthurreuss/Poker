@@ -121,6 +121,24 @@ describe.skipIf(testDatabaseUrl === undefined)('Schema (Test-DB)', () => {
       // Der Name ist danach wieder frei.
       await insertUser('dave');
     });
+
+    it('Avatar (WP-032): optional, nur gültiges Format, gelöschte Accounts ohne Avatar', async () => {
+      const user = await insertUser('erin');
+      expect(user.avatar).toBeNull();
+      await s.pool.query(`UPDATE users SET avatar = 'fox' WHERE id = $1`, [user.id]);
+      for (const bad of ['', 'Fox', 'a b', 'x'.repeat(33), '1fox']) {
+        await expectPgError(
+          s.pool.query('UPDATE users SET avatar = $2 WHERE id = $1', [user.id, bad]),
+          CHECK_VIOLATION,
+        );
+      }
+      await expectPgError(
+        s.pool.query('UPDATE users SET username = NULL, password_hash = NULL, deleted_at = now() WHERE id = $1', [
+          user.id,
+        ]),
+        CHECK_VIOLATION,
+      );
+    });
   });
 
   describe('Fremdschlüssel', () => {

@@ -1,0 +1,19 @@
+/* Avatar (WP-032): Kreis-SVG; Größe setzt der Aufrufer. Platzhalter nur über Design-Tokens. */
+.avatar {
+  display: block;
+  flex: none;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+}
+
+.placeholder {
+  fill: var(--color-surface-2, #273341);
+}
+
+.initial {
+  fill: var(--color-text-muted, #9aa8b6);
+  font-family: var(--font-sans, system-ui, sans-serif);
+  font-size: 30px;
+  font-weight: 700;
+}

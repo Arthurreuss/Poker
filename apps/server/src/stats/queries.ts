@@ -2,6 +2,8 @@
 // `finished` und darin nur beendete Hände (D-019, D-022). Definitionen: docs/ARCHITECTURE.md, „Statistiken“.
 // Gelöschte Accounts (WP-022): Name `null`, egal ob die User-Zeile anonymisiert oder ganz weg ist.
 import type { Card } from '@poker/engine';
+import type { AvatarId } from '@poker/engine/protocol';
+import { toAvatarId } from '../avatar/avatar';
 import type { Queryable } from '../db';
 import type { HandActionType, RoundStatus, Street } from '../db/types';
 import type { StoredAction, StoredHandPlayer, StoredHandResult } from '../history/records';
@@ -13,6 +15,8 @@ export interface LeaderboardEntry {
   rank: number;
   userId: number;
   name: string;
+  /** Avatar (WP-032); `null` = keiner. */
+  avatar: AvatarId | null;
   points: number;
   /** Gewertete (beendete) Runden. */
   rounds: number;
@@ -29,12 +33,13 @@ export async function loadLeaderboard(db: Queryable): Promise<LeaderboardEntry[]
     rank: number;
     user_id: number;
     name: string;
+    avatar: string | null;
     points: number;
     rounds: number;
     wins: number;
   }>(
     `SELECT rank() OVER (ORDER BY coalesce(sum(rp.points), 0) DESC)::int AS rank,
-            u.id AS user_id, u.username AS name,
+            u.id AS user_id, u.username AS name, u.avatar,
             coalesce(sum(rp.points), 0)::int AS points,
             count(rp.round_id)::int AS rounds,
             count(*) FILTER (WHERE rp.placement = 1)::int AS wins
@@ -49,6 +54,7 @@ export async function loadLeaderboard(db: Queryable): Promise<LeaderboardEntry[]
     rank: r.rank,
     userId: r.user_id,
     name: r.name,
+    avatar: toAvatarId(r.avatar),
     points: r.points,
     rounds: r.rounds,
     wins: r.wins,
@@ -56,13 +62,16 @@ export async function loadLeaderboard(db: Queryable): Promise<LeaderboardEntry[]
 }
 
 /** Aktiver Account per Name (case-insensitive); `null`, wenn unbekannt oder gelöscht. */
-export async function findActiveUser(db: Queryable, name: string): Promise<{ id: number; name: string } | null> {
-  const { rows } = await db.query<{ id: number; username: string }>(
-    'SELECT id, username FROM users WHERE lower(username) = lower($1) AND deleted_at IS NULL',
+export async function findActiveUser(
+  db: Queryable,
+  name: string,
+): Promise<{ id: number; name: string; avatar: AvatarId | null } | null> {
+  const { rows } = await db.query<{ id: number; username: string; avatar: string | null }>(
+    'SELECT id, username, avatar FROM users WHERE lower(username) = lower($1) AND deleted_at IS NULL',
     [name],
   );
   const row = rows[0];
-  return row === undefined ? null : { id: row.id, name: row.username };
+  return row === undefined ? null : { id: row.id, name: row.username, avatar: toAvatarId(row.avatar) };
 }
 
 /**
@@ -94,7 +103,7 @@ export async function loadPlayerHands(db: Queryable, userId: number): Promise<Pl
 }
 
 export interface PlayerStats {
-  player: { id: number; name: string };
+  player: { id: number; name: string; avatar: AvatarId | null };
   /** `null` = noch keine beendete Runde, also nicht in der Rangliste (D-024). */
   rank: number | null;
   points: number;
