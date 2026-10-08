@@ -285,6 +285,44 @@ describe.skipIf(testDatabaseUrl === undefined)('Hand-Historie mit Postgres', () 
     expect(await loadRoundHands(s.pool, round2.id)).toEqual([]);
   }, 30_000);
 
+  it('automatische Aktionen (Zeitablauf, D-013) werden wie normale gespeichert und als automatisch markiert', async () => {
+    const ids = await users('ava', 'abe', 'amy');
+    const t = setup({ seed: 9 });
+    const tableId = await t.startTable(ids, { turnTimeSeconds: 1, timeBankSeconds: 0 });
+    const table = t.game.getTable(tableId);
+    if (table === undefined) throw new Error('Tisch fehlt');
+    // Erste Aktion selbst (Call), danach läuft für alle nur noch die Zeit ab → Check, sonst Fold.
+    expect(table.actFor(Number(table.round?.hand?.toActId), { type: 'call' }).ok).toBe(true);
+    for (let i = 0; i < 50 && table.round?.handNumber === 1 && table.round.hand?.phase === 'betting'; i++) {
+      t.clock.advance(1000);
+    }
+    expect(table.round?.hand?.phase).toBe('complete');
+    await t.game.idle();
+    expect(t.errors).toEqual([]);
+
+    const [hand] = await loadRoundHands(s.pool, (await roundOf(tableId)).id);
+    if (hand === undefined) throw new Error('Hand fehlt');
+    const actions = hand.actions.map((a) => [a.action, a.isAutomatic]);
+    expect(actions.slice(0, 3)).toEqual([
+      ['small_blind', false],
+      ['big_blind', false],
+      ['call', false],
+    ]);
+    expect(actions.length).toBeGreaterThan(3);
+    expect(actions.slice(3).every(([action, auto]) => auto === true && (action === 'check' || action === 'fold'))).toBe(
+      true,
+    );
+    const { rows } = await s.pool.query<{ n: number }>(
+      'SELECT count(*)::int AS n FROM hand_actions WHERE hand_id = $1 AND is_automatic',
+      [hand.id],
+    );
+    expect(rows[0]?.n).toBe(actions.length - 3);
+    // Replay ergibt denselben Datensatz inkl. Markierung.
+    const replayed = replayHandRecord(hand);
+    if (!replayed.ok) throw new Error(replayed.message);
+    expect(replayed.record).toEqual(stripMeta(hand));
+  });
+
   it('Neustart mitten in der Runde: Runde → aborted ohne Punkte, gespeicherte Hände bleiben (letzte ohne Ergebnis)', async () => {
     const ids = await users('ray', 'rob', 'ria');
     const t = setup({ seed: 8 });

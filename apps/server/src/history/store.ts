@@ -47,10 +47,10 @@ export function createPgHandHistoryStore(db: Queryable): HandHistoryStore {
              SET board = EXCLUDED.board, result = EXCLUDED.result, finished_at = EXCLUDED.finished_at
            RETURNING id
          )
-         INSERT INTO hand_actions (hand_id, seq, user_id, street, action, amount, is_all_in)
-         SELECT h.id, x.seq, x.user_id, x.street, x.action, x.amount, x.is_all_in
-           FROM h, unnest($12::int[], $13::int[], $14::text[], $15::text[], $16::int[], $17::bool[])
-                AS x(seq, user_id, street, action, amount, is_all_in)
+         INSERT INTO hand_actions (hand_id, seq, user_id, street, action, amount, is_all_in, is_automatic)
+         SELECT h.id, x.seq, x.user_id, x.street, x.action, x.amount, x.is_all_in, x.is_automatic
+           FROM h, unnest($12::int[], $13::int[], $14::text[], $15::text[], $16::int[], $17::bool[], $18::bool[])
+                AS x(seq, user_id, street, action, amount, is_all_in, is_automatic)
          ON CONFLICT (hand_id, seq) DO NOTHING`,
         [
           r.roundId,
@@ -70,6 +70,7 @@ export function createPgHandHistoryStore(db: Queryable): HandHistoryStore {
           a.map((x) => x.action),
           a.map((x) => x.amount),
           a.map((x) => x.isAllIn),
+          a.map((x) => x.isAutomatic),
         ],
       );
     },
@@ -128,6 +129,7 @@ async function loadWithActions(db: Queryable, hands: HandRow[]): Promise<LoadedH
           action: a.action,
           amount: a.amount,
           isAllIn: a.is_all_in,
+          isAutomatic: a.is_automatic,
         })),
       startedAt: h.started_at,
       finishedAt: h.finished_at,

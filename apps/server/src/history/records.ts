@@ -86,6 +86,8 @@ export interface StoredAction {
   /** In diesem Schritt eingezahlte Chips (bei Bet/Raise der Zuwachs, nicht „to“). */
   amount: number;
   isAllIn: boolean;
+  /** Vom Server ausgeführt (Zeitablauf oder getrennter Spieler → Check, sonst Fold, D-013). */
+  isAutomatic: boolean;
 }
 
 /** Eine Hand in der gespeicherten Form. `result`/`actions` erst bei beendeter Hand. */
@@ -132,8 +134,16 @@ const rank = (h: ShowdownHand): StoredHandRank => ({
   cards: [...h.cards],
 });
 
-/** Hand → gespeicherte Form. Bei laufender Hand (`phase === 'betting'`) ohne Ergebnis und Aktionen. */
-export function toHandRecord(roundId: number, handNumber: number, hand: HandState): HandRecord {
+/**
+ * Hand → gespeicherte Form. Bei laufender Hand (`phase === 'betting'`) ohne Ergebnis und Aktionen.
+ * `autoActionSeqs`: `seq` der automatisch ausgeführten Aktionen (aus `HandCompleteEvent`).
+ */
+export function toHandRecord(
+  roundId: number,
+  handNumber: number,
+  hand: HandState,
+  autoActionSeqs: readonly number[] = [],
+): HandRecord {
   if (hand.ante > 0) throw new Error('Antes gibt es nicht (D-016)');
   const complete = hand.phase === 'complete';
   return {
@@ -153,11 +163,11 @@ export function toHandRecord(roundId: number, handNumber: number, hand: HandStat
     })),
     board: complete ? [...hand.board] : [],
     result: complete ? toResult(hand) : null,
-    actions: complete ? hand.log.map(toStoredAction) : [],
+    actions: complete ? hand.log.map((e, i) => toStoredAction(e, i, autoActionSeqs)) : [],
   };
 }
 
-function toStoredAction(e: HandEvent, i: number): StoredAction {
+function toStoredAction(e: HandEvent, i: number, autoActionSeqs: readonly number[]): StoredAction {
   if (e.type === 'ante') throw new Error('Antes gibt es nicht (D-016)');
   return {
     seq: i + 1,
@@ -166,6 +176,7 @@ function toStoredAction(e: HandEvent, i: number): StoredAction {
     action: ACTION_TYPES[e.type],
     amount: e.amount,
     isAllIn: e.allIn,
+    isAutomatic: autoActionSeqs.includes(i + 1),
   };
 }
 

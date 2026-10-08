@@ -21,6 +21,12 @@ export function replayHandRecord(stored: HandRecord): ReplayResult {
     stored.actions.map(toReplayEvent),
   );
   if (!replayed.ok) return { ok: false, message: replayed.error.message };
+  // Ob eine Aktion automatisch war, weiß die Engine nicht – die Markierung wird übernommen.
+  const autoSeqs = stored.actions.filter((a) => a.isAutomatic).map((a) => a.seq);
   if (replayed.state.phase !== 'complete') return { ok: false, message: 'Aktionen enden vor dem Ende der Hand' };
-  return { ok: true, state: replayed.state, record: toHandRecord(stored.roundId, stored.handNumber, replayed.state) };
+  return {
+    ok: true,
+    state: replayed.state,
+    record: toHandRecord(stored.roundId, stored.handNumber, replayed.state, autoSeqs),
+  };
 }

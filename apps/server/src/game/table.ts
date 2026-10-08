@@ -95,6 +95,8 @@ export class Table {
   private readonly timeBanks = new Map<number, number>();
   private hookQueue: Promise<void> = Promise.resolve();
   private closed = false;
+  /** `seq` (ab 1) der automatischen Aktionen der laufenden Hand (WP-013, Hand-Historie). */
+  private autoActionSeqs: number[] = [];
 
   constructor(
     readonly id: number,
@@ -240,10 +242,15 @@ export class Table {
     return OK;
   }
 
-  /** Check, wenn möglich, sonst Fold (D-013) – für WP-012. */
+  /** Check, wenn möglich, sonst Fold (D-013) – für WP-012. In der Hand-Historie als automatisch markiert (WP-013). */
   autoCheckOrFold(userId: number): TableResult {
+    // Vorher merken: actFor löst bei Handende synchron onHandComplete aus.
+    this.autoActionSeqs.push((this.round?.hand?.log.length ?? 0) + 1);
     const checked = this.actFor(userId, { type: 'check' });
-    return checked.ok ? checked : this.actFor(userId, { type: 'fold' });
+    if (checked.ok) return checked;
+    const folded = this.actFor(userId, { type: 'fold' });
+    if (!folded.ok) this.autoActionSeqs.pop();
+    return folded;
   }
 
   /** Beendet Timer; der Tisch nimmt danach keine Spielschritte mehr vor. */
@@ -342,6 +349,7 @@ export class Table {
     if (this.closed || this.round === null) return;
     const now = this.deps.clock.now();
     const update = startNextHand(this.round, now, this.deps.rng);
+    this.autoActionSeqs = [];
     if (!update.ok) {
       this.deps.log.error({ tableId: this.id, error: update.error }, 'startNextHand fehlgeschlagen');
       return;
@@ -377,6 +385,7 @@ export class Table {
       handNumber: round.handNumber,
       hand: round.hand,
       round,
+      autoActionSeqs: [...this.autoActionSeqs],
       atMs: now,
     });
 

@@ -12,8 +12,8 @@ export function createHandHistoryHooks(store: HandHistoryStore, retry: RetryOpti
       const record = toHandRecord(roundId, handNumber, hand);
       await withRetry('saveHandStarted', { tableId, roundId, handNumber }, () => store.saveHandStarted(record), retry);
     },
-    async onHandComplete({ tableId, roundId, handNumber, hand }) {
-      const record = toHandRecord(roundId, handNumber, hand);
+    async onHandComplete({ tableId, roundId, handNumber, hand, autoActionSeqs }) {
+      const record = toHandRecord(roundId, handNumber, hand, autoActionSeqs);
       await withRetry(
         'saveHandCompleted',
         { tableId, roundId, handNumber },

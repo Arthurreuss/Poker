@@ -95,6 +95,8 @@ export interface HandActionRow {
   action: HandActionType;
   amount: number;
   is_all_in: boolean;
+  /** 0003: vom Server automatisch ausgeführt (Zeitablauf/Trennung, D-013). */
+  is_automatic: boolean;
   created_at: Date;
 }
 

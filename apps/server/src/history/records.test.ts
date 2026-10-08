@@ -81,6 +81,8 @@ describe('toHandRecord', () => {
         hand.players.map((p) => [Number(p.id), p.seat, p.startStack, p.holeCards]),
       );
       expect(r.actions.map((a) => a.seq)).toEqual(hand.log.map((_, i) => i + 1));
+      expect(r.actions.every((a) => !a.isAutomatic)).toBe(true);
+      expect(toHandRecord(7, 3, hand, [2]).actions.map((a) => a.isAutomatic)).toEqual(hand.log.map((_, i) => i === 1));
       expect(r.actions.slice(0, 2).map((a) => a.action)).toContain('big_blind');
       expect(r.actions.map(toReplayEvent)).toEqual(
         hand.log.map(({ street, playerId, type, amount, allIn }) => ({ street, playerId, type, amount, allIn })),
