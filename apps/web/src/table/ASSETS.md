@@ -10,5 +10,6 @@ Alle Grafiken der Tischansicht sind **selbst gezeichnet** (WP-016) als React-SVG
 | Chip | `assets/icons.tsx` (`ChipSvg`) | Scheibe mit sechs Randmarken und Innenring |
 | Dealer-Button, SB/BB-Marker | `assets/icons.tsx` (`MarkerDiscSvg`) | Scheibe mit „D“ bzw. „SB“/„BB“ |
 | Symbol „Verbindung getrennt“ | `assets/icons.tsx` (`DisconnectedSvg`) | unterbrochener Stecker |
+| Menü-Symbol (Tisch-Menü, WP-017) | `assets/icons.tsx` (`MenuSvg`) | drei abgerundete Balken |
 
 Text auf Karten und Markern nutzt die System-Schrift (`--font-sans`).
