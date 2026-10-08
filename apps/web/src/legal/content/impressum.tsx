@@ -1,6 +1,6 @@
 // Impressum (WP-022). Angaben von Arthur (2026-10-08); Änderungen nur in dieser Datei.
 // Bewusst ohne Telefonnummer und USt-ID: privates, nicht kommerzielles Angebot.
-// Für neue offene Angaben: <Placeholder>…</Placeholder> (gelb markiert).
+// Gilt für beide Domains (D-023). Keine Platzhalter – der Test in legal.test.tsx prüft das.
 import { Link } from 'react-router';
 import { DATENSCHUTZ_PATH } from '../LegalFooter';
 
@@ -11,9 +11,16 @@ export const PROVIDER = {
   email: 'poker@arthur-reuss.de',
 } as const;
 
+/** Domains, unter denen die App erreichbar ist (D-023); Impressum und Datenschutz gelten für alle. */
+export const DOMAINS = ['poker.arthur-reuss.de', 'poker.deinemudda.win'] as const;
+
 export function ImpressumContent() {
   return (
     <>
+      <p>
+        Dieses Impressum gilt für das Angebot unter {DOMAINS.join(' und ')} (dieselbe Anwendung unter zwei Adressen).
+      </p>
+
       <h2>Angaben gemäß § 5 DDG</h2>
       <p>
         {PROVIDER.name}

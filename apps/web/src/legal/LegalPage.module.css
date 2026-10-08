@@ -56,11 +56,3 @@
 .article a {
   color: var(--color-accent);
 }
-
-.placeholder {
-  padding: 0 var(--space-1);
-  border-radius: var(--radius-sm);
-  background: var(--color-accent);
-  color: var(--color-bg);
-  font-weight: 700;
-}
