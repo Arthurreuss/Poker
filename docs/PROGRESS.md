@@ -38,6 +38,7 @@
 | M6 | [WP-031](work-packages/WP-031.md) | Sounds und Animationen am Tisch | review | WP-026 |
 | M6 | [WP-032](work-packages/WP-032.md) | Avatare und Emoji-Reaktionen | done | WP-026 |
 | M6 | [WP-033](work-packages/WP-033.md) | Admin: verdeckte Karten aufdecken | done | WP-028 |
+| M6 | [WP-034](work-packages/WP-034.md) | Tisch kleiner, alle Spieler sichtbar | review | WP-017 |
 <!-- END GENERATED -->
 
 ## Meilensteine
