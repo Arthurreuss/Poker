@@ -4,6 +4,7 @@ import './seat-extras.css';
 import './fx/fx.css';
 import { Card, winHighlight } from './Card';
 import { formatChips } from './format';
+import { HandRankings } from './hands/HandRankings';
 import { placeSeats, seatMarker, type PlacedSeat, type TableLayout } from './layout';
 import { BetChips, Board, DealerButton, PotDisplay } from './parts';
 import { RevealableCards, type CardReveal } from './RevealableCards';
@@ -171,6 +172,7 @@ export function PokerTable({
   reveal,
 }: PokerTableProps) {
   const placed = placeSeats(view, layout);
+  const hasReactionPicker = reactionPicker !== undefined && reactionPicker !== null;
   return (
     <div className="pt-host">
       <div className={`pt-root pt-root--${layout}`} data-testid="poker-table" data-layout={layout}>
@@ -205,11 +207,18 @@ export function PokerTable({
         <div className="pt-menu-slot" data-testid="menu-slot">
           {menu}
         </div>
-        {reactionPicker !== undefined && reactionPicker !== null && (
+        {hasReactionPicker && (
           <div className="pt-react-slot" data-testid="react-slot">
             {reactionPicker}
           </div>
         )}
+        {/* Hand-Übersicht (WP-038): für alle am Tisch, auch Zuschauer; unter dem Reaktions-Knopf. */}
+        <div
+          className={hasReactionPicker ? 'pt-hands-slot pt-hands-slot--below' : 'pt-hands-slot'}
+          data-testid="hands-slot"
+        >
+          <HandRankings fourColor={fourColor} />
+        </div>
       </div>
     </div>
   );

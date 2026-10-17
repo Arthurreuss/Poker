@@ -208,4 +208,15 @@ describe('PokerTable – Avatare und Reaktionen (WP-032)', () => {
     expect(screen.queryByTestId('reaction')).toBeNull();
     expect(screen.queryByTestId('react-slot')).toBeNull();
   });
+
+  it('Knopf für die Hand-Übersicht für alle sichtbar, mit Reaktions-Knopf darunter (WP-038)', () => {
+    const { rerender } = render(
+      <PokerTable view={mock('six-flop')} reactionPicker={<button type="button">R</button>} />,
+    );
+    const slot = screen.getByTestId('hands-slot');
+    expect(within(slot).getByRole('button', { name: 'Pokerhände' })).toBeInTheDocument();
+    expect(slot).toHaveClass('pt-hands-slot--below');
+    rerender(<PokerTable view={mock('six-flop')} />);
+    expect(screen.getByTestId('hands-slot')).not.toHaveClass('pt-hands-slot--below');
+  });
 });

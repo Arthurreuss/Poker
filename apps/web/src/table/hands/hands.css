@@ -1,0 +1,217 @@
+/*
+ * Hand-Übersicht (WP-038): Knopf unter dem Reaktions-Knopf und Dialog mit allen Pokerhänden.
+ * Farben nur über die Design-Tokens (styles/tokens.css). Der Dialog liegt per Portal in <body>,
+ * also außerhalb von .pt-host – die Karten-Aliase (--pt-card-*) und --u setzt deshalb der Hintergrund.
+ */
+
+/* Platz oben rechts: unter dem Reaktions-Knopf, ohne Reaktions-Knopf direkt in der Ecke. */
+.pt-hands-slot {
+  position: absolute;
+  right: calc(1.5 * var(--u));
+  top: calc(1 * var(--u));
+  z-index: 10;
+}
+.pt-hands-slot--below {
+  top: calc(1 * var(--u) + var(--pt-menu-size) + max(6px, calc(1.5 * var(--u))));
+}
+
+.pt-hands-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--pt-menu-size, 40px);
+  height: var(--pt-menu-size, 40px);
+  padding: calc(var(--pt-menu-size, 40px) * 0.16);
+  border: 1px solid rgb(255 255 255 / 0.15);
+  border-radius: var(--pt-radius-md, 8px);
+  background: var(--pt-surface, #1c2530);
+  color: var(--pt-text, #fff);
+  box-shadow: var(--pt-shadow, none);
+  cursor: pointer;
+}
+.pt-hands-toggle[aria-expanded='true'] {
+  border-color: var(--pt-accent, #f2c14e);
+}
+.pt-hands-icon {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.pt-hands-icon-back {
+  fill: var(--color-surface-2, #273341);
+  stroke: currentcolor;
+  stroke-width: 1.4;
+}
+.pt-hands-icon-front {
+  fill: var(--color-card-face, #fbfaf5);
+  stroke: currentcolor;
+  stroke-width: 1.4;
+}
+.pt-hands-icon-pip {
+  fill: var(--color-card-red, #c8202f);
+}
+
+/* Dialog */
+.pt-hands-backdrop {
+  --pt-card-face: var(--color-card-face, #fbfaf5);
+  --pt-card-red: var(--color-card-red, #c8202f);
+  --pt-card-black: var(--color-card-black, #1b1b1f);
+  --pt-card-blue: var(--color-card-blue, #1f5fc4);
+  --pt-card-green: var(--color-card-green, #18803c);
+  --u: 2px;
+  --pt-card-seat-w: 34px;
+
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Abstand zu Notch, Statusleiste und Home-Balken (viewport-fit=cover) */
+  padding: max(var(--space-2, 8px), env(safe-area-inset-top)) max(var(--space-2, 8px), env(safe-area-inset-right))
+    max(var(--space-2, 8px), env(safe-area-inset-bottom)) max(var(--space-2, 8px), env(safe-area-inset-left));
+  background: rgb(0 0 0 / 0.6);
+  color: var(--color-text, #eef2f5);
+  font-family: var(--font-sans, system-ui, sans-serif);
+}
+
+.pt-hands-dialog {
+  box-sizing: border-box;
+  width: min(560px, 100%);
+  max-height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0 var(--space-3, 12px) var(--space-3, 12px);
+  border-radius: var(--radius-lg, 16px);
+  background: var(--color-surface, #1b232d);
+  box-shadow: var(--shadow-md, none);
+}
+
+.pt-hands-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2, 8px);
+  padding: var(--space-3, 12px) 0 var(--space-2, 8px);
+  background: var(--color-surface, #1b232d);
+}
+.pt-hands-title {
+  margin: 0;
+  font-size: var(--font-size-lg, 1.25rem);
+}
+.pt-hands-close {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-pill, 999px);
+  background: var(--color-surface-2, #273341);
+  color: inherit;
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.pt-hands-intro,
+.pt-hands-note {
+  margin: 0 0 var(--space-2, 8px);
+  color: var(--color-text-muted, #9aa8b6);
+  font-size: var(--font-size-sm, 0.875rem);
+}
+.pt-hands-note {
+  margin: var(--space-3, 12px) 0 0;
+}
+
+.pt-hands-list {
+  display: grid;
+  gap: var(--space-2, 8px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Jede Zeile ist ein eigener Container, damit sie auch in der Zwei-Spalten-Ansicht passend umbricht. */
+.pt-hands-item {
+  container-type: inline-size;
+}
+
+/* Schmal: Nummer und Text oben, Karten darunter. */
+.pt-hands-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    'rank text'
+    'rank cards';
+  column-gap: var(--space-2, 8px);
+  row-gap: var(--space-1, 4px);
+  align-items: center;
+  padding: var(--space-2, 8px);
+  border-radius: var(--radius-md, 8px);
+  background: var(--color-surface-2, #273341);
+}
+.pt-hands-rank {
+  grid-area: rank;
+  align-self: start;
+  min-width: 1.6em;
+  color: var(--color-accent, #e2b244);
+  font-weight: 800;
+  text-align: center;
+}
+.pt-hands-text {
+  grid-area: text;
+  min-width: 0;
+}
+.pt-hands-name {
+  margin: 0;
+  font-size: var(--font-size-md, 1rem);
+}
+.pt-hands-desc {
+  margin: 2px 0 0;
+  color: var(--color-text-muted, #9aa8b6);
+  font-size: var(--font-size-sm, 0.875rem);
+  line-height: 1.3;
+}
+.pt-hands-cards {
+  grid-area: cards;
+  display: flex;
+  gap: 3px;
+}
+
+/* Breit genug: Karten rechts neben dem Text. */
+@container (min-width: 460px) {
+  .pt-hands-row {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas: 'rank text cards';
+  }
+  .pt-hands-rank {
+    align-self: center;
+  }
+}
+
+/* Querformat mit wenig Höhe (Handy quer): breiter Dialog, Hände in zwei Spalten, kleinere Karten. */
+@media (orientation: landscape) and (max-height: 560px) {
+  .pt-hands-backdrop {
+    --pt-card-seat-w: 28px;
+  }
+  .pt-hands-dialog {
+    width: min(960px, 100%);
+  }
+  .pt-hands-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .pt-hands-intro {
+    display: none;
+  }
+}
+
+/* Kleine Handys hochkant (iPhone SE/mini): Karten etwas kleiner, damit fünf in eine Zeile passen. */
+@media (max-width: 360px) {
+  .pt-hands-backdrop {
+    --pt-card-seat-w: 30px;
+  }
+}
