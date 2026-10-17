@@ -2,7 +2,12 @@
  * Handgeschriebene Validatoren für eingehende Client-Nachrichten (WP-011). Jede Nachricht wird vollständig
  * geprüft und in ein frisches Objekt mit nur den bekannten Feldern kopiert (unbekannte Felder fallen weg).
  */
-import { DEFAULT_BLIND_STRUCTURE, type BlindLevel, type BlindStructure } from '../blind-structure';
+import {
+  DEFAULT_BLIND_STRUCTURE,
+  isHandsBlindStructure,
+  type BlindLevel,
+  type BlindStructure,
+} from '../blind-structure';
 import type { Action } from '../hand-state';
 import { DEFAULT_TIME_BANK_SECONDS, DEFAULT_TURN_TIME_SECONDS, validateRoundConfig } from '../round';
 import { isReactionId } from './avatars';
@@ -38,6 +43,9 @@ export const MAX_STARTING_STACK = 100_000_000;
 /** Dauer eines Blind-Levels bei steigenden Blinds (Minuten). */
 export const MIN_LEVEL_MINUTES = 1;
 export const MAX_LEVEL_MINUTES = 1440;
+/** Hände pro Blind-Level bei steigenden Blinds nach Händen (WP-036, D-033). */
+export const MIN_LEVEL_HANDS = 1;
+export const MAX_LEVEL_HANDS = 1000;
 const MAX_ID = 2 ** 31 - 1; // integer-IDs in Postgres (D-015)
 const MAX_HAND_NUMBER = 2 ** 31 - 1;
 const INVITE_CODE_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
@@ -112,6 +120,17 @@ function blindStructure(v: unknown): BlindStructure {
     if (!Array.isArray(levels) || levels.length === 0 || levels.length > 100) {
       fail('levels muss 1–100 Level enthalten');
     }
+    // Genau eins von beiden (D-033); ohne `levelHands` ist es die Zeit-Variante (wie vor WP-036).
+    if (v['levelHands'] !== undefined) {
+      if (v['levelMinutes'] !== undefined) {
+        fail('Blinds steigen entweder nach Zeit (levelMinutes) oder nach Händen (levelHands)');
+      }
+      return {
+        type: 'increasing',
+        levels: levels.map(blindLevel),
+        levelHands: int(v, 'levelHands', MIN_LEVEL_HANDS, MAX_LEVEL_HANDS),
+      };
+    }
     return {
       type: 'increasing',
       levels: levels.map(blindLevel),
@@ -160,9 +179,11 @@ function settings(v: unknown): TableSettings {
 }
 
 function structuredCopy(s: BlindStructure): BlindStructure {
-  return s.type === 'fixed'
-    ? { type: 'fixed', level: { ...s.level } }
-    : { type: 'increasing', levels: s.levels.map((l) => ({ ...l })), levelMinutes: s.levelMinutes };
+  if (s.type === 'fixed') return { type: 'fixed', level: { ...s.level } };
+  const levels = s.levels.map((l) => ({ ...l }));
+  return isHandsBlindStructure(s)
+    ? { type: 'increasing', levels, levelHands: s.levelHands }
+    : { type: 'increasing', levels, levelMinutes: s.levelMinutes };
 }
 
 /** Prüft Tisch-Einstellungen und ergänzt Defaults. */

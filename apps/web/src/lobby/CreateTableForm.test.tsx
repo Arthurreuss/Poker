@@ -51,6 +51,28 @@ describe('CreateTableForm', () => {
     });
   });
 
+  it('Blinds steigen wahlweise nach Zeit oder nach Händen (WP-036)', async () => {
+    const { onSubmit, user } = renderForm();
+    expect(screen.getByLabelText('Nach Zeit')).toBeChecked();
+    expect(screen.queryByLabelText('Hände pro Level')).not.toBeInTheDocument();
+    await user.click(screen.getByLabelText('Nach Händen'));
+    expect(screen.queryByLabelText('Minuten pro Level')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Hände pro Level')).toHaveValue('10');
+    await replace(user, 'Hände pro Level', '0');
+    await user.click(submit());
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(screen.getByText('Hände pro Level: 1–1.000')).toBeInTheDocument();
+    await replace(user, 'Hände pro Level', '5');
+    await user.click(submit());
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+    expect(onSubmit.mock.calls[0]?.[0].blindStructure).toMatchObject({ type: 'increasing', levelHands: 5 });
+    expect(onSubmit.mock.calls[0]?.[0].blindStructure).not.toHaveProperty('levelMinutes');
+
+    // Bei festen Blinds verschwindet die Auswahl.
+    await user.click(screen.getByLabelText('Fest'));
+    expect(screen.queryByLabelText('Nach Händen')).not.toBeInTheDocument();
+  });
+
   it('zeigt Fehler an den Feldern und sendet nichts', async () => {
     const { onSubmit, user } = renderForm();
     await replace(user, 'Tischname', '');

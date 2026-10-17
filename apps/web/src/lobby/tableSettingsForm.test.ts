@@ -61,6 +61,19 @@ describe('Formular „Tisch erstellen“: Defaults und Ergebnis', () => {
     expect(result.settings.blindStructure.levels[0]).toEqual({ smallBlind: 40, bigBlind: 80 });
   });
 
+  it('steigend nach Händen (WP-036): alle N Hände statt Minuten', () => {
+    const result = validateCreateTableForm(
+      base({ blindLevel: '1', levelBy: 'hands', levelHands: '8', levelMinutes: '' }),
+    );
+    if (!result.ok) throw new Error('ungültig');
+    expect(result.settings.blindStructure).toEqual({
+      type: 'increasing',
+      levels: DEFAULT_BLIND_LEVELS.slice(1),
+      levelHands: 8,
+    });
+    expect(validateTableSettings(result.settings)).toEqual({ ok: true, value: result.settings });
+  });
+
   it('jedes gültige Ergebnis besteht auch die Server-Prüfung', () => {
     const result = validateCreateTableForm(base({ startingStack: '20', blindLevel: '0', timeBankSeconds: '300' }));
     if (!result.ok) throw new Error('ungültig');
@@ -82,6 +95,9 @@ describe('Formular „Tisch erstellen“: Fehler je Feld (gleiche Grenzen wie de
     [{ timeBankSeconds: '-1' }, 'timeBankSeconds', 'Zeitbank muss eine ganze Zahl sein'],
     [{ timeBankSeconds: '301' }, 'timeBankSeconds', 'Zeitbank: 0–300 Sekunden'],
     [{ levelMinutes: '0' }, 'levelMinutes', 'Minuten pro Level: 1–1.440'],
+    [{ levelBy: 'hands', levelHands: '0' }, 'levelHands', 'Hände pro Level: 1–1.000'],
+    [{ levelBy: 'hands', levelHands: '1001' }, 'levelHands', 'Hände pro Level: 1–1.000'],
+    [{ levelBy: 'hands', levelHands: '' }, 'levelHands', 'Hände pro Level fehlt'],
     [{ blindLevel: '99' }, 'blindLevel', 'Bitte Start-Blinds wählen'],
     [
       { startingStack: '100', blindLevel: '5' },
@@ -93,8 +109,9 @@ describe('Formular „Tisch erstellen“: Fehler je Feld (gleiche Grenzen wie de
     expect(result).toEqual({ ok: false, errors: { [field]: message } });
   });
 
-  it('Minuten pro Level zählen bei festen Blinds nicht', () => {
-    expect(validateCreateTableForm(base({ blindMode: 'fixed', levelMinutes: '' })).ok).toBe(true);
+  it('Minuten/Hände pro Level zählen bei festen Blinds nicht', () => {
+    expect(validateCreateTableForm(base({ blindMode: 'fixed', levelMinutes: '', levelHands: '' })).ok).toBe(true);
+    expect(validateCreateTableForm(base({ levelBy: 'time', levelHands: 'x' })).ok).toBe(true);
   });
 
   it('meldet mehrere Fehler auf einmal', () => {

@@ -25,8 +25,15 @@ import type { GameHooks } from './hooks';
 import type { TableRepository } from './repository';
 import { Table, type Logger, type TableResult } from './table';
 
-/** Pause nach jeder Hand (Showdown-Anzeige), bevor die nächste startet. */
+/** Pause nach jeder Hand (Ergebnis-Anzeige), bevor die nächste startet. */
 export const DEFAULT_HAND_PAUSE_MS = 4000;
+
+/**
+ * Zusätzliche Pause nach einem Showdown (WP-039): Der Client dreht die Karten der Mitspieler erst ca. 1 s lang um
+ * (`SHOWDOWN_FLIP_MS` = 1,2 s) und zeigt dann Gewinner mit Krone; die Gewinneranzeige bleibt so gut 4 s stehen.
+ * Eine Showdown-Hand ohne Runout dauert damit insgesamt 5,5 s, eine durch Fold beendete weiter 4 s.
+ */
+export const DEFAULT_SHOWDOWN_PAUSE_MS = 1500;
 
 /**
  * Zusätzliche Pause je Straße eines All-in-Runouts (WP-031): Der Client deckt Flop, Turn und River dann
@@ -70,6 +77,8 @@ export interface GameServerOptions {
   handPauseMs?: number;
   /** Standard: {@link DEFAULT_RUNOUT_PAUSE_MS}. */
   runoutPauseMs?: number;
+  /** Standard: {@link DEFAULT_SHOWDOWN_PAUSE_MS}. */
+  showdownPauseMs?: number;
   /** Standard: {@link DEFAULT_DISCONNECT_GRACE_MS}. */
   disconnectGraceMs?: number;
   /** Standard: {@link DEFAULT_ORPHAN_TIMEOUT_MS}. */
@@ -154,6 +163,7 @@ export class GameServer {
   private readonly rng: Rng;
   private readonly handPauseMs: number;
   private readonly runoutPauseMs: number;
+  private readonly showdownPauseMs: number;
   private readonly disconnectGraceMs: number;
   private readonly orphanTimeoutMs: number;
   private readonly idleTableTimeoutMs: number;
@@ -166,6 +176,7 @@ export class GameServer {
     this.rng = options.rng ?? cryptoRng;
     this.handPauseMs = options.handPauseMs ?? DEFAULT_HAND_PAUSE_MS;
     this.runoutPauseMs = options.runoutPauseMs ?? DEFAULT_RUNOUT_PAUSE_MS;
+    this.showdownPauseMs = options.showdownPauseMs ?? DEFAULT_SHOWDOWN_PAUSE_MS;
     this.disconnectGraceMs = options.disconnectGraceMs ?? DEFAULT_DISCONNECT_GRACE_MS;
     this.orphanTimeoutMs = options.orphanTimeoutMs ?? DEFAULT_ORPHAN_TIMEOUT_MS;
     this.idleTableTimeoutMs = options.idleTableTimeoutMs ?? DEFAULT_IDLE_TABLE_TIMEOUT_MS;
@@ -458,6 +469,7 @@ export class GameServer {
       hooks: this.hooks,
       handPauseMs: this.handPauseMs,
       runoutPauseMs: this.runoutPauseMs,
+      showdownPauseMs: this.showdownPauseMs,
       disconnectGraceMs: this.disconnectGraceMs,
       orphanTimeoutMs: this.orphanTimeoutMs,
       log: this.options.log,

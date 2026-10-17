@@ -35,6 +35,7 @@ async function start(heartbeatIntervalMs?: number): Promise<string> {
       authenticate: fakeAuthenticate,
       handPauseMs: 0,
       runoutPauseMs: 0,
+      showdownPauseMs: 0,
     },
   });
   await app.listen({ host: '127.0.0.1', port: 0 });
@@ -99,6 +100,7 @@ describe('WebSocket /ws: Upgrade', () => {
         authenticate: fakeAuthenticate,
         handPauseMs: 0,
         runoutPauseMs: 0,
+        showdownPauseMs: 0,
       },
     });
     await app.listen({ host: '127.0.0.1', port: 0 });

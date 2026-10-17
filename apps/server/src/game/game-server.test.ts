@@ -82,8 +82,35 @@ describe('GameServer ohne Netzwerk', () => {
     expect(s.last(2).round?.hand?.phase).toBe('betting');
   });
 
+  it('Showdown verlängert die Pause für Aufdecken und Gewinneranzeige (WP-039)', async () => {
+    const s = setup({ showdownPauseMs: 1500 });
+    const { a, b, id } = await twoSeated(s);
+    await s.send(a, { type: 'table.start', tableId: id });
+    // Heads-up bis zum Showdown durchchecken (bzw. den Small Blind mitgehen).
+    for (let guard = 0; guard < 20; guard++) {
+      const hand = s.last(1).round?.hand;
+      if (hand?.phase !== 'betting' || hand.toActId === null) break;
+      const me = hand.players.find((p) => p.playerId === hand.toActId);
+      await s.send(hand.toActId === '1' ? a : b, {
+        type: 'table.action',
+        tableId: id,
+        handNumber: hand.handNumber,
+        seq: hand.actionSeq,
+        action: { type: (me?.streetBet ?? 0) < hand.currentBet ? 'call' : 'check' },
+      });
+    }
+    const done = s.last(1).round?.hand;
+    expect(done?.phase).toBe('complete');
+    expect(done?.showdown).not.toBeNull();
+    // 3000 (Grundpause) + 1500 (Showdown), kein Runout
+    s.clock.advance(4499);
+    expect(s.last(1).round?.handNumber).toBe(1);
+    s.clock.advance(1);
+    expect(s.last(1).round?.handNumber).toBe(2);
+  });
+
   it('All-in-Runout verlängert die Pause je ausgeteilter Straße (WP-031)', async () => {
-    const s = setup({ runoutPauseMs: 1000 });
+    const s = setup({ runoutPauseMs: 1000, showdownPauseMs: 1500 });
     const a = await s.client(1);
     const b = await s.client(2);
     const c = await s.client(3);
@@ -118,8 +145,8 @@ describe('GameServer ohne Netzwerk', () => {
     expect(done.round?.hand?.phase).toBe('complete');
     expect(done.round?.hand?.board).toHaveLength(5);
     expect(done.status).toBe('running');
-    // 3000 (Grundpause) + 3 Straßen × 1000
-    s.clock.advance(5999);
+    // 3000 (Grundpause) + 1500 (Showdown) + 3 Straßen × 1000
+    s.clock.advance(7499);
     expect(s.last(1).round?.handNumber).toBe(1);
     s.clock.advance(1);
     expect(s.last(1).round?.handNumber).toBe(2);
@@ -130,7 +157,52 @@ describe('GameServer ohne Netzwerk', () => {
     const { a, id } = await twoSeated(s);
     await s.send(a, { type: 'table.start', tableId: id });
     const level = s.last(1).round?.blindLevel;
-    expect(level).toEqual({ smallBlind: 10, bigBlind: 20, levelIndex: 0, nextLevelAtMs: 1_000_000 + 600_000 });
+    expect(level).toEqual({
+      smallBlind: 10,
+      bigBlind: 20,
+      levelIndex: 0,
+      nextLevelAtMs: 1_000_000 + 600_000,
+      handsLeftInLevel: null,
+    });
+  });
+
+  it('Blinds nach Händen (WP-036): Level steigt nach N Händen, nicht nach Zeit', async () => {
+    // Eine Stunde Pause zwischen den Händen: bei Zeit-Blinds (10 min) wäre jedes Mal ein neues Level fällig.
+    const s = setup({ handPauseMs: 60 * 60_000 });
+    const a = await s.client(1);
+    const b = await s.client(2);
+    const levels = [
+      { smallBlind: 10, bigBlind: 20 },
+      { smallBlind: 20, bigBlind: 40 },
+    ];
+    await s.send(a, {
+      type: 'table.create',
+      settings: { name: 'T', startingStack: 1000, blindStructure: { type: 'increasing', levels, levelHands: 2 } },
+    });
+    const id = s.last(1).id;
+    await s.send(a, { type: 'table.sit', tableId: id, seat: 0 });
+    await s.send(b, { type: 'table.join', tableId: id });
+    await s.send(b, { type: 'table.sit', tableId: id, seat: 1 });
+    await s.send(a, { type: 'table.start', tableId: id });
+    const seen: [number | undefined, number | undefined, number | null | undefined][] = [];
+    for (let i = 0; i < 3; i++) {
+      const round = s.last(1).round;
+      seen.push([round?.handNumber, round?.hand?.bigBlind, round?.blindLevel.handsLeftInLevel]);
+      const actor = round?.hand?.toActId === '1' ? a : b;
+      await s.send(actor, {
+        type: 'table.action',
+        tableId: id,
+        handNumber: i + 1,
+        seq: round?.hand?.actionSeq,
+        action: { type: 'fold' },
+      });
+      s.clock.advance(60 * 60_000);
+    }
+    expect(seen).toEqual([
+      [1, 20, 2],
+      [2, 20, 1],
+      [3, 40, null],
+    ]);
   });
 
   it('WP-012-Erweiterungspunkte: actFor/autoCheckOrFold handeln im Namen eines Spielers', async () => {

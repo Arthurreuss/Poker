@@ -39,19 +39,22 @@ describe('turnClockDisplay', () => {
   const clock: TurnClock = { seat: 0, startedMs: 0, turnEndsMs: 20_000, deadlineMs: 80_000 };
 
   it('normale Zugzeit: Anteil läuft von 1 auf 0, keine Zeitbank-Anzeige', () => {
-    expect(turnClockDisplay(clock, 0)).toEqual({ fraction: 1, timeBankSeconds: undefined });
-    expect(turnClockDisplay(clock, 15_000)).toEqual({ fraction: 0.25, timeBankSeconds: undefined });
+    expect(turnClockDisplay(clock, 0)).toEqual({ fraction: 1, timeBankSeconds: undefined, seconds: 20 });
+    expect(turnClockDisplay(clock, 15_000)).toEqual({ fraction: 0.25, timeBankSeconds: undefined, seconds: 5 });
+    // Sekunden aufgerundet: 4,2 s übrig → „5“
+    expect(turnClockDisplay(clock, 15_800).seconds).toBe(5);
   });
 
   it('danach Zeitbank: Ring neu gefüllt, Sekunden aufgerundet', () => {
-    expect(turnClockDisplay(clock, 20_000)).toEqual({ fraction: 1, timeBankSeconds: 60 });
-    expect(turnClockDisplay(clock, 50_500)).toEqual({ fraction: 29_500 / 60_000, timeBankSeconds: 30 });
-    expect(turnClockDisplay(clock, 90_000)).toEqual({ fraction: 0, timeBankSeconds: 0 });
+    expect(turnClockDisplay(clock, 20_000)).toEqual({ fraction: 1, timeBankSeconds: 60, seconds: 60 });
+    expect(turnClockDisplay(clock, 50_500)).toEqual({ fraction: 29_500 / 60_000, timeBankSeconds: 30, seconds: 30 });
+    expect(turnClockDisplay(clock, 90_000)).toEqual({ fraction: 0, timeBankSeconds: 0, seconds: 0 });
   });
 
   it('ohne Zeitbank (leer oder getrennt): Ring endet an der Deadline', () => {
     const grace: TurnClock = { seat: 0, startedMs: 0, turnEndsMs: 20_000, deadlineMs: 3_000 };
     expect(turnClockDisplay(grace, 1_500).fraction).toBeCloseTo(1_500 / 20_000);
-    expect(turnClockDisplay(grace, 5_000)).toEqual({ fraction: 0, timeBankSeconds: undefined });
+    expect(turnClockDisplay(grace, 1_500).seconds).toBe(2);
+    expect(turnClockDisplay(grace, 5_000)).toEqual({ fraction: 0, timeBankSeconds: undefined, seconds: 0 });
   });
 });

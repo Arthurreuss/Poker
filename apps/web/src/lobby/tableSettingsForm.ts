@@ -1,14 +1,16 @@
 // Formular „Tisch erstellen“ (WP-015): Werte, Defaults und Validierung mit denselben Grenzen wie der Server
 // (`@poker/engine/protocol`, D-012/D-013/D-016/D-020). Zum Schluss prüft `validateTableSettings` – also exakt
 // der Server-Code – das Ergebnis; die Feldprüfungen davor liefern nur verständliche Meldungen je Feld.
-import { DEFAULT_BLIND_LEVELS, DEFAULT_LEVEL_MINUTES, type BlindStructure } from '@poker/engine';
+import { DEFAULT_BLIND_LEVELS, DEFAULT_LEVEL_HANDS, DEFAULT_LEVEL_MINUTES, type BlindStructure } from '@poker/engine';
 import {
   DEFAULT_TABLE_SETTINGS,
+  MAX_LEVEL_HANDS,
   MAX_LEVEL_MINUTES,
   MAX_SEATS,
   MAX_STARTING_STACK,
   MAX_TIME_BANK_SECONDS,
   MAX_TURN_TIME_SECONDS,
+  MIN_LEVEL_HANDS,
   MIN_LEVEL_MINUTES,
   MIN_SEATS,
   MIN_TIME_BANK_SECONDS,
@@ -18,8 +20,11 @@ import {
   type TableSettings,
 } from '@poker/engine/protocol';
 
-/** Blind-Erhöhung: steigend alle X Minuten (Standard, D-012) oder fest. */
+/** Blind-Erhöhung: steigend (Standard, D-012) oder fest. */
 export type BlindMode = 'increasing' | 'fixed';
+
+/** Steigende Blinds: alle X Minuten (Standard) oder alle N Hände (WP-036, D-033). */
+export type LevelBy = 'time' | 'hands';
 
 /** Rohwerte der Eingabefelder (Zahlen als Text, wie sie im Feld stehen). */
 export interface CreateTableFormValues {
@@ -30,7 +35,9 @@ export interface CreateTableFormValues {
   /** Index in `DEFAULT_BLIND_LEVELS`: Blinds des ersten Levels. */
   blindLevel: string;
   blindMode: BlindMode;
+  levelBy: LevelBy;
   levelMinutes: string;
+  levelHands: string;
   turnTimeSeconds: string;
   timeBankSeconds: string;
 }
@@ -52,7 +59,9 @@ export function defaultCreateTableValues(username?: string): CreateTableFormValu
     startingStack: String(d.startingStack),
     blindLevel: '0',
     blindMode: 'increasing',
+    levelBy: 'time',
     levelMinutes: String(DEFAULT_LEVEL_MINUTES),
+    levelHands: String(DEFAULT_LEVEL_HANDS),
     turnTimeSeconds: String(d.turnTimeSeconds),
     timeBankSeconds: String(d.timeBankSeconds),
   };
@@ -107,6 +116,18 @@ export function validateCreateTableForm(values: CreateTableFormValues): CreateTa
   let blindStructure: BlindStructure | null = null;
   if (values.blindMode === 'fixed') {
     if (level !== undefined) blindStructure = { type: 'fixed', level: { ...level } };
+  } else if (values.levelBy === 'hands') {
+    const levelHands = take(
+      'levelHands',
+      intField(values.levelHands, 'Hände pro Level', MIN_LEVEL_HANDS, MAX_LEVEL_HANDS),
+    );
+    if (level !== undefined) {
+      blindStructure = {
+        type: 'increasing',
+        levels: BLIND_LEVEL_OPTIONS.slice(Number(values.blindLevel)).map((l) => ({ ...l })),
+        levelHands,
+      };
+    }
   } else {
     const levelMinutes = take(
       'levelMinutes',

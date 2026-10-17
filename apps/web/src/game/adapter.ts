@@ -16,6 +16,8 @@ import {
 } from '../table/types';
 import { REACTIONS } from '../reactions/reactions';
 import type { ReactionBubble } from './tableGame';
+import { heroHandName } from './handName';
+import { lastActionsOf } from './lastAction';
 import { turnClockDisplay, type TurnClock } from './turnClock';
 
 const EMPTY: SeatView = { kind: 'empty' };
@@ -93,6 +95,8 @@ export function toTableView(server: ServerTableView, options: AdaptOptions = {})
   const unpaid = holdResult ? unpaidPotsOf(hand) : null;
   const winners = hand !== null && hand.phase === 'complete' && !holdResult ? winnerIdsOf(hand) : null;
   const seats: SeatView[] = Array.from({ length: MAX_SEATS }, () => EMPTY);
+  // WP-037: letzte Aktion der laufenden Straße je Spieler (öffentliches Log).
+  const lastActions = hand === null ? null : lastActionsOf(hand);
 
   for (const s of server.seats) {
     if (s.seat < 0 || s.seat >= MAX_SEATS) continue;
@@ -124,6 +128,7 @@ export function toTableView(server: ServerTableView, options: AdaptOptions = {})
       bet = hand.phase === 'complete' ? 0 : handPlayer.streetBet;
       holeCards = holeCardsOf(hand, handPlayer, isHero);
     }
+    const lastAction = eliminated ? undefined : lastActions?.get(playerId);
     const seat: PlayerSeatView = {
       kind: 'player',
       name: s.user.username,
@@ -133,6 +138,7 @@ export function toTableView(server: ServerTableView, options: AdaptOptions = {})
       connected: s.connected,
       holeCards,
       avatar: s.avatar,
+      ...(lastAction === undefined ? {} : { lastAction }),
     };
     seats[s.seat] = seat;
   }
@@ -155,18 +161,28 @@ export function toTableView(server: ServerTableView, options: AdaptOptions = {})
         ? { small: level.smallBlind, big: level.bigBlind }
         : { small: firstLevel?.smallBlind ?? 0, big: firstLevel?.bigBlind ?? 0 };
   const levelNumber = increasing ? (level?.levelIndex ?? 0) + 1 : undefined;
+  // Blinds nach Händen (WP-036): Restzahl der Hände auf diesem Level; `null` = letztes Level oder nach Zeit.
+  const handsLeft = level?.handsLeftInLevel ?? null;
 
-  let timer: { timeRemaining?: number; timeBankSeconds?: number } = {};
+  let timer: { timeRemaining?: number; timeBankSeconds?: number; timeSeconds?: number } = {};
   const clock = options.turnClock ?? null;
   if (clock !== null && toActSeat !== null && clock.seat === toActSeat) {
     const display = turnClockDisplay(clock, options.nowMs ?? Date.now());
     timer = {
       timeRemaining: display.fraction,
+      timeSeconds: display.seconds,
       ...(display.timeBankSeconds === undefined ? {} : { timeBankSeconds: display.timeBankSeconds }),
     };
   }
 
   const board = hand?.board ?? [];
+  const shownBoard = reveal === null ? board : board.slice(0, reveal.board);
+  // WP-037: eigene beste Hand mit dem gezeigten Board (beim Runout Straße für Straße).
+  const heroCards = heroSeat === null ? undefined : seats[heroSeat];
+  const heroHand =
+    heroCards?.kind === 'player' && heroCards.holeCards.kind === 'visible'
+      ? heroHandName(heroCards.holeCards.cards, shownBoard)
+      : undefined;
   const winnerSeats =
     winners === null || hand === null ? [] : hand.players.filter((p) => winners.has(p.playerId)).map((p) => p.seat);
   const winningCards = winners === null ? undefined : hand?.showdown?.pots[0]?.winningHand?.cards;
@@ -179,12 +195,17 @@ export function toTableView(server: ServerTableView, options: AdaptOptions = {})
     bigBlindSeat: hand?.bigBlindSeat ?? null,
     toActSeat,
     ...timer,
-    board: reveal === null ? board : board.slice(0, reveal.board),
+    board: shownBoard,
     pots: hand === null ? [] : unpaid !== null ? unpaid.pots : potsOf(hand),
-    blinds: levelNumber === undefined ? blinds : { ...blinds, level: levelNumber },
+    blinds: {
+      ...blinds,
+      ...(levelNumber === undefined ? {} : { level: levelNumber }),
+      ...(handsLeft === null ? {} : { handsLeft }),
+    },
     ...(hand === null ? {} : { handNumber: hand.handNumber }),
     ...(winnerSeats.length > 0 ? { winnerSeats } : {}),
     ...(winningCards === undefined ? {} : { winningCards }),
+    ...(heroHand === undefined ? {} : { heroHand }),
   };
 }
 

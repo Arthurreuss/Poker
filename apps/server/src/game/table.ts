@@ -56,6 +56,8 @@ export interface TableDeps {
   handPauseMs: number;
   /** Zusätzliche Pause je Straße eines All-in-Runouts (Client deckt sie nacheinander auf, WP-031). */
   runoutPauseMs: number;
+  /** Zusätzliche Pause nach einem Showdown (Client dreht die Karten um, dann Gewinner mit Krone, WP-039). */
+  showdownPauseMs: number;
   /**
    * Gnadenfrist für getrennte Spieler am Zug (WP-012): so lange nach Zugbeginn bzw. Abbruch wartet der
    * Server höchstens, bevor er für sie checkt/foldet (Reload/Netzwechsel ohne Fold); in Tests frei wählbar.
@@ -544,7 +546,11 @@ export class Table {
       this.finish(round, roundId, now);
       return;
     }
-    const pause = handPauseFor(round.hand, this.deps.handPauseMs, this.deps.runoutPauseMs);
+    const pause = handPauseFor(round.hand, {
+      baseMs: this.deps.handPauseMs,
+      showdownMs: this.deps.showdownPauseMs,
+      perRunoutStreetMs: this.deps.runoutPauseMs,
+    });
     this.cancelPending = this.deps.clock.schedule(pause, () => {
       try {
         this.dealNextHand();

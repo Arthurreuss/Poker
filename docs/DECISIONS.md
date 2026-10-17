@@ -246,6 +246,7 @@ Format: Kontext → Entscheidung → Konsequenzen. Status: `akzeptiert`, `offen`
   - Endet die Runde live, bleibt der Rundenende-Dialog 5 s nach dem sichtbaren Ergebnis verborgen; ein Tipp oder eine Taste überspringt die Pause.
   - Sounds werden per Web Audio synthetisiert (keine Audiodateien, keine Lizenzfragen); Ton standardmäßig an (70 %), Vibration an, wo verfügbar; Einstellung nur im Gerät (`poker.sound`).
 - **Konsequenzen:** Der dargestellte Stand kann bis ca. 3,4 s hinter dem Server liegen, nur bei fertigen Händen; Eingaben sind dann ohnehin nicht möglich. Ein neuer Stand einer anderen Hand beendet die Staffelung sofort. Der Spieltest gegen einen älteren Dev-Server deckt die Server-Pause nicht ab.
+- **Ergänzung WP-039 (Showdown langsamer, Gewinner mit Krone):** Bei jedem Showdown drehen sich die Karten der Mitspieler sichtbar um (Flip per Web Animations API, ca. 1 s); der Client hält Gewinner und Auszahlung `SHOWDOWN_FLIP_MS` = 1,2 s zurück (auch ohne Animationen), ein Runout beginnt erst danach. Mit dem Ergebnis bekommt jeder Gewinner (bei Split alle) eine Krone am Platz, auf dem Avatar bzw. der Plaketten-Ecke. Der Server verlängert die Pause nach einem Showdown um `DEFAULT_SHOWDOWN_PAUSE_MS` = 1,5 s; die Grundpause (4 s, gilt allein für Fold-outs) und 1 s je Runout-Straße bleiben. Damit dauert eine Showdown-Hand 5,5 s (Gewinner 4,3 s sichtbar), ein Runout ab Preflop 8,5 s (Gewinner 5 s sichtbar), ein Fold-out weiter 4 s. Der dargestellte Stand liegt damit bei Runouts bis ca. 3,5 s hinter dem Server.
 
 ## D-032: Admin darf eigene Karten neu ziehen (WP-035)
 - **Status:** akzeptiert
@@ -256,3 +257,14 @@ Format: Kontext → Entscheidung → Konsequenzen. Status: `akzeptiert`, `offen`
   - Jedes Neuziehen wird im Admin-Protokoll vermerkt (`table.redraw_cards`); die Mitspieler sehen davon nichts.
   - Die Hand-Historie speichert die tatsächlich gespielten Karten (Deck und Spieler werden am Handende überschrieben), damit das Replay stimmt.
 - **Konsequenzen:** Ein Admin kann das Ergebnis einer Hand massiv beeinflussen; wie bei D-027 nur Vertrauenspersonen Admin-Rechte geben, das Protokoll macht es nachvollziehbar. Die beim Handstart gespeicherte Hand zeigt bis zum Handende die ursprünglichen Karten; bricht die Runde vorher ab, bleiben sie so stehen.
+
+## D-033: Blinds wahlweise nach Anzahl Hände erhöhen (WP-036)
+- **Status:** akzeptiert
+- **Kontext:** Arthur möchte, dass die Blinds nicht nur nach Zeit steigen („Blinds je Runde statt nur nach Zeit“). Eine „Runde“ ist hier das ganze Freezeout (D-012), gemeint ist also: alle N Hände.
+- **Entscheidung:**
+  - `increasing` bekommt eine zweite Variante `{ type: 'increasing', levels, levelHands }` neben `{ …, levelMinutes }`; genau eins der beiden Felder ist gesetzt, beides zusammen wird abgelehnt. Keine Kombination aus Zeit und Händen.
+  - Ohne `levelHands` ist es die Zeit-Variante – bestehende Strukturen (Code, Tests, gespeicherte `tables.blind_structure`) bleiben unverändert gültig, keine Migration.
+  - Level für Hand Nummer h (ab 1): `floor((h − 1) / levelHands)`, gekappt auf das letzte Level; die Zeit spielt dabei keine Rolle. Ein Level-Wechsel wirkt wie bisher nur ab Handbeginn.
+  - Grenzen: 1–1.000 Hände pro Level (`MIN_/MAX_LEVEL_HANDS`), Vorschlag im Formular 10 (`DEFAULT_LEVEL_HANDS`). Standard beim Tisch-Erstellen bleibt „nach Zeit, 10 Minuten“.
+  - Anzeige: `blindLevel.handsLeftInLevel` (Hände, die noch auf dem Level gespielt werden, laufende bzw. nächste Hand eingeschlossen); die Tisch-Kopfzeile zeigt „noch N Hände“ bzw. „noch 1 Hand“.
+- **Konsequenzen:** `BlindLevelView` hat ein zusätzliches Feld (Protokoll bleibt Version 1, Client und Server werden gemeinsam ausgeliefert). Bei wenigen Spielern steigen die Blinds pro Spielzeit schneller als an vollen Tischen, weil Hände dort schneller gehen – das ist bei dieser Variante gewollt.

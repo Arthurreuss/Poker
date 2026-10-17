@@ -33,6 +33,13 @@ export type HoleCardsView =
  */
 export type SeatStatus = 'active' | 'folded' | 'allIn' | 'eliminated';
 
+/**
+ * Letzte Aktion eines Spielers in der laufenden Straße (WP-037), als Schriftzug am Platz.
+ * `amount` bei Bet/Raise = Gesamteinsatz der Straße danach („Raise auf“), bei Call/All-in = eingezahlte Chips.
+ */
+export type LastActionView =
+  { readonly kind: 'check' | 'fold' } | { readonly kind: 'call' | 'bet' | 'raise' | 'allIn'; readonly amount: number };
+
 export interface PlayerSeatView {
   readonly kind: 'player';
   readonly name: string;
@@ -46,6 +53,8 @@ export interface PlayerSeatView {
   readonly holeCards: HoleCardsView;
   /** Gewählter Avatar (ID, WP-032); fehlt/`null` = keiner. Darstellung: `src/avatars/Avatar.tsx`. */
   readonly avatar?: string | null;
+  /** Letzte Aktion in der laufenden Straße (WP-037); fehlt = keine (neue Straße/Hand, nach der Hand). */
+  readonly lastAction?: LastActionView;
 }
 
 export interface EmptySeatView {
@@ -64,6 +73,8 @@ export interface BlindsView {
   readonly big: number;
   /** Blind-Level (1-basiert), falls die Blinds steigen (D-012). */
   readonly level?: number;
+  /** Blinds steigen nach Händen (WP-036, D-033): Hände, die noch auf diesem Level gespielt werden. */
+  readonly handsLeft?: number;
   readonly ante?: number;
 }
 
@@ -74,6 +85,14 @@ export interface SeatReactionView {
   readonly seat: number;
   readonly emoji: string;
   readonly label: string;
+}
+
+/** Name der eigenen besten Hand (WP-037). */
+export interface HeroHandView {
+  /** Kurz für die Anzeige am Platz, z. B. „Paar Könige“, „Straße“. */
+  readonly short: string;
+  /** Ausführlich (Beschreibung der Engine inkl. Kicker), für Screenreader und Tooltip; preflop wie `short`. */
+  readonly long: string;
 }
 
 export interface TableView {
@@ -90,6 +109,8 @@ export interface TableView {
   readonly timeRemaining?: number;
   /** Restliche Zeitbank (s) des Spielers am Zug, solange sie läuft (D-013); sonst nicht gesetzt. */
   readonly timeBankSeconds?: number;
+  /** Restsekunden des Spielers am Zug (normale Zugzeit bzw. Zeitbank), für die Sekundenanzeige (WP-037). */
+  readonly timeSeconds?: number;
   /** 0, 3, 4 oder 5 Karten. */
   readonly board: readonly Card[];
   /** Main Pot zuerst, danach Side Pots. Leer = noch nichts im Pot. */
@@ -103,4 +124,6 @@ export interface TableView {
   readonly winningCards?: readonly Card[];
   /** Eingeblendete Emoji-Reaktionen (WP-032); fehlt/leer = keine. */
   readonly reactions?: readonly SeatReactionView[];
+  /** Eigene beste Hand mit dem gezeigten Board (WP-037); fehlt = keine eigenen Karten. */
+  readonly heroHand?: HeroHandView;
 }

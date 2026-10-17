@@ -125,10 +125,31 @@ describe('PokerTable – Status', () => {
     expect(screen.queryByTestId('timer')).toBeNull();
   });
 
-  it('färbt den Ring bei wenig Restzeit rot und zeigt die laufende Zeitbank', () => {
-    render(<PokerTable view={{ ...mock('six-flop'), timeRemaining: 0, timeBankSeconds: 42 }} />);
+  it('färbt den Ring gegen Ende gelb, dann rot (WP-037)', () => {
+    const { rerender } = render(<PokerTable view={{ ...mock('six-flop'), timeRemaining: 0.8 }} />);
+    expect(screen.getByTestId('timer').getAttribute('class')).toContain('pt-timer-ring--ok');
+    rerender(<PokerTable view={{ ...mock('six-flop'), timeRemaining: 0.45 }} />);
+    expect(screen.getByTestId('timer').getAttribute('class')).toContain('pt-timer-ring--mid');
+    rerender(<PokerTable view={{ ...mock('six-flop'), timeRemaining: 0.1 }} />);
     expect(screen.getByTestId('timer').getAttribute('class')).toContain('pt-timer-ring--low');
-    expect(within(seatEl(7)).getByTestId('time-bank').textContent).toBe('Zeitbank 42 s');
+  });
+
+  it('zeigt die Restsekunden am Platz am Zug (WP-037)', () => {
+    render(<PokerTable view={{ ...mock('six-flop'), timeRemaining: 0.1, timeSeconds: 3 }} />);
+    const clock = within(seatEl(7)).getByTestId('turn-clock');
+    expect(clock.textContent).toBe('3 s');
+    expect(clock.dataset['stage']).toBe('low');
+    expect(screen.getAllByTestId('turn-clock')).toHaveLength(1);
+  });
+
+  it('zeigt die laufende Zeitbank in eigener Farbe', () => {
+    render(<PokerTable view={{ ...mock('six-flop'), timeRemaining: 0, timeBankSeconds: 42, timeSeconds: 42 }} />);
+    expect(screen.getByTestId('timer').getAttribute('class')).toContain('pt-timer-ring--bank');
+    expect(screen.getByRole('progressbar').getAttribute('aria-label')).toBe('Restzeit der Zeitbank');
+    const bank = within(seatEl(7)).getByTestId('time-bank');
+    expect(bank.textContent).toBe('Zeitbank 42 s');
+    expect(bank.dataset['stage']).toBe('bank');
+    expect(screen.queryByTestId('turn-clock')).toBeNull();
   });
 
   it('zeigt Dealer-Button und Blind-Marker', () => {
@@ -166,6 +187,14 @@ describe('PokerTable – Einsätze und Pots', () => {
     expect(screen.getByTestId('blinds').textContent).toBe('Level 2 · Blinds 50/100');
   });
 
+  it('Blinds nach Händen (WP-036): Kopfzeile zeigt die restlichen Hände des Levels', () => {
+    const base = mock('heads-up');
+    const { rerender } = render(<PokerTable view={{ ...base, blinds: { ...base.blinds, handsLeft: 3 } }} />);
+    expect(screen.getByTestId('blinds').textContent).toBe('Level 2 · Blinds 50/100 · noch 3 Hände');
+    rerender(<PokerTable view={{ ...base, blinds: { ...base.blinds, handsLeft: 1 } }} />);
+    expect(screen.getByTestId('blinds').textContent).toBe('Level 2 · Blinds 50/100 · noch 1 Hand');
+  });
+
   it('lässt unten Platz für die Aktionsleiste', () => {
     render(<PokerTable view={mock('heads-up')} actionBar={<button type="button">Fold</button>} />);
     expect(within(screen.getByTestId('action-slot')).getByRole('button').textContent).toBe('Fold');
@@ -176,6 +205,56 @@ describe('PokerTable – reine Darstellung', () => {
   it('gleicher Zustand ergibt gleiches Markup', () => {
     const view = mock('nine-allin');
     expect(renderToStaticMarkup(<PokerTable view={view} />)).toBe(renderToStaticMarkup(<PokerTable view={view} />));
+  });
+});
+
+describe('PokerTable – letzte Aktion und eigene Hand (WP-037)', () => {
+  it('zeigt die letzte Aktion als Schriftzug am Platz', () => {
+    render(<PokerTable view={mock('six-hints')} />);
+    const tag = (seat: number) => within(seatEl(seat)).queryByTestId('last-action');
+    expect(tag(2)?.textContent).toBe('Check');
+    expect(tag(2)?.getAttribute('class')).toContain('pt-action-tag--check');
+    expect(tag(0)?.textContent).toBe('Call');
+    expect(tag(1)?.textContent).toBe('Bet 600');
+    expect(tag(4)?.textContent).toBe('Raise 1.800');
+    // Gefoldet: weiter das Etikett „Fold“, kein zweiter Schriftzug
+    expect(tag(5)).toBeNull();
+    expect(within(seatEl(5)).getByTestId('status').textContent).toBe('Fold');
+    // Ohne Aktion: getrennt bleibt sichtbar
+    expect(tag(7)).toBeNull();
+    expect(within(seatEl(7)).getByTestId('status').textContent).toBe('Getrennt');
+  });
+
+  it('All-in als Schriftzug; die Aktion verdrängt „Getrennt“, das Symbol bleibt', () => {
+    const view = mock('six-hints');
+    const seats = view.seats.map((s, i) =>
+      i === 7 && s.kind === 'player' ? { ...s, lastAction: { kind: 'allIn' as const, amount: 900 } } : s,
+    );
+    render(<PokerTable view={{ ...view, seats }} />);
+    expect(within(seatEl(7)).getByTestId('last-action').textContent).toBe('All-in');
+    expect(within(seatEl(7)).queryByTestId('status')).toBeNull();
+    expect(within(seatEl(7)).getByLabelText('Verbindung getrennt')).toBeTruthy();
+  });
+
+  it('ohne letzte Aktion kein Schriftzug', () => {
+    render(<PokerTable view={mock('six-flop')} />);
+    expect(screen.queryByTestId('last-action')).toBeNull();
+  });
+
+  it('nennt die eigene Hand nur am eigenen Platz', () => {
+    render(<PokerTable view={mock('six-hints')} />);
+    const hand = within(seatEl(0)).getByTestId('hero-hand');
+    expect(hand.textContent).toBe('Paar Damen');
+    expect(hand.getAttribute('title')).toBe('Paar, Damen, Kicker Zehn, Sieben und Zwei');
+    expect(screen.getAllByTestId('hero-hand')).toHaveLength(1);
+  });
+
+  it('eigener Sitz am Zug: Zeitbank und Hand nebeneinander unter der Plakette', () => {
+    render(<PokerTable view={mock('hero-timebank')} />);
+    const hero = within(seatEl(2));
+    expect(hero.getByTestId('time-bank').textContent).toBe('Zeitbank 36 s');
+    expect(hero.getByTestId('hero-hand').textContent).toBe('Höchste Karte Ass');
+    expect(hero.getByTestId('time-bank').parentElement).toBe(hero.getByTestId('hero-hand').parentElement);
   });
 });
 
@@ -199,5 +278,16 @@ describe('PokerTable – Avatare und Reaktionen (WP-032)', () => {
     rerender(<PokerTable view={{ ...mock('six-flop'), reactions: [] }} />);
     expect(screen.queryByTestId('reaction')).toBeNull();
     expect(screen.queryByTestId('react-slot')).toBeNull();
+  });
+
+  it('Knopf für die Hand-Übersicht für alle sichtbar, mit Reaktions-Knopf darunter (WP-038)', () => {
+    const { rerender } = render(
+      <PokerTable view={mock('six-flop')} reactionPicker={<button type="button">R</button>} />,
+    );
+    const slot = screen.getByTestId('hands-slot');
+    expect(within(slot).getByRole('button', { name: 'Pokerhände' })).toBeInTheDocument();
+    expect(slot).toHaveClass('pt-hands-slot--below');
+    rerender(<PokerTable view={mock('six-flop')} />);
+    expect(screen.getByTestId('hands-slot')).not.toHaveClass('pt-hands-slot--below');
   });
 });

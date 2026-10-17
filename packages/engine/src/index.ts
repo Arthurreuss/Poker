@@ -91,11 +91,15 @@ export type {
 export {
   DEFAULT_BLIND_LEVELS,
   DEFAULT_BLIND_STRUCTURE,
+  DEFAULT_LEVEL_HANDS,
   DEFAULT_LEVEL_MINUTES,
+  blindLevelHandsLeft,
   blindLevelIndexAt,
+  blindLevelIndexForHand,
   blindLevels,
+  isHandsBlindStructure,
 } from './blind-structure';
-export type { BlindLevel, BlindStructure } from './blind-structure';
+export type { BlindLevel, BlindStructure, HandsBlindStructure, TimedBlindStructure } from './blind-structure';
 export { firstHandPositions, nextHandPositions } from './button';
 export type { HandPositions } from './button';
 export { WINNER_BONUS_POINTS, placementPoints } from './points';

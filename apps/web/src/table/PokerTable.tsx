@@ -1,9 +1,12 @@
 import type { CSSProperties, ReactNode } from 'react';
 import './table.css';
 import './seat-extras.css';
+import './seat-hints.css';
 import './fx/fx.css';
 import { Card, winHighlight } from './Card';
+import { Crown } from './Crown';
 import { formatChips } from './format';
+import { HandRankings } from './hands/HandRankings';
 import { placeSeats, seatMarker, type PlacedSeat, type TableLayout } from './layout';
 import { BetChips, Board, DealerButton, PotDisplay } from './parts';
 import { RevealableCards, type CardReveal } from './RevealableCards';
@@ -33,10 +36,11 @@ function at(x: number, y: number): CSSProperties {
 }
 
 function blindsText(view: TableView): string {
-  const { small, big, level, ante } = view.blinds;
+  const { small, big, level, handsLeft, ante } = view.blinds;
   const parts = [`Blinds ${formatChips(small)}/${formatChips(big)}`];
   if (ante !== undefined && ante > 0) parts.push(`Ante ${formatChips(ante)}`);
   if (level !== undefined) parts.unshift(`Level ${String(level)}`);
+  if (handsLeft !== undefined) parts.push(handsLeft === 1 ? 'noch 1 Hand' : `noch ${String(handsLeft)} Hände`);
   return parts.join(' · ');
 }
 
@@ -131,10 +135,20 @@ function TableSeat({
         toAct={toAct}
         timeRemaining={toAct ? view.timeRemaining : undefined}
         timeBankSeconds={toAct ? view.timeBankSeconds : undefined}
+        timeSeconds={toAct ? view.timeSeconds : undefined}
+        lastAction={player.lastAction}
+        heroHand={isHero ? view.heroHand : undefined}
         isHero={isHero}
         avatar={player.avatar}
         avatarSide={slot.markerSide === 'left' ? 'right' : 'left'}
       />
+      {winner && (
+        <Crown
+          name={player.name}
+          side={slot.markerSide === 'left' ? 'right' : 'left'}
+          onAvatar={player.avatar !== undefined && player.avatar !== null}
+        />
+      )}
       {reaction !== undefined && (
         <span
           key={reaction.id}
@@ -170,6 +184,7 @@ export function PokerTable({
   reveal,
 }: PokerTableProps) {
   const placed = placeSeats(view, layout);
+  const hasReactionPicker = reactionPicker !== undefined && reactionPicker !== null;
   return (
     <div className="pt-host">
       <div className={`pt-root pt-root--${layout}`} data-testid="poker-table" data-layout={layout}>
@@ -204,11 +219,18 @@ export function PokerTable({
         <div className="pt-menu-slot" data-testid="menu-slot">
           {menu}
         </div>
-        {reactionPicker !== undefined && reactionPicker !== null && (
+        {hasReactionPicker && (
           <div className="pt-react-slot" data-testid="react-slot">
             {reactionPicker}
           </div>
         )}
+        {/* Hand-Übersicht (WP-038): für alle am Tisch, auch Zuschauer; unter dem Reaktions-Knopf. */}
+        <div
+          className={hasReactionPicker ? 'pt-hands-slot pt-hands-slot--below' : 'pt-hands-slot'}
+          data-testid="hands-slot"
+        >
+          <HandRankings fourColor={fourColor} />
+        </div>
       </div>
     </div>
   );
