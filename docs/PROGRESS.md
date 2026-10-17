@@ -40,6 +40,10 @@
 | M6 | [WP-033](work-packages/WP-033.md) | Admin: verdeckte Karten aufdecken | done | WP-028 |
 | M6 | [WP-034](work-packages/WP-034.md) | Tisch kleiner, alle Spieler sichtbar | review | WP-017 |
 | M6 | [WP-035](work-packages/WP-035.md) | Admin: eigene Karten neu ziehen | review | WP-028 |
+| M6 | [WP-036](work-packages/WP-036.md) | Blinds nach Anzahl Hände erhöhen | in-progress | WP-008, WP-015 |
+| M6 | [WP-037](work-packages/WP-037.md) | Tisch verständlicher: Timer, Check-Hinweis, eigene Hand | in-progress | WP-018 |
+| M6 | [WP-038](work-packages/WP-038.md) | Übersicht der Pokerhände | in-progress | WP-032 |
+| M6 | [WP-039](work-packages/WP-039.md) | Showdown: langsameres Aufdecken, Gewinner mit Krone | in-progress | WP-018 |
 <!-- END GENERATED -->
 
 ## Meilensteine
