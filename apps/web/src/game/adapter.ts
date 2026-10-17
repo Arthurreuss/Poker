@@ -155,6 +155,8 @@ export function toTableView(server: ServerTableView, options: AdaptOptions = {})
         ? { small: level.smallBlind, big: level.bigBlind }
         : { small: firstLevel?.smallBlind ?? 0, big: firstLevel?.bigBlind ?? 0 };
   const levelNumber = increasing ? (level?.levelIndex ?? 0) + 1 : undefined;
+  // Blinds nach Händen (WP-036): Restzahl der Hände auf diesem Level; `null` = letztes Level oder nach Zeit.
+  const handsLeft = level?.handsLeftInLevel ?? null;
 
   let timer: { timeRemaining?: number; timeBankSeconds?: number } = {};
   const clock = options.turnClock ?? null;
@@ -181,7 +183,11 @@ export function toTableView(server: ServerTableView, options: AdaptOptions = {})
     ...timer,
     board: reveal === null ? board : board.slice(0, reveal.board),
     pots: hand === null ? [] : unpaid !== null ? unpaid.pots : potsOf(hand),
-    blinds: levelNumber === undefined ? blinds : { ...blinds, level: levelNumber },
+    blinds: {
+      ...blinds,
+      ...(levelNumber === undefined ? {} : { level: levelNumber }),
+      ...(handsLeft === null ? {} : { handsLeft }),
+    },
     ...(hand === null ? {} : { handNumber: hand.handNumber }),
     ...(winnerSeats.length > 0 ? { winnerSeats } : {}),
     ...(winningCards === undefined ? {} : { winningCards }),

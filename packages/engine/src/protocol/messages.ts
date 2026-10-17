@@ -258,8 +258,13 @@ export interface HandView {
 
 export interface BlindLevelView extends BlindLevel {
   levelIndex: number;
-  /** Zeitpunkt (ms seit Epoche, Server-Uhr), ab dem das nächste Level gilt; `null` = keins. */
+  /** Zeitpunkt (ms seit Epoche, Server-Uhr), ab dem das nächste Level gilt; `null` = keins bzw. nicht nach Zeit. */
   nextLevelAtMs: number | null;
+  /**
+   * Blinds nach Händen (WP-036, D-033): Hände, die noch auf diesem Level gespielt werden (laufende bzw. nächste
+   * Hand eingeschlossen); `null` = letztes Level bzw. nicht nach Händen.
+   */
+  handsLeftInLevel: number | null;
 }
 
 export interface RoundView {

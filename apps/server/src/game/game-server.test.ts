@@ -130,7 +130,52 @@ describe('GameServer ohne Netzwerk', () => {
     const { a, id } = await twoSeated(s);
     await s.send(a, { type: 'table.start', tableId: id });
     const level = s.last(1).round?.blindLevel;
-    expect(level).toEqual({ smallBlind: 10, bigBlind: 20, levelIndex: 0, nextLevelAtMs: 1_000_000 + 600_000 });
+    expect(level).toEqual({
+      smallBlind: 10,
+      bigBlind: 20,
+      levelIndex: 0,
+      nextLevelAtMs: 1_000_000 + 600_000,
+      handsLeftInLevel: null,
+    });
+  });
+
+  it('Blinds nach Händen (WP-036): Level steigt nach N Händen, nicht nach Zeit', async () => {
+    // Eine Stunde Pause zwischen den Händen: bei Zeit-Blinds (10 min) wäre jedes Mal ein neues Level fällig.
+    const s = setup({ handPauseMs: 60 * 60_000 });
+    const a = await s.client(1);
+    const b = await s.client(2);
+    const levels = [
+      { smallBlind: 10, bigBlind: 20 },
+      { smallBlind: 20, bigBlind: 40 },
+    ];
+    await s.send(a, {
+      type: 'table.create',
+      settings: { name: 'T', startingStack: 1000, blindStructure: { type: 'increasing', levels, levelHands: 2 } },
+    });
+    const id = s.last(1).id;
+    await s.send(a, { type: 'table.sit', tableId: id, seat: 0 });
+    await s.send(b, { type: 'table.join', tableId: id });
+    await s.send(b, { type: 'table.sit', tableId: id, seat: 1 });
+    await s.send(a, { type: 'table.start', tableId: id });
+    const seen: [number | undefined, number | undefined, number | null | undefined][] = [];
+    for (let i = 0; i < 3; i++) {
+      const round = s.last(1).round;
+      seen.push([round?.handNumber, round?.hand?.bigBlind, round?.blindLevel.handsLeftInLevel]);
+      const actor = round?.hand?.toActId === '1' ? a : b;
+      await s.send(actor, {
+        type: 'table.action',
+        tableId: id,
+        handNumber: i + 1,
+        seq: round?.hand?.actionSeq,
+        action: { type: 'fold' },
+      });
+      s.clock.advance(60 * 60_000);
+    }
+    expect(seen).toEqual([
+      [1, 20, 2],
+      [2, 20, 1],
+      [3, 40, null],
+    ]);
   });
 
   it('WP-012-Erweiterungspunkte: actFor/autoCheckOrFold handeln im Namen eines Spielers', async () => {

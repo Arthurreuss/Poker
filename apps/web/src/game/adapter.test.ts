@@ -65,6 +65,15 @@ describe('toTableView – laufende Hand', () => {
     expect(view.pots).toEqual([]);
   });
 
+  it('Blinds nach Händen (WP-036): Restzahl der Hände nur, wenn der Server sie liefert', () => {
+    const server = serverView(startGame(), 1);
+    expect(toTableView(server).blinds).not.toHaveProperty('handsLeft');
+    const round = server.round;
+    if (round === null) throw new Error('keine Runde');
+    const byHands = { ...server, round: { ...round, blindLevel: { ...round.blindLevel, handsLeftInLevel: 4 } } };
+    expect(toTableView(byHands).blinds).toMatchObject({ level: 1, handsLeft: 4 });
+  });
+
   it('nach der ersten Setzrunde: Einsätze im Pot, Board liegt, Fold ohne Karten', () => {
     const game = startGame();
     const bb = hand(serverView(game, 1)).bigBlind;
