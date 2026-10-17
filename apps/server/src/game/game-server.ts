@@ -19,7 +19,7 @@ import {
   type TableSettings,
   type TableSettingsInput,
 } from '@poker/engine/protocol';
-import { CardRevealer, type CardRevealAuditSink } from './admin-reveal';
+import { CardRevealer, type CardRedrawAuditSink, type CardRevealAuditSink } from './admin-reveal';
 import { systemClock, type Cancel, type Clock } from './clock';
 import type { GameHooks } from './hooks';
 import type { TableRepository } from './repository';
@@ -85,6 +85,11 @@ export interface GameServerOptions {
    * Ohne Angabe ist Aufdecken abgeschaltet (`FORBIDDEN`). Betrieb: `recordCardReveal(db, …)` (siehe `buildApp`).
    */
   revealAudit?: CardRevealAuditSink;
+  /**
+   * Admin-Protokoll für `admin.redrawCards` (WP-035, D-032), wie `revealAudit`. Ohne Angabe ist Neuziehen
+   * abgeschaltet (`FORBIDDEN`). Betrieb: `recordCardRedraw(db, …)` (siehe `buildApp`).
+   */
+  redrawAudit?: CardRedrawAuditSink;
 }
 
 /** Zusätzliche Angaben zur Verbindung aus der Session (nie vom Client). */
@@ -344,6 +349,8 @@ export class GameServer {
         return this.withTable(client, msg.tableId, (t) => this.react(client, t, msg.reaction));
       case 'admin.revealCards':
         return this.withTable(client, msg.tableId, (t) => this.revealCards(client, t, msg.seat, msg.requestId ?? null));
+      case 'admin.redrawCards':
+        return this.withTable(client, msg.tableId, (t) => this.redrawCards(client, t));
     }
   }
 
@@ -365,6 +372,30 @@ export class GameServer {
       seat: result.seat,
       cards: result.cards,
     });
+    return OK;
+  }
+
+  /**
+   * WP-035 (D-032): Admin zieht neue eigene Karten. Erst prüfen, dann protokollieren (mit Admin-Prüfung aus der DB),
+   * dann tauschen. Die neue Sicht geht nur an diese Verbindung; Mitspieler bekommen keine Nachricht.
+   */
+  private async redrawCards(client: Client, table: Table): Promise<TableResult> {
+    const audit = this.options.redrawAudit;
+    if (!client.isAdmin || audit === undefined) return err('FORBIDDEN', 'Nur Admins können neue Karten ziehen');
+    const checked = table.redrawHoleCards(client.user.id);
+    if (!checked.ok) return checked;
+    const handNumber = table.round?.handNumber ?? 0;
+    const allowed = await audit({
+      adminId: client.user.id,
+      tableId: table.id,
+      roundId: table.roundId ?? 0,
+      handNumber,
+      seat: table.seatOf(client.user.id) ?? 0,
+    });
+    if (!allowed) return err('FORBIDDEN', 'Nur Admins können neue Karten ziehen');
+    const redrawn = table.redrawHoleCards(client.user.id, handNumber);
+    if (!redrawn.ok) return redrawn;
+    if (!client.replaced && client.tables.has(table.id)) this.sendState(client, table);
     return OK;
   }
 

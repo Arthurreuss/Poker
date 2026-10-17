@@ -231,6 +231,31 @@ export function applyAction(state: HandState, playerId: string, action: Action):
   return { ok: true, state: next };
 }
 
+/**
+ * Admin zieht neue Hole Cards (WP-035, D-032): tauscht die Karten des Spielers gegen zwei zufällige Karten aus dem
+ * Restdeck; die alten Karten nehmen deren Plätze im Deck ein. So bleiben Hände, Board, Burns und Deck zusammen genau
+ * die 52 Karten, und `initialDeck` rekonstruiert eine Hand, die mit den neuen Karten ausgeteilt worden wäre.
+ * Nur in der Setzphase und nur für Spieler, die noch in der Hand sind; das Protokoll bleibt unverändert.
+ */
+export function redrawHoleCards(state: HandState, playerId: string, rng: Rng): ActionResult {
+  if (state.phase !== 'betting') return fail('HAND_NOT_IN_BETTING', 'Die Hand ist bereits beendet');
+  const index = state.players.findIndex((p) => p.id === playerId);
+  if (index === -1) return fail('UNKNOWN_PLAYER', `Unbekannter Spieler: ${playerId}`);
+  if (state.players[index]?.status === 'folded') return fail('ILLEGAL_ACTION', 'Gefoldet – keine Karten mehr');
+  if (state.deck.length < 2) return fail('ILLEGAL_ACTION', 'Nicht genug Karten im Deck');
+  const next = cloneState(state);
+  const player = next.players[index] as HandPlayer;
+  const first = rng.int(next.deck.length);
+  let second = rng.int(next.deck.length - 1);
+  if (second >= first) second++;
+  for (const [hole, deckIndex] of [first, second].entries()) {
+    const fresh = next.deck[deckIndex] as Card;
+    next.deck[deckIndex] = player.holeCards[hole] as Card;
+    player.holeCards[hole] = fresh;
+  }
+  return { ok: true, state: next };
+}
+
 /** Summe aller Einsätze dieser Hand (alle Pots zusammen, solange noch nicht ausgezahlt). */
 export function potTotal(state: HandState): number {
   return state.players.reduce((sum, p) => sum + p.totalBet, 0);

@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 // Admin deckt am Tisch verdeckte Karten auf (WP-033, D-027): Spielseite mit Fake-Verbindung – Anfrage beim ersten
 // Tipp, Antwort dreht um, Zurück- und erneutes Umdrehen ohne Anfrage, nach Handende vergessen; Nicht-Admins nie.
+// Außerdem WP-035 (D-032): Tipp auf die eigenen Karten zieht neue.
 import type { ServerMessage, TableView as ServerTableView } from '@poker/engine/protocol';
 import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -57,7 +58,8 @@ function renderGame(viewer: number, isAdmin: boolean) {
     receive({ type: 'table.state', table });
   };
   const reveals = () => fake.last().sent.filter((m) => m.type === 'admin.revealCards');
-  return { ...fake, state, receive, reveals };
+  const redraws = () => fake.last().sent.filter((m) => m.type === 'admin.redrawCards');
+  return { ...fake, state, receive, reveals, redraws };
 }
 
 function seatEl(seat: number): HTMLElement {
@@ -135,5 +137,51 @@ describe('Admin deckt Karten auf (GameTable)', () => {
     state(serverView(game, 3));
     expect(screen.getAllByTestId('hole-cards').length).toBeGreaterThan(0);
     expect(screen.queryAllByRole('button', { name: /Karten von/ })).toEqual([]);
+  });
+});
+
+describe('Admin zieht neue eigene Karten (GameTable)', () => {
+  const redrawButton = () => screen.queryByRole('button', { name: 'Neue Karten ziehen' });
+
+  it('Tipp auf die eigenen Karten sendet admin.redrawCards, beliebig oft; Ablehnung erscheint als Hinweis', async () => {
+    const user = userEvent.setup();
+    const game = startGame();
+    const { state, receive, redraws } = renderGame(1, true);
+    state(serverView(game, 1));
+    const button = redrawButton();
+    if (button === null) throw new Error('kein Schalter');
+    expect(button.dataset['kind']).toBe('visible');
+
+    await user.click(button);
+    await user.click(button);
+    expect(redraws()).toEqual([
+      { type: 'admin.redrawCards', tableId: 42, requestId: 'redraw:1' },
+      { type: 'admin.redrawCards', tableId: 42, requestId: 'redraw:2' },
+    ]);
+
+    receive({
+      type: 'error',
+      code: 'NO_HAND_IN_PROGRESS',
+      message: 'Gerade läuft keine Hand',
+      requestId: 'redraw:2',
+      tableId: 42,
+    });
+    expect(screen.getByText('Gerade läuft keine Hand')).toBeInTheDocument();
+  });
+
+  it('nicht für Nicht-Admins', () => {
+    const game = startGame();
+    const player = renderGame(1, false);
+    player.state(serverView(game, 1));
+    expect(redrawButton()).toBeNull();
+  });
+
+  it('nach dem Fold des Admins kein Schalter mehr', () => {
+    const game = startGame();
+    const { state } = renderGame(1, true);
+    while (game.round.hand?.toActId !== '1') playAction(game, { type: 'call' });
+    playAction(game, { type: 'fold' });
+    state(serverView(game, 1));
+    expect(redrawButton()).toBeNull();
   });
 });

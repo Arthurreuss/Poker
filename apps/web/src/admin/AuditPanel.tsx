@@ -14,6 +14,7 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   'user.admin_revoke': 'Admin-Recht entzogen',
   'table.close': 'Tisch geschlossen',
   'table.reveal_cards': 'Karten aufgedeckt',
+  'table.redraw_cards': 'Eigene Karten neu gezogen',
 };
 
 const SOURCE_LABELS: Record<AuditEntry['source'], string> = { api: 'Web', cli: 'CLI', ws: 'Tisch' };

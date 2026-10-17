@@ -246,3 +246,13 @@ Format: Kontext → Entscheidung → Konsequenzen. Status: `akzeptiert`, `offen`
   - Endet die Runde live, bleibt der Rundenende-Dialog 5 s nach dem sichtbaren Ergebnis verborgen; ein Tipp oder eine Taste überspringt die Pause.
   - Sounds werden per Web Audio synthetisiert (keine Audiodateien, keine Lizenzfragen); Ton standardmäßig an (70 %), Vibration an, wo verfügbar; Einstellung nur im Gerät (`poker.sound`).
 - **Konsequenzen:** Der dargestellte Stand kann bis ca. 3,4 s hinter dem Server liegen, nur bei fertigen Händen; Eingaben sind dann ohnehin nicht möglich. Ein neuer Stand einer anderen Hand beendet die Staffelung sofort. Der Spieltest gegen einen älteren Dev-Server deckt die Server-Pause nicht ab.
+
+## D-032: Admin darf eigene Karten neu ziehen (WP-035)
+- **Status:** akzeptiert
+- **Kontext:** Arthur möchte als Admin am Tisch per Tipp auf die eigenen Karten zwei neue bekommen, beliebig oft – nur aus Karten, die noch nicht vergeben sind.
+- **Entscheidung:**
+  - Nur Admins (`users.is_admin`, wie D-027 doppelt geprüft: Session-Flag und DB beim Protokollieren), nur eigene Karten, nur während der Setzphase und solange sie nicht gefoldet haben.
+  - Die neuen Karten sind zwei zufällige aus dem Restdeck; die alten nehmen deren Plätze im Deck ein. Damit kommen nie Karten eines Mitspielers, des Boards oder verbrannte Karten in Frage, und abgelegte Karten sind wieder „frei“ (sie können später auf dem Board oder beim nächsten Neuziehen erscheinen).
+  - Jedes Neuziehen wird im Admin-Protokoll vermerkt (`table.redraw_cards`); die Mitspieler sehen davon nichts.
+  - Die Hand-Historie speichert die tatsächlich gespielten Karten (Deck und Spieler werden am Handende überschrieben), damit das Replay stimmt.
+- **Konsequenzen:** Ein Admin kann das Ergebnis einer Hand massiv beeinflussen; wie bei D-027 nur Vertrauenspersonen Admin-Rechte geben, das Protokoll macht es nachvollziehbar. Die beim Handstart gespeicherte Hand zeigt bis zum Handende die ursprünglichen Karten; bricht die Runde vorher ab, bleiben sie so stehen.

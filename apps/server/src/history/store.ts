@@ -44,7 +44,8 @@ export function createPgHandHistoryStore(db: Queryable): HandHistoryStore {
                               small_blind_seat, big_blind_seat, deck, players, board, result, finished_at)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, now())
            ON CONFLICT (round_id, hand_number) DO UPDATE
-             SET board = EXCLUDED.board, result = EXCLUDED.result, finished_at = EXCLUDED.finished_at
+             SET deck = EXCLUDED.deck, players = EXCLUDED.players, board = EXCLUDED.board, result = EXCLUDED.result,
+                 finished_at = EXCLUDED.finished_at
            RETURNING id
          )
          INSERT INTO hand_actions (hand_id, seq, user_id, street, action, amount, is_all_in, is_automatic)

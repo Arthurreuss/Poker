@@ -4,7 +4,7 @@
  * Zeit kommt nur als Parameter (`nowMs`), Zufall als injiziertes `Rng`. Eingabezustände werden nie verändert.
  * Beschreibung: ARCHITECTURE.md, „Engine: Rundenmodell (Freezeout)“.
  */
-import { applyAction, startHand } from './betting';
+import { applyAction, redrawHoleCards, startHand } from './betting';
 import {
   blindLevelEndsAfterMs,
   blindLevelIndexAt,
@@ -274,6 +274,16 @@ export function applyRoundAction(round: RoundState, playerId: string, action: Ac
   const next = cloneRound(round);
   next.hand = result.state;
   settleIfComplete(next);
+  return { ok: true, round: next };
+}
+
+/** Admin zieht neue Hole Cards in der laufenden Hand (WP-035, D-032); siehe `redrawHoleCards`. */
+export function redrawRoundHoleCards(round: RoundState, playerId: string, rng: Rng): RoundUpdate {
+  if (round.phase !== 'hand' || round.hand === null) return fail('NO_HAND_IN_PROGRESS', 'Keine laufende Hand');
+  const result = redrawHoleCards(round.hand, playerId, rng);
+  if (!result.ok) return { ok: false, error: result.error };
+  const next = cloneRound(round);
+  next.hand = result.state;
   return { ok: true, round: next };
 }
 

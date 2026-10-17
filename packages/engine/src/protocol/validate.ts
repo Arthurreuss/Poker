@@ -189,6 +189,7 @@ const MESSAGE_TYPES: ReadonlySet<string> = new Set<ClientMessageType>([
   'table.action',
   'table.react',
   'admin.revealCards',
+  'admin.redrawCards',
 ]);
 
 function message(o: Obj, type: ClientMessageType): ClientMessage {
@@ -214,6 +215,7 @@ function message(o: Obj, type: ClientMessageType): ClientMessage {
     case 'table.stand':
     case 'table.start':
     case 'table.rematch':
+    case 'admin.redrawCards':
       return { type, tableId: id(o, 'tableId') };
     case 'table.sit':
     case 'admin.revealCards':

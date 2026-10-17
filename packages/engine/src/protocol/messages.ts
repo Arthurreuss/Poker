@@ -168,6 +168,17 @@ export interface AdminRevealCardsMessage extends ClientBase {
   seat: number;
 }
 
+/**
+ * Admin zieht neue eigene Karten (WP-035, D-032): tauscht die eigenen Hole Cards gegen zwei zufällige Karten aus dem
+ * Restdeck, beliebig oft. Nur Admins, nur am eigenen Platz, nur während einer laufenden Hand und nicht gefoldet. Der
+ * neue Stand kommt als `table.state` nur an diese Verbindung; die Mitspieler erfahren nichts. Jedes Neuziehen wird im
+ * Admin-Protokoll vermerkt.
+ */
+export interface AdminRedrawCardsMessage extends ClientBase {
+  type: 'admin.redrawCards';
+  tableId: number;
+}
+
 export type ClientMessage =
   | HelloMessage
   | PingMessage
@@ -182,7 +193,8 @@ export type ClientMessage =
   | TableRematchMessage
   | TableActionMessage
   | TableReactMessage
-  | AdminRevealCardsMessage;
+  | AdminRevealCardsMessage
+  | AdminRedrawCardsMessage;
 
 export type ClientMessageType = ClientMessage['type'];
 

@@ -22,6 +22,18 @@ export interface CardRevealAudit {
  */
 export type CardRevealAuditSink = (entry: CardRevealAudit) => Promise<boolean>;
 
+/** Was ins Admin-Protokoll kommt, wenn ein Admin neue eigene Karten zieht (`table.redraw_cards`, WP-035, D-032). */
+export interface CardRedrawAudit {
+  adminId: number;
+  tableId: number;
+  roundId: number;
+  handNumber: number;
+  seat: number;
+}
+
+/** Wie {@link CardRevealAuditSink}: `false` = kein Admin (mehr) → nicht tauschen. Betrieb: `recordCardRedraw`. */
+export type CardRedrawAuditSink = (entry: CardRedrawAudit) => Promise<boolean>;
+
 type Failure = { ok: false; code: ErrorCode; message: string };
 
 export type RevealResult = { ok: true; handNumber: number; seat: number; cards: Card[] } | Failure;
