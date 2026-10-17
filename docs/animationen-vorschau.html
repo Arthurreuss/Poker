@@ -1,0 +1,828 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Animationen aussuchen</title>
+    <!--
+  Vorschau für WP-040: Kandidaten für Animationen nach einer Hand.
+  Einfach im Browser öffnen (Doppelklick reicht, Internet nötig). Die Animationen werden direkt
+  von LottieFiles geladen, nichts davon liegt im Repo. Lizenz: Lottie Simple License (kostenlos,
+  auch kommerziell, Namensnennung erwünscht, nicht Pflicht) – vor dem Einbau pro Datei nochmal prüfen.
+-->
+    <style>
+      :root {
+        --bg: #0d1117;
+        --surface: #161b22;
+        --surface-2: #1f2630;
+        --text: #e6edf3;
+        --muted: #8b949e;
+        --accent: #f5c542;
+        --felt: #1e6b45;
+        --line: rgb(255 255 255 / 0.1);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font:
+          15px/1.45 system-ui,
+          -apple-system,
+          sans-serif;
+      }
+      header {
+        position: sticky;
+        top: 0;
+        z-index: 5;
+        background: rgb(13 17 23 / 0.94);
+        backdrop-filter: blur(8px);
+        border-bottom: 1px solid var(--line);
+        padding: 12px 16px;
+      }
+      h1 {
+        margin: 0 0 4px;
+        font-size: 20px;
+      }
+      p.lead {
+        margin: 0 0 10px;
+        color: var(--muted);
+        max-width: 70ch;
+      }
+      .bar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+      }
+      button,
+      .chip {
+        font: inherit;
+        border: 1px solid var(--line);
+        background: var(--surface-2);
+        color: var(--text);
+        border-radius: 999px;
+        padding: 5px 12px;
+        cursor: pointer;
+      }
+      .chip[aria-pressed='true'] {
+        background: var(--accent);
+        color: #1a1300;
+        border-color: var(--accent);
+      }
+      .spacer {
+        flex: 1;
+      }
+      #count {
+        color: var(--muted);
+      }
+      main {
+        padding: 16px;
+        display: grid;
+        gap: 14px;
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      }
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+      .card.fav {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 1px var(--accent);
+      }
+      .stage {
+        aspect-ratio: 1;
+        background: var(--surface-2);
+        position: relative;
+        cursor: pointer;
+      }
+      body.felt .stage {
+        background: radial-gradient(circle, #2a8a5b, var(--felt) 70%);
+      }
+      canvas {
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+      .stage .hint {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .meta {
+        padding: 8px 10px 10px;
+        display: grid;
+        gap: 4px;
+      }
+      .name {
+        font-weight: 600;
+      }
+      .row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .row a {
+        color: var(--muted);
+      }
+      label.favbox {
+        margin-left: auto;
+        display: flex;
+        gap: 4px;
+        align-items: center;
+        color: var(--text);
+        cursor: pointer;
+      }
+      .num {
+        color: var(--muted);
+        font-variant-numeric: tabular-nums;
+      }
+      dialog {
+        background: var(--surface);
+        color: var(--text);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        max-width: min(560px, 92vw);
+      }
+      textarea {
+        width: 100%;
+        min-height: 160px;
+        background: var(--bg);
+        color: var(--text);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        font:
+          13px ui-monospace,
+          monospace;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Animationen nach der Hand – aussuchen</h1>
+      <p class="lead">
+        Tippen auf eine Animation spielt sie von vorn. Mit ★ merken, dann „Favoriten kopieren“ und an Claude schicken.
+        Gemerkte Favoriten bleiben nur in deinem Browser. Quelle: LottieFiles (kostenlose Animationen).
+      </p>
+      <div class="bar" id="filters"></div>
+      <div class="bar" style="margin-top: 8px">
+        <button id="felt" aria-pressed="false" class="chip">Auf Tisch-Grün ansehen</button>
+        <button id="onlyfav" aria-pressed="false" class="chip">Nur Favoriten</button>
+        <span class="spacer"></span>
+        <span id="count"></span>
+        <button id="copy">Favoriten kopieren</button>
+      </div>
+    </header>
+    <main id="grid"></main>
+    <dialog id="out">
+      <p>Diese Liste an Claude schicken:</p>
+      <textarea id="outtext" readonly></textarea>
+      <p><button id="close">Schließen</button></p>
+    </dialog>
+    <script type="module">
+      import { DotLottie } from 'https://cdn.jsdelivr.net/npm/@lottiefiles/dotlottie-web@0.81.0/+esm';
+
+      const ITEMS = [
+        {
+          id: 'bowling-linear-VN1UF2Ohkx',
+          name: "It's bowling!",
+          cat: 'Bowling & Strike',
+          src: 'https://assets-v2.lottiefiles.com/a/c6a9e0b0-117a-11ee-94d8-bbf87903dec9/CJFrb376mL.lottie',
+          page: 'https://lottiefiles.com/free-animation/bowling-linear-VN1UF2Ohkx',
+        },
+        {
+          id: 'bowling-animation-3k9bF1OPYd',
+          name: 'Bowling Free Animation',
+          cat: 'Bowling & Strike',
+          src: 'https://assets-v2.lottiefiles.com/a/d4069bc3-1efc-416e-9104-d461b56ed8dc/3k9bF1OPYd.lottie',
+          page: 'https://lottiefiles.com/free-animation/bowling-animation-3k9bF1OPYd',
+        },
+        {
+          id: 'ball-loop-tmCXFwS5sn',
+          name: 'Ball Loop',
+          cat: 'Bowling & Strike',
+          src: 'https://assets-v2.lottiefiles.com/a/e357ab22-1150-11ee-9da6-731f95f90ef1/n8qJcPulA9.lottie',
+          page: 'https://lottiefiles.com/free-animation/ball-loop-tmCXFwS5sn',
+        },
+        {
+          id: 'infinite-bowling-PqDiGgmhoP',
+          name: 'Infinite bowling',
+          cat: 'Bowling & Strike',
+          src: 'https://assets-v2.lottiefiles.com/a/7b82870e-117a-11ee-9ea0-af3567623393/AcE2YIMfmv.lottie',
+          page: 'https://lottiefiles.com/free-animation/infinite-bowling-PqDiGgmhoP',
+        },
+        {
+          id: 'ball-shot-Omlm3T2ehp',
+          name: 'Ball shot',
+          cat: 'Bowling & Strike',
+          src: 'https://assets-v2.lottiefiles.com/a/33ef8fbe-1151-11ee-9749-cbb9d35c0c85/ZulS6oP4p4.lottie',
+          page: 'https://lottiefiles.com/free-animation/ball-shot-Omlm3T2ehp',
+        },
+        {
+          id: 'strike-sa9fRYYsuL',
+          name: 'Strike',
+          cat: 'Bowling & Strike',
+          src: 'https://assets-v2.lottiefiles.com/a/8403f6d4-1151-11ee-98d1-2bc0bbd85720/ermOnQCyQq.lottie',
+          page: 'https://lottiefiles.com/free-animation/strike-sa9fRYYsuL',
+        },
+        {
+          id: 'bowling-ball-in-club-CZSbsfiazy',
+          name: 'Bowling Ball in Club',
+          cat: 'Bowling & Strike',
+          src: 'https://assets-v2.lottiefiles.com/a/a6051fde-abf6-11ee-a633-0325f1b5c8c3/ln7BKvnWsI.lottie',
+          page: 'https://lottiefiles.com/free-animation/bowling-ball-in-club-CZSbsfiazy',
+        },
+        {
+          id: 'red-lightning-Ozzn9MXLmD',
+          name: 'Lightning',
+          cat: 'Bowling & Strike',
+          src: 'https://assets-v2.lottiefiles.com/a/7b58175a-9677-4a90-99f2-901967088b40/Ozzn9MXLmD.lottie',
+          page: 'https://lottiefiles.com/free-animation/red-lightning-Ozzn9MXLmD',
+        },
+        {
+          id: 'electric-strike-ChR5X8Kso1',
+          name: 'Electric strike',
+          cat: 'Bowling & Strike',
+          src: 'https://assets-v2.lottiefiles.com/a/20cb1b24-116f-11ee-b84e-2f0e1a41101e/8wurbhjml0.lottie',
+          page: 'https://lottiefiles.com/free-animation/electric-strike-ChR5X8Kso1',
+        },
+        {
+          id: 'star-strike-emoji-1eTjCWVFPo',
+          name: 'Star Strike Emoji',
+          cat: 'Bowling & Strike',
+          src: 'https://assets-v2.lottiefiles.com/a/b46e9a30-1152-11ee-ad30-d7b2a6e170de/NTsyJF2x2T.lottie',
+          page: 'https://lottiefiles.com/free-animation/star-strike-emoji-1eTjCWVFPo',
+        },
+        {
+          id: 'celebration-and-birthday-emoji-PbPAzivZTt',
+          name: 'celebration and birthday  emoji',
+          cat: 'Konfetti & Feuerwerk',
+          src: 'https://assets-v2.lottiefiles.com/a/9dff713c-b14a-11ee-8cd9-031c36efa8f0/LkZtUINyJv.lottie',
+          page: 'https://lottiefiles.com/free-animation/celebration-and-birthday-emoji-PbPAzivZTt',
+        },
+        {
+          id: 'confetti-purple-jCRnVLvU3p',
+          name: 'Confetti_Purple',
+          cat: 'Konfetti & Feuerwerk',
+          src: 'https://assets-v2.lottiefiles.com/a/0887228e-1799-11ef-8cb6-77abf2ea1a93/uBFfSZiS75.lottie',
+          page: 'https://lottiefiles.com/free-animation/confetti-purple-jCRnVLvU3p',
+        },
+        {
+          id: 'exploding-ribbon-and-confetti-9UErHOE0bL',
+          name: 'Exploding ribbon and confetti',
+          cat: 'Konfetti & Feuerwerk',
+          src: 'https://assets-v2.lottiefiles.com/a/c255456e-1151-11ee-966b-97eab246fb28/QwBVxoOdj4.lottie',
+          page: 'https://lottiefiles.com/free-animation/exploding-ribbon-and-confetti-9UErHOE0bL',
+        },
+        {
+          id: 'bubble-explosion-vRuWwfpbSh',
+          name: 'Bubble Explosion',
+          cat: 'Konfetti & Feuerwerk',
+          src: 'https://assets-v2.lottiefiles.com/a/b973e77c-1177-11ee-820b-e34ce7ea23ed/Cl7FDTbN2G.lottie',
+          page: 'https://lottiefiles.com/free-animation/bubble-explosion-vRuWwfpbSh',
+        },
+        {
+          id: 'confetti-im-s6Ca1FnyEe',
+          name: 'Confetti_IM',
+          cat: 'Konfetti & Feuerwerk',
+          src: 'https://assets-v2.lottiefiles.com/a/3e5ffafc-7fbe-11ee-a705-93222f10ff7e/B3vMom0OSy.lottie',
+          page: 'https://lottiefiles.com/free-animation/confetti-im-s6Ca1FnyEe',
+        },
+        {
+          id: 'confetti-buhZM0P4BH',
+          name: 'Confetti',
+          cat: 'Konfetti & Feuerwerk',
+          src: 'https://assets-v2.lottiefiles.com/a/d647c182-1151-11ee-b302-7397b9a939f7/Y6NINjjTgq.lottie',
+          page: 'https://lottiefiles.com/free-animation/confetti-buhZM0P4BH',
+        },
+        {
+          id: 'party-celebration-Ei80CjLJQC',
+          name: 'Party Celebration Animation in 2d Style',
+          cat: 'Konfetti & Feuerwerk',
+          src: 'https://assets-v2.lottiefiles.com/a/673a734a-1181-11ee-bce5-1b8d20a549a4/xaBQZOLSOv.lottie',
+          page: 'https://lottiefiles.com/free-animation/party-celebration-Ei80CjLJQC',
+        },
+        {
+          id: 'celebration-confetti-json-QIroMtQ1Or',
+          name: 'Celebration confetti json',
+          cat: 'Konfetti & Feuerwerk',
+          src: 'https://assets-v2.lottiefiles.com/a/c447857e-ac61-11ef-878c-3f284e931cb0/B9aHDSL0PB.lottie',
+          page: 'https://lottiefiles.com/free-animation/celebration-confetti-json-QIroMtQ1Or',
+        },
+        {
+          id: 'flex-confetti-T80uT3DZLm',
+          name: 'Confetti animation',
+          cat: 'Konfetti & Feuerwerk',
+          src: 'https://assets-v2.lottiefiles.com/a/4b850b3c-1164-11ee-b17a-0b3b203a65fa/7B59kpiddz.lottie',
+          page: 'https://lottiefiles.com/free-animation/flex-confetti-T80uT3DZLm',
+        },
+        {
+          id: 'success-celebration-Sn1bJRj6pz',
+          name: 'Fire cracker. Success celebration.',
+          cat: 'Konfetti & Feuerwerk',
+          src: 'https://assets-v2.lottiefiles.com/a/c22b3edc-116e-11ee-b29e-6b53b36a56ea/n3T4JPGCuz.lottie',
+          page: 'https://lottiefiles.com/free-animation/success-celebration-Sn1bJRj6pz',
+        },
+        {
+          id: 'success-J4Wwwz05De',
+          name: 'Success',
+          cat: 'Konfetti & Feuerwerk',
+          src: 'https://assets-v2.lottiefiles.com/a/e0c7b61a-075c-11ef-b167-f3415fe92e20/4uXmJsFRto.lottie',
+          page: 'https://lottiefiles.com/free-animation/success-J4Wwwz05De',
+        },
+        {
+          id: 'confetti-full-screen-xgkBYevLrg',
+          name: 'Just a full screen confetti',
+          cat: 'Konfetti & Feuerwerk',
+          src: 'https://assets-v2.lottiefiles.com/a/09d2e6f4-116f-11ee-95d4-8fac7a332656/askI24vg1T.lottie',
+          page: 'https://lottiefiles.com/free-animation/confetti-full-screen-xgkBYevLrg',
+        },
+        {
+          id: 'confetti-on-transparent-background-ajhx1TPBa7',
+          name: 'sportbank',
+          cat: 'Konfetti & Feuerwerk',
+          src: 'https://assets-v2.lottiefiles.com/a/b1b163e6-1165-11ee-8de3-13c51904addb/8l4FM0Hz1c.lottie',
+          page: 'https://lottiefiles.com/free-animation/confetti-on-transparent-background-ajhx1TPBa7',
+        },
+        {
+          id: 'confetti-day-5JO59LTS6B',
+          name: 'Confetti render test',
+          cat: 'Konfetti & Feuerwerk',
+          src: 'https://assets-v2.lottiefiles.com/a/d4f8acfa-1170-11ee-b1b0-db6dc44b38ed/zdje4xbpYW.lottie',
+          page: 'https://lottiefiles.com/free-animation/confetti-day-5JO59LTS6B',
+        },
+        {
+          id: 'confetti-partyyy-Wa6ZqQu2JW',
+          name: 'Congratulation confetti animation',
+          cat: 'Konfetti & Feuerwerk',
+          src: 'https://assets-v2.lottiefiles.com/a/43a77aa6-1166-11ee-95c1-d3ce99ced682/Pp7ORrHYSI.lottie',
+          page: 'https://lottiefiles.com/free-animation/confetti-partyyy-Wa6ZqQu2JW',
+        },
+        {
+          id: 'celebration-mAnHKjVEgy',
+          name: 'Celebration',
+          cat: 'Konfetti & Feuerwerk',
+          src: 'https://assets-v2.lottiefiles.com/a/0c47885a-84be-11ee-8d8c-8f7ecdf1ddc3/BwrKr0il6n.lottie',
+          page: 'https://lottiefiles.com/free-animation/celebration-mAnHKjVEgy',
+        },
+        {
+          id: 'confetti-effects-lottie-animation-2naH1Qyz3l',
+          name: 'Confetti animation for Congratulation screen',
+          cat: 'Konfetti & Feuerwerk',
+          src: 'https://assets-v2.lottiefiles.com/a/637a1ad6-1171-11ee-ae8b-2fdd664f0b2d/Uf0htNY4TG.lottie',
+          page: 'https://lottiefiles.com/free-animation/confetti-effects-lottie-animation-2naH1Qyz3l',
+        },
+        {
+          id: 'success-confetti-f5PdexvrBK',
+          name: 'success confetti animation',
+          cat: 'Konfetti & Feuerwerk',
+          src: 'https://assets-v2.lottiefiles.com/a/4870bf6a-116c-11ee-b89e-6f9af5c1e532/P9lCgkL66D.lottie',
+          page: 'https://lottiefiles.com/free-animation/success-confetti-f5PdexvrBK',
+        },
+        {
+          id: 'big-bada-boom-LAdJ3SfQAB',
+          name: 'Great shapes explosion for congrats!',
+          cat: 'Konfetti & Feuerwerk',
+          src: 'https://assets-v2.lottiefiles.com/a/04fbf1f6-1161-11ee-b73e-a78ffed13774/Y0a47UUmIl.lottie',
+          page: 'https://lottiefiles.com/free-animation/big-bada-boom-LAdJ3SfQAB',
+        },
+        {
+          id: 'confetti-FUxm8lkEPc',
+          name: 'Updated an animation to fit brand colors.',
+          cat: 'Konfetti & Feuerwerk',
+          src: 'https://assets-v2.lottiefiles.com/a/e3230970-116f-11ee-b9d3-638711c8827a/g6fJJtLI5N.lottie',
+          page: 'https://lottiefiles.com/free-animation/confetti-FUxm8lkEPc',
+        },
+        {
+          id: 'winner-firewroks-5DvmIl5RpW',
+          name: 'Winner page with fireworks',
+          cat: 'Konfetti & Feuerwerk',
+          src: 'https://assets-v2.lottiefiles.com/a/5a4e0d6a-2713-11ef-912e-b34bf98713fc/GeTtfckPwP.lottie',
+          page: 'https://lottiefiles.com/free-animation/winner-firewroks-5DvmIl5RpW',
+        },
+        {
+          id: 'confetti02-DlrEqWUZ1T',
+          name: 'Confetti 02',
+          cat: 'Konfetti & Feuerwerk',
+          src: 'https://assets-v2.lottiefiles.com/a/3966d5b2-1177-11ee-ac38-d3c7fbcee851/xjlfhtRVH7.lottie',
+          page: 'https://lottiefiles.com/free-animation/confetti02-DlrEqWUZ1T',
+        },
+        {
+          id: 'season-fireworks-bbssnMF7fg',
+          name: 'Fireworks for any celebratory seasons.',
+          cat: 'Konfetti & Feuerwerk',
+          src: 'https://assets-v2.lottiefiles.com/a/c98e3a26-1173-11ee-a8f0-1bc6c3f5e5dd/YxQbPOPer9.lottie',
+          page: 'https://lottiefiles.com/free-animation/season-fireworks-bbssnMF7fg',
+        },
+        {
+          id: 'fire-works-cHZLOVFrXn',
+          name: 'Fire works',
+          cat: 'Konfetti & Feuerwerk',
+          src: 'https://assets-v2.lottiefiles.com/a/6bdd8d18-1cc2-11ef-a386-f71fb408e84c/IWJAM6JWRq.lottie',
+          page: 'https://lottiefiles.com/free-animation/fire-works-cHZLOVFrXn',
+        },
+        {
+          id: 'fireworks-icon-fjvwCabz9N',
+          name: 'Diwali firework icon animation',
+          cat: 'Konfetti & Feuerwerk',
+          src: 'https://assets-v2.lottiefiles.com/a/6c191f08-1166-11ee-a717-7fdb4068cf82/J9RaqXINpT.lottie',
+          page: 'https://lottiefiles.com/free-animation/fireworks-icon-fjvwCabz9N',
+        },
+        {
+          id: 'badge-KUGy2dy2f6',
+          name: 'Badge',
+          cat: 'Pokale & Kronen',
+          src: 'https://assets-v2.lottiefiles.com/a/546d35b8-c143-11ef-a58c-1b3c4cc2aa9c/LObQwsylhI.lottie',
+          page: 'https://lottiefiles.com/free-animation/badge-KUGy2dy2f6',
+        },
+        {
+          id: 'trophy-icon-lottie-animation-B7ByOVNzQh',
+          name: 'Trophy icon lottie animation',
+          cat: 'Pokale & Kronen',
+          src: 'https://assets-v2.lottiefiles.com/a/6718eb76-1181-11ee-bcc1-076f8967370a/CaYB3zVa1w.lottie',
+          page: 'https://lottiefiles.com/free-animation/trophy-icon-lottie-animation-B7ByOVNzQh',
+        },
+        {
+          id: 'madel-lottie-animation-IPjV2dWgY8',
+          name: 'Madel Lottie Animation.',
+          cat: 'Pokale & Kronen',
+          src: 'https://assets-v2.lottiefiles.com/a/a0c3dd6e-2b07-11ee-b9f3-d78550f02bac/svwNIIpptJ.lottie',
+          page: 'https://lottiefiles.com/free-animation/madel-lottie-animation-IPjV2dWgY8',
+        },
+        {
+          id: 'trophy-champion-animation-MnY7pSSzO2',
+          name: 'Trophy Champion Animation',
+          cat: 'Pokale & Kronen',
+          src: 'https://assets-v2.lottiefiles.com/a/cafc8046-116b-11ee-98b4-eb71c3cf0bf4/UFO6gUAWfx.lottie',
+          page: 'https://lottiefiles.com/free-animation/trophy-champion-animation-MnY7pSSzO2',
+        },
+        {
+          id: 'medal-NHu6rv7z2m',
+          name: 'A medal animation to prove the success of your business ;)',
+          cat: 'Pokale & Kronen',
+          src: 'https://assets-v2.lottiefiles.com/a/b565b680-117f-11ee-9d28-f32f6742bff5/KzVuOqX80u.lottie',
+          page: 'https://lottiefiles.com/free-animation/medal-NHu6rv7z2m',
+        },
+        {
+          id: 'best-JhCdQCTxWT',
+          name: 'Best',
+          cat: 'Pokale & Kronen',
+          src: 'https://assets-v2.lottiefiles.com/a/999f5caa-1169-11ee-b6d9-ef202e9eeec6/iJ9clMiIlI.lottie',
+          page: 'https://lottiefiles.com/free-animation/best-JhCdQCTxWT',
+        },
+        {
+          id: 'winning-leadership-5WCG3OmsL7',
+          name: 'Winner on the first place',
+          cat: 'Pokale & Kronen',
+          src: 'https://assets-v2.lottiefiles.com/a/7b4cd5c2-1167-11ee-816a-73b6f2d0461f/i9SOc5ipQa.lottie',
+          page: 'https://lottiefiles.com/free-animation/winning-leadership-5WCG3OmsL7',
+        },
+        {
+          id: 'trophy-IZyEpsS3sn',
+          name: 'Trophy Icon Animation',
+          cat: 'Pokale & Kronen',
+          src: 'https://assets-v2.lottiefiles.com/a/cb2d095e-1185-11ee-bb0a-b71d225cf0ae/eQaQfBy7D0.lottie',
+          page: 'https://lottiefiles.com/free-animation/trophy-IZyEpsS3sn',
+        },
+        {
+          id: 'crown-drop-RIiu25b1xm',
+          name: 'Crown Drop',
+          cat: 'Pokale & Kronen',
+          src: 'https://assets-v2.lottiefiles.com/a/f5eb0fc2-0b9f-11f0-b999-43d8e3bf4162/V4abHTBKI9.lottie',
+          page: 'https://lottiefiles.com/free-animation/crown-drop-RIiu25b1xm',
+        },
+        {
+          id: 'crown-animation-WbhJC6r7qK',
+          name: 'a crown animation',
+          cat: 'Pokale & Kronen',
+          src: 'https://assets-v2.lottiefiles.com/a/aa66a72e-1186-11ee-8904-87d070c4725c/niw0Me585k.lottie',
+          page: 'https://lottiefiles.com/free-animation/crown-animation-WbhJC6r7qK',
+        },
+        {
+          id: 'premium-crown-oWzRsg47me',
+          name: 'A crown animation',
+          cat: 'Pokale & Kronen',
+          src: 'https://assets-v2.lottiefiles.com/a/907d7204-1152-11ee-bd90-07e02b1aabb3/0vJ1vEdRo3.lottie',
+          page: 'https://lottiefiles.com/free-animation/premium-crown-oWzRsg47me',
+        },
+        {
+          id: 'winner-badge-ni7vW0JTpF',
+          name: 'Winner Badge Lottie Animation.',
+          cat: 'Pokale & Kronen',
+          src: 'https://assets-v2.lottiefiles.com/a/c3eceb20-117e-11ee-9c73-5f85096290ce/9xowmQn3dH.lottie',
+          page: 'https://lottiefiles.com/free-animation/winner-badge-ni7vW0JTpF',
+        },
+        {
+          id: 'premium-gold-sbqSUiBN2b',
+          name: 'Brought to you by Khalil-oueslati.com',
+          cat: 'Pokale & Kronen',
+          src: 'https://assets-v2.lottiefiles.com/a/cb8baba4-1161-11ee-8a11-d7cfbf4f69ff/UFFiuvW9Ab.lottie',
+          page: 'https://lottiefiles.com/free-animation/premium-gold-sbqSUiBN2b',
+        },
+        {
+          id: 'celebration-update-color-T4YM0H0Vlh',
+          name: 'People jumping for joy for finishing a task.',
+          cat: 'Pokale & Kronen',
+          src: 'https://assets-v2.lottiefiles.com/a/b8826f2a-1189-11ee-80a7-ebf80f110504/Hh3gl3pZZh.lottie',
+          page: 'https://lottiefiles.com/free-animation/celebration-update-color-T4YM0H0Vlh',
+        },
+        {
+          id: 'winners-lottie-animation-kyKBXjHQvw',
+          name: 'simple winner Lottie animation.',
+          cat: 'Pokale & Kronen',
+          src: 'https://assets-v2.lottiefiles.com/a/46ee37f4-1175-11ee-961c-2fd810721ac5/X31ZmvyDEd.lottie',
+          page: 'https://lottiefiles.com/free-animation/winners-lottie-animation-kyKBXjHQvw',
+        },
+        {
+          id: 'award-or-achievement-animation-CTzRMYqMVC',
+          name: 'achievement or award animation',
+          cat: 'Pokale & Kronen',
+          src: 'https://assets-v2.lottiefiles.com/a/b93cea74-1177-11ee-81d8-13c98b413934/q50hkkuvDX.lottie',
+          page: 'https://lottiefiles.com/free-animation/award-or-achievement-animation-CTzRMYqMVC',
+        },
+        {
+          id: 'prize-podium-ftS31TPZLt',
+          name: 'Prize podium',
+          cat: 'Pokale & Kronen',
+          src: 'https://assets-v2.lottiefiles.com/a/235549ce-1169-11ee-affe-c3ba58ff7ae7/e3A1dRur5T.lottie',
+          page: 'https://lottiefiles.com/free-animation/prize-podium-ftS31TPZLt',
+        },
+        {
+          id: 'trophy-badge-award-animation-qGqxcwrrZX',
+          name: 'Trophy Badge award Animation',
+          cat: 'Pokale & Kronen',
+          src: 'https://assets-v2.lottiefiles.com/a/a5841fa0-117e-11ee-baae-5bb1ce7e6584/G96ILI4Xy6.lottie',
+          page: 'https://lottiefiles.com/free-animation/trophy-badge-award-animation-qGqxcwrrZX',
+        },
+        {
+          id: 'gold-winner-number-one-olive-branch-with-3-steps-MSP8kwoeCq',
+          name: 'Gold winner number one olive branch with 3 steps',
+          cat: 'Pokale & Kronen',
+          src: 'https://assets-v2.lottiefiles.com/a/8634c360-116b-11ee-9adc-4be6b947da11/5VID4XL31E.lottie',
+          page: 'https://lottiefiles.com/free-animation/gold-winner-number-one-olive-branch-with-3-steps-MSP8kwoeCq',
+        },
+        {
+          id: 'trophy-animation-3trvvLV1Mn',
+          name: 'Task accomplished animation',
+          cat: 'Pokale & Kronen',
+          src: 'https://assets-v2.lottiefiles.com/a/ee35c220-1175-11ee-9284-07b41c97856b/uA718ot5Lg.lottie',
+          page: 'https://lottiefiles.com/free-animation/trophy-animation-3trvvLV1Mn',
+        },
+        {
+          id: 'rank-YinStJH7uC',
+          name: 'Rank animation for websites and apps.',
+          cat: 'Pokale & Kronen',
+          src: 'https://assets-v2.lottiefiles.com/a/3f22769c-31e1-11ef-ae12-df4a718466fa/aU1JHT3G8k.lottie',
+          page: 'https://lottiefiles.com/free-animation/rank-YinStJH7uC',
+        },
+        {
+          id: 'trophy-OJxKdZoIJh',
+          name: 'Trophy',
+          cat: 'Pokale & Kronen',
+          src: 'https://assets-v2.lottiefiles.com/a/a4e9145c-1150-11ee-a111-5f0b42c20def/YPsJNCW4Nv.lottie',
+          page: 'https://lottiefiles.com/free-animation/trophy-OJxKdZoIJh',
+        },
+        {
+          id: 'stars-winner-Mds7n0DJvZ',
+          name: 'Stars - winner',
+          cat: 'Pokale & Kronen',
+          src: 'https://assets-v2.lottiefiles.com/a/ceb1700e-1164-11ee-9b93-8b1b04128413/O2ttGx6aF1.lottie',
+          page: 'https://lottiefiles.com/free-animation/stars-winner-Mds7n0DJvZ',
+        },
+        {
+          id: 'party-popper-lIMVLBXZaX',
+          name: 'Party popper. Make happy with friends!',
+          cat: 'Pokale & Kronen',
+          src: 'https://assets-v2.lottiefiles.com/a/c9775c82-1152-11ee-b41b-f7beb38b1422/f2Utvbh5vP.lottie',
+          page: 'https://lottiefiles.com/free-animation/party-popper-lIMVLBXZaX',
+        },
+        {
+          id: 'confetti-Ljf8PgS2P4',
+          name: 'Confetti',
+          cat: 'Pokale & Kronen',
+          src: 'https://assets-v2.lottiefiles.com/a/e7df6e94-1170-11ee-9640-1b85e6ca1c88/useeXXBWNy.lottie',
+          page: 'https://lottiefiles.com/free-animation/confetti-Ljf8PgS2P4',
+        },
+        {
+          id: 'coins-grow-s6tGJub6e4',
+          name: 'Coins grow',
+          cat: 'Münzen & Geld',
+          src: 'https://assets-v2.lottiefiles.com/a/3439efc8-1151-11ee-9767-e7bd14efbafc/QZlyFuO1MG.lottie',
+          page: 'https://lottiefiles.com/free-animation/coins-grow-s6tGJub6e4',
+        },
+        {
+          id: 'coin-collect-GMznH8RzOB',
+          name: 'Collect coins',
+          cat: 'Münzen & Geld',
+          src: 'https://assets-v2.lottiefiles.com/a/68ddef12-1152-11ee-a76e-ab7e3c441abb/phVuwhFeUW.lottie',
+          page: 'https://lottiefiles.com/free-animation/coin-collect-GMznH8RzOB',
+        },
+        {
+          id: 'coin-bust-XAtUgY8Tyt',
+          name: 'Coins bursting from a targeted area.',
+          cat: 'Münzen & Geld',
+          src: 'https://assets-v2.lottiefiles.com/a/92ef687c-1174-11ee-9ddb-f71f5581cfd0/YyTSJX6NpV.lottie',
+          page: 'https://lottiefiles.com/free-animation/coin-bust-XAtUgY8Tyt',
+        },
+        {
+          id: 'coins-drop-TwJOQPJyFn',
+          name: 'Falling coins and stacking on each other',
+          cat: 'Münzen & Geld',
+          src: 'https://assets-v2.lottiefiles.com/a/44933e96-1166-11ee-9669-d378b84c98e3/SxMlHr8USK.lottie',
+          page: 'https://lottiefiles.com/free-animation/coins-drop-TwJOQPJyFn',
+        },
+        {
+          id: 'coins-blow-effect-2YdQmUbuTz',
+          name: 'Coins moving from bottom to top. User reward',
+          cat: 'Münzen & Geld',
+          src: 'https://assets-v2.lottiefiles.com/a/21b223f8-1173-11ee-83b7-57b20458de18/ifOBlCisds.lottie',
+          page: 'https://lottiefiles.com/free-animation/coins-blow-effect-2YdQmUbuTz',
+        },
+        {
+          id: 'falling-coins-KjVAkKwkiI',
+          name: 'Falling coins',
+          cat: 'Münzen & Geld',
+          src: 'https://assets-v2.lottiefiles.com/a/e6a8d152-f1b5-11ee-aaea-8303a0a2fa35/z3uQoDCS74.lottie',
+          page: 'https://lottiefiles.com/free-animation/falling-coins-KjVAkKwkiI',
+        },
+        {
+          id: 'making-money-Os1hslOkjb',
+          name: 'A pile of coins suddenly falling',
+          cat: 'Münzen & Geld',
+          src: 'https://assets-v2.lottiefiles.com/a/d5030742-1169-11ee-905b-4f7395d1641d/jZHOnZc9R8.lottie',
+          page: 'https://lottiefiles.com/free-animation/making-money-Os1hslOkjb',
+        },
+        {
+          id: 'money-rain-hf41Intk7f',
+          name: 'Money rain',
+          cat: 'Münzen & Geld',
+          src: 'https://assets-v2.lottiefiles.com/a/6c616fd6-1177-11ee-9ec6-a7aefa82f62c/czCEqlLkhI.lottie',
+          page: 'https://lottiefiles.com/free-animation/money-rain-hf41Intk7f',
+        },
+        {
+          id: 'green-money-falling-BlsNrgN8KO',
+          name: 'Green Money falling',
+          cat: 'Münzen & Geld',
+          src: 'https://assets-v2.lottiefiles.com/a/6d1e10dc-1172-11ee-8ea5-f7a2d600e412/y5VFLwUBBR.lottie',
+          page: 'https://lottiefiles.com/free-animation/green-money-falling-BlsNrgN8KO',
+        },
+        {
+          id: 'money-stack-WJj4bJvO8V',
+          name: 'Get you money inside the app. Bills, bills, bills.',
+          cat: 'Münzen & Geld',
+          src: 'https://assets-v2.lottiefiles.com/a/33b45352-1153-11ee-951f-b32786f2881b/8TJQhTviGx.lottie',
+          page: 'https://lottiefiles.com/free-animation/money-stack-WJj4bJvO8V',
+        },
+        {
+          id: '0101bt-jfy-02-ZbwEIEMJ9n',
+          name: 'Slot Machine lights',
+          cat: 'Casino',
+          src: 'https://assets-v2.lottiefiles.com/a/bf3ca9e0-1187-11ee-a073-cf819fa5e463/87nst5W80k.lottie',
+          page: 'https://lottiefiles.com/free-animation/0101bt-jfy-02-ZbwEIEMJ9n',
+        },
+        {
+          id: 'casino-wheel-animation-Fl5Lh3sgVP',
+          name: 'The wheel starts at 1 and ends in 3.',
+          cat: 'Casino',
+          src: 'https://assets-v2.lottiefiles.com/a/de7b719a-117a-11ee-afc2-a3512aafb69d/OlR4LWNu2s.lottie',
+          page: 'https://lottiefiles.com/free-animation/casino-wheel-animation-Fl5Lh3sgVP',
+        },
+      ];
+      const KEY = 'poker-anim-favs';
+      let favs;
+      try {
+        favs = new Set(JSON.parse(localStorage.getItem(KEY) || '[]'));
+      } catch {
+        favs = new Set();
+      }
+      const save = () => {
+        try {
+          localStorage.setItem(KEY, JSON.stringify([...favs]));
+        } catch {}
+      };
+
+      const grid = document.getElementById('grid');
+      const cats = ['Alle', ...new Set(ITEMS.map((i) => i.cat))];
+      let cat = 'Alle',
+        onlyFav = false;
+      const players = new Map();
+
+      const filters = document.getElementById('filters');
+      for (const c of cats) {
+        const b = document.createElement('button');
+        b.className = 'chip';
+        b.textContent = c;
+        b.setAttribute('aria-pressed', String(c === cat));
+        b.onclick = () => {
+          cat = c;
+          for (const x of filters.children) x.setAttribute('aria-pressed', String(x === b));
+          render();
+        };
+        filters.append(b);
+      }
+
+      const io = new IntersectionObserver(
+        (entries) => {
+          for (const e of entries) {
+            const id = e.target.dataset.id;
+            let p = players.get(id);
+            if (e.isIntersecting) {
+              if (!p) {
+                const item = ITEMS.find((i) => i.id === id);
+                const canvas = e.target.querySelector('canvas');
+                p = new DotLottie({ canvas, src: item.src, autoplay: true, loop: true });
+                p.addEventListener('load', () => e.target.querySelector('.hint')?.remove());
+                p.addEventListener('loadError', () => {
+                  const h = e.target.querySelector('.hint');
+                  if (h) h.textContent = 'Konnte nicht geladen werden';
+                });
+                players.set(id, p);
+              } else p.play();
+            } else if (p) p.pause();
+          }
+        },
+        { rootMargin: '200px' },
+      );
+
+      ITEMS.forEach((item, n) => {
+        const el = document.createElement('article');
+        el.className = 'card';
+        el.dataset.id = item.id;
+        el.innerHTML = `<div class="stage" data-id="${item.id}"><span class="hint">lädt …</span><canvas></canvas></div>
+      <div class="meta"><div class="name"><span class="num">#${n + 1}</span> ${item.name}</div>
+      <div class="row"><span>${item.cat}</span><a href="${item.page}" target="_blank" rel="noopener">LottieFiles ↗</a>
+      <label class="favbox"><input type="checkbox"> ★</label></div></div>`;
+        const stage = el.querySelector('.stage');
+        stage.onclick = () => {
+          const p = players.get(item.id);
+          if (p) {
+            p.stop();
+            p.play();
+          }
+        };
+        const box = el.querySelector('input');
+        box.checked = favs.has(item.id);
+        box.onchange = () => {
+          box.checked ? favs.add(item.id) : favs.delete(item.id);
+          save();
+          render();
+        };
+        item.el = el;
+        item.num = n + 1;
+        grid.append(el);
+        io.observe(stage);
+      });
+
+      function render() {
+        let shown = 0;
+        for (const i of ITEMS) {
+          const vis = (cat === 'Alle' || i.cat === cat) && (!onlyFav || favs.has(i.id));
+          i.el.hidden = !vis;
+          i.el.classList.toggle('fav', favs.has(i.id));
+          if (vis) shown++;
+        }
+        document.getElementById('count').textContent = `${shown} angezeigt · ${favs.size} Favoriten`;
+      }
+      render();
+
+      const toggle = (id, fn) => {
+        const b = document.getElementById(id);
+        b.onclick = () => {
+          const v = b.getAttribute('aria-pressed') !== 'true';
+          b.setAttribute('aria-pressed', String(v));
+          fn(v);
+        };
+      };
+      toggle('felt', (v) => document.body.classList.toggle('felt', v));
+      toggle('onlyfav', (v) => {
+        onlyFav = v;
+        render();
+      });
+
+      const dlg = document.getElementById('out');
+      document.getElementById('copy').onclick = async () => {
+        const text =
+          ITEMS.filter((i) => favs.has(i.id))
+            .map((i) => `#${i.num} ${i.name} – ${i.page}`)
+            .join('\n') || '(noch keine Favoriten)';
+        document.getElementById('outtext').value = text;
+        try {
+          await navigator.clipboard.writeText(text);
+        } catch {}
+        dlg.showModal();
+      };
+      document.getElementById('close').onclick = () => dlg.close();
+    </script>
+  </body>
+</html>
