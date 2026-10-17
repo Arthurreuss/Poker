@@ -11,5 +11,6 @@ Alle Grafiken der Tischansicht sind **selbst gezeichnet** (WP-016) als React-SVG
 | Dealer-Button, SB/BB-Marker        | `assets/icons.tsx` (`MarkerDiscSvg`)   | Scheibe mit „D“ bzw. „SB“/„BB“                                                                                                                           |
 | Symbol „Verbindung getrennt“       | `assets/icons.tsx` (`DisconnectedSvg`) | unterbrochener Stecker                                                                                                                                   |
 | Menü-Symbol (Tisch-Menü, WP-017)   | `assets/icons.tsx` (`MenuSvg`)         | drei abgerundete Balken                                                                                                                                  |
+| Symbol Hand-Übersicht (WP-038) | `hands/HandRankings.tsx` (`HandsSvg`) | zwei aufgefächerte Karten, vorne mit Karo |
 
 Text auf Karten und Markern nutzt die System-Schrift (`--font-sans`).
