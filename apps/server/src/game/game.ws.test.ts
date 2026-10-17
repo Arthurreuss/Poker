@@ -50,6 +50,7 @@ async function start(hooks: GameHooks = {}, seed = 1): Promise<Started> {
       authenticate: fakeAuthenticate,
       handPauseMs: 0,
       runoutPauseMs: 0,
+      showdownPauseMs: 0,
       hooks,
       rng: createSeededRng(seed),
     },

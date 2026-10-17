@@ -4,6 +4,7 @@ import './seat-extras.css';
 import './seat-hints.css';
 import './fx/fx.css';
 import { Card, winHighlight } from './Card';
+import { Crown } from './Crown';
 import { formatChips } from './format';
 import { HandRankings } from './hands/HandRankings';
 import { placeSeats, seatMarker, type PlacedSeat, type TableLayout } from './layout';
@@ -141,6 +142,13 @@ function TableSeat({
         avatar={player.avatar}
         avatarSide={slot.markerSide === 'left' ? 'right' : 'left'}
       />
+      {winner && (
+        <Crown
+          name={player.name}
+          side={slot.markerSide === 'left' ? 'right' : 'left'}
+          onAvatar={player.avatar !== undefined && player.avatar !== null}
+        />
+      )}
       {reaction !== undefined && (
         <span
           key={reaction.id}
