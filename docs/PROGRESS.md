@@ -39,6 +39,7 @@
 | M6 | [WP-032](work-packages/WP-032.md) | Avatare und Emoji-Reaktionen | done | WP-026 |
 | M6 | [WP-033](work-packages/WP-033.md) | Admin: verdeckte Karten aufdecken | done | WP-028 |
 | M6 | [WP-034](work-packages/WP-034.md) | Tisch kleiner, alle Spieler sichtbar | review | WP-017 |
+| M6 | [WP-035](work-packages/WP-035.md) | Admin: eigene Karten neu ziehen | review | WP-028 |
 <!-- END GENERATED -->
 
 ## Meilensteine
@@ -62,6 +63,7 @@ Parallel in Arbeit (max. 5): WP-011 (Game-Server/WebSocket), WP-014 (Web-Grundge
 ## Log
 Neueste Einträge oben. Pro Session 1–3 Zeilen.
 
+- 2026-10-17: WP-035 review – Admin zieht per Tipp neue eigene Karten aus dem Restdeck (D-032), protokolliert, für Mitspieler unsichtbar; Historie speichert die gespielten Karten. Docker-Aufräumen (Build-Cache, ungenutzte Images).
 - 2026-10-08: WP-008 done – komplette Freezeout-Runde (Blind-Level, Dead Button nach TDA, Platzierungen, Punkte), 760 simulierte Runden. Engine-Reinheit per ESLint abgesichert. Offen: geteilte Plätze vs. DB-Constraint. WP-011 gestartet.
 - 2026-10-08: WP-021 review – tägliche Backups (7/4/6), Restore-Test grün, `prod:status`, Prod-Worktree + Release-Skript (D-017). Offen: Neustart-Test durch Arthur.
 - 2026-10-08: WP-010 done – Registrierung/Login/Sessions (argon2id, httpOnly-Cookie, Rate-Limit), Admin-CLIs auch im Prod-Image gebündelt. Merge-Fix mit WP-003 (`buildApp`-Optionen). Limit paralleler WPs auf 5 erhöht (Arthur). WP-014 gestartet.

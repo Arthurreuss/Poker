@@ -70,6 +70,8 @@ export const REACTION_DISPLAY_MS = 3000;
 
 /** `requestId`-Präfix von `admin.revealCards`, damit Fehler darauf nicht die Aktionsleiste freigeben. */
 const REVEAL_REQUEST = 'reveal:';
+/** `requestId`-Präfix von `admin.redrawCards` (WP-035), aus demselben Grund. */
+const REDRAW_REQUEST = 'redraw:';
 
 type Listener = () => void;
 
@@ -98,6 +100,7 @@ export class TableGameStore {
   private pendingKey: string | null = null;
   private errorId = 0;
   private reactionId = 0;
+  private redrawCount = 0;
   private readonly reactionTimers = new Set<ReturnType<typeof setTimeout>>();
 
   constructor(
@@ -241,6 +244,20 @@ export class TableGameStore {
     this.update({ reveal: state });
   }
 
+  /**
+   * Admin tippt auf die eigenen Karten (WP-035, D-032): zwei neue Karten ziehen. Die neue Sicht kommt als
+   * `table.state`; der Server lehnt außerhalb einer laufenden Hand oder nach dem Fold ab.
+   */
+  redrawCards(): void {
+    if (!this.snapshot.isAdmin) return;
+    this.redrawCount++;
+    this.send({
+      type: 'admin.redrawCards',
+      tableId: this.tableId,
+      requestId: `${REDRAW_REQUEST}${String(this.redrawCount)}`,
+    });
+  }
+
   reconnectNow(): void {
     this.connection.reconnectNow();
   }
@@ -298,6 +315,11 @@ export class TableGameStore {
           // Auch nach einem Server-Neustart (Tisch geschlossen): alten Stand nicht weiter zeigen.
           this.pendingKey = null;
           this.update({ notFound: true, table: null, pendingAction: false, preAction: null, reveal: EMPTY_REVEAL });
+          return;
+        }
+        if (message.requestId?.startsWith(REDRAW_REQUEST) === true) {
+          // Neuziehen abgelehnt: nur melden, eine laufende Aktion bleibt unberührt.
+          this.setError(message.code, message.message);
           return;
         }
         if (message.requestId?.startsWith(REVEAL_REQUEST) === true) {

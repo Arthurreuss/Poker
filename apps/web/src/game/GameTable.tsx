@@ -73,6 +73,12 @@ export function GameTable({ snapshot, store, onLeave }: GameTableProps) {
   // Admin am Tisch (WP-033, D-027): verdeckte Karten der Mitspieler per Tipp umdrehen.
   const adminSeated = snapshot.isAdmin && table !== null && table.you.seat !== null;
   const { reveal: revealState } = snapshot;
+  // WP-035 (D-032): solange der Admin in der laufenden Hand ist, zieht ein Tipp auf die eigenen Karten neu.
+  const hand = table?.round?.hand ?? null;
+  const canRedraw =
+    adminSeated &&
+    hand?.phase === 'betting' &&
+    hand.players.some((p) => p.playerId === String(table.you.userId) && p.status !== 'folded');
   const cardReveal = useMemo<CardReveal | undefined>(
     () =>
       adminSeated
@@ -82,9 +88,14 @@ export function GameTable({ snapshot, store, onLeave }: GameTableProps) {
             onToggle: (seat) => {
               store.toggleReveal(seat);
             },
+            onRedraw: canRedraw
+              ? () => {
+                  store.redrawCards();
+                }
+              : undefined,
           }
         : undefined,
-    [adminSeated, revealState, store],
+    [adminSeated, canRedraw, revealState, store],
   );
 
   return (

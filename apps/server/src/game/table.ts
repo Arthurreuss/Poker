@@ -3,6 +3,7 @@
 // Alle Zustandsänderungen sind synchron; nur DB-Zugriffe (Repository) und Hooks laufen asynchron.
 import {
   applyRoundAction,
+  redrawRoundHoleCards,
   startNextHand,
   startRound,
   type Action,
@@ -320,6 +321,26 @@ export class Table {
     }
     this.round = update.round;
     this.afterTransition();
+    return OK;
+  }
+
+  /**
+   * Admin zieht neue eigene Hole Cards (WP-035, D-032). Das Admin-Recht prüft der Aufrufer (`GameServer`).
+   * `handNumber`: nur diese Hand (sonst `NO_HAND_IN_PROGRESS`, z. B. wenn sie während des Protokollierens endete);
+   * ohne Angabe wird nur geprüft, nichts geändert. Sendet keine Sichten – die neue Sicht geht nur an den Admin.
+   */
+  redrawHoleCards(userId: number, handNumber?: number): TableResult {
+    const round = this.round;
+    if (this.status !== 'running' || round?.phase !== 'hand' || round.hand?.phase !== 'betting') {
+      return err('NO_HAND_IN_PROGRESS', 'Gerade läuft keine Hand');
+    }
+    if (handNumber !== undefined && handNumber !== round.handNumber) {
+      return err('NO_HAND_IN_PROGRESS', 'Die Hand ist schon vorbei');
+    }
+    if (this.seatOf(userId) === null) return err('NOT_SEATED', 'Du spielst an diesem Tisch nicht mit');
+    const update = redrawRoundHoleCards(round, playerIdOf(userId), this.deps.rng);
+    if (!update.ok) return err('ILLEGAL_ACTION', update.error.message);
+    if (handNumber !== undefined) this.round = update.round;
     return OK;
   }
 

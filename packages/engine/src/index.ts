@@ -41,7 +41,7 @@ export {
 export type { HandCategory, HandResult, ShowdownEntry, ShowdownWinners } from './hand-eval';
 
 // --- Setzrunden (WP-006) ---
-export { applyAction, legalActions, potTotal, startHand } from './betting';
+export { applyAction, legalActions, potTotal, redrawHoleCards, startHand } from './betting';
 export type { StartHandOptions, StartHandPlayer } from './betting';
 export type {
   Action,
@@ -69,6 +69,7 @@ export {
   DEFAULT_TIME_BANK_SECONDS,
   DEFAULT_TURN_TIME_SECONDS,
   applyRoundAction,
+  redrawRoundHoleCards,
   roundBlindLevel,
   startNextHand,
   startRound,

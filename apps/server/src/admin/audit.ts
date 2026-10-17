@@ -10,7 +10,7 @@ import { startPeriodicJob, type PeriodicJob } from '../periodic-job';
 /**
  * Erlaubte Aktionen (Format `bereich.aktion`, DB-Check in 0007). Neue Admin-Aktionen ergänzen hier ihren Code.
  * `table.reveal_cards` (WP-033, D-027): Quelle `ws`, Ziel = Tisch und Spieler, Details `{ roundId, handNumber, seat }`
- * (geschrieben von `admin/reveal.ts`).
+ * (geschrieben von `admin/reveal.ts`). `table.redraw_cards` (WP-035, D-032): ebenso, Ziel = der Admin selbst.
  */
 export type AuditAction =
   | 'user.ban'
@@ -20,7 +20,8 @@ export type AuditAction =
   | 'user.admin_grant'
   | 'user.admin_revoke'
   | 'table.close'
-  | 'table.reveal_cards';
+  | 'table.reveal_cards'
+  | 'table.redraw_cards';
 
 /** Weg, über den die Aktion kam. */
 export type AuditSource = 'api' | 'cli' | 'ws';

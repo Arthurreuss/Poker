@@ -12,6 +12,11 @@ export interface CardReveal {
   /** Plätze, deren Karten gerade aufgedeckt sind. */
   readonly faceUp: ReadonlySet<number>;
   readonly onToggle: (seat: number) => void;
+  /**
+   * Eigene Karten neu ziehen (WP-035, D-032): gesetzt, solange der Admin in der laufenden Hand ist; die eigenen Karten
+   * werden dann zum Schalter.
+   */
+  readonly onRedraw?: (() => void) | undefined;
 }
 
 export interface RevealableCardsProps {

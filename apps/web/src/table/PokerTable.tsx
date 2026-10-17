@@ -62,11 +62,28 @@ function SeatCards({
   const classes = ['pt-seat-cards', `pt-seat-cards--${holeCards.kind}`, big && 'pt-seat-cards--hero']
     .filter(Boolean)
     .join(' ');
+  const faces = cards.map((card, i) => (
+    <Card key={i} card={card} size={size} fourColor={fourColor} highlight={winHighlight(card, winning)} />
+  ));
+  const onRedraw = reveal?.onRedraw;
+  if (placed.isHero && holeCards.kind === 'visible' && onRedraw !== undefined) {
+    // Admin (WP-035, D-032): Tipp auf die eigenen Karten zieht zwei neue.
+    return (
+      <button
+        type="button"
+        className={`${classes} pt-seat-cards--revealable`}
+        data-testid="hole-cards"
+        data-kind={holeCards.kind}
+        aria-label="Neue Karten ziehen"
+        onClick={onRedraw}
+      >
+        {faces}
+      </button>
+    );
+  }
   return (
     <div className={classes} data-testid="hole-cards" data-kind={holeCards.kind}>
-      {cards.map((card, i) => (
-        <Card key={i} card={card} size={size} fourColor={fourColor} highlight={winHighlight(card, winning)} />
-      ))}
+      {faces}
     </div>
   );
 }

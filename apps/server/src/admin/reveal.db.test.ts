@@ -1,4 +1,4 @@
-// Admin deckt Karten auf (WP-033, D-027) gegen die Test-DB (nur mit TEST_DATABASE_URL, sonst übersprungen): echte
+// Admin deckt Karten auf (WP-033, D-027) bzw. zieht neue eigene Karten (WP-035, D-032) gegen die Test-DB (nur mit TEST_DATABASE_URL, sonst übersprungen): echte
 // Sessions, Admin-Flag aus der DB, Eintrag `table.reveal_cards` im Admin-Protokoll, Rechteentzug greift sofort.
 import type { AddressInfo } from 'node:net';
 import type { FastifyInstance, LightMyRequestResponse } from 'fastify';
@@ -13,7 +13,9 @@ import { runMigrations } from '../db/migrate';
 import { createTestSchema, testDatabaseUrl, type TestSchema } from '../db/test-db';
 import { TestClient } from '../game/ws-test-client';
 import type { AuditEntry } from './audit';
-import { recordCardReveal } from './reveal';
+import { replayHandRecord } from '../history/replay';
+import { loadRoundHands } from '../history/store';
+import { recordCardRedraw, recordCardReveal } from './reveal';
 
 const ORIGIN = 'http://localhost:4310';
 const AUTH: AuthConfig = {
@@ -189,6 +191,69 @@ describe.skipIf(testDatabaseUrl === undefined)('Admin: Karten aufdecken (Test-DB
         target_table_id: tableId,
         details: { roundId: 7, handNumber: 3, seat: 2 },
         source: 'ws',
+      },
+    ]);
+  });
+
+  it('Neuziehen: Eintrag pro Mal; die gespeicherte Hand enthält die gespielten Karten und lässt sich nachspielen', async () => {
+    const { a, adminAcc, admin, player, id } = await running();
+    let cards: string[] = [];
+    for (let i = 0; i < 3; i++) {
+      admin.send({ type: 'admin.redrawCards', tableId: id, requestId: `redraw:${String(i)}` });
+      const { table } = await admin.nextState((t) => t.round?.hand?.phase === 'betting');
+      cards = table.round?.hand?.players.find((p) => p.playerId === String(adminAcc.id))?.holeCards ?? [];
+    }
+    expect(cards).toHaveLength(2);
+    const entries = (await audit(a, adminAcc)).filter((e) => e.action === 'table.redraw_cards');
+    expect(entries).toHaveLength(3);
+    expect(entries[0]).toMatchObject({
+      source: 'ws',
+      admin: { id: adminAcc.id },
+      targetUser: { id: adminAcc.id },
+      targetTableId: id,
+      details: { roundId: 1, handNumber: 1, seat: 0 },
+    });
+    expect(JSON.stringify(player.messages)).not.toContain('redraw');
+
+    // Hand beenden: wer dran ist, foldet (heads-up).
+    const hand = a.game.getTable(id)?.round?.hand;
+    if (hand === null || hand === undefined) throw new Error('keine Hand');
+    const actor = hand.toActId === String(adminAcc.id) ? admin : player;
+    actor.send({ type: 'table.action', tableId: id, handNumber: 1, seq: hand.log.length, action: { type: 'fold' } });
+    await admin.nextState((t) => t.round?.hand?.phase === 'complete');
+    await a.game.idle();
+
+    const [stored] = await loadRoundHands(s.pool, 1);
+    if (stored === undefined) throw new Error('Hand nicht gespeichert');
+    expect(stored.players.find((p) => p.userId === adminAcc.id)?.holeCards).toEqual(cards);
+    expect(new Set(stored.deck).size).toBe(52);
+    const replayed = replayHandRecord(stored);
+    if (!replayed.ok) throw new Error(replayed.message);
+    expect(replayed.record.players).toEqual(stored.players);
+  });
+
+  it('recordCardRedraw: schreibt nur für aktive Admins, Ziel ist der Admin selbst', async () => {
+    const { a } = await start();
+    const adminAcc = await register(a, 'chefin', true);
+    const other = await register(a, 'andere');
+    const { rows: t } = await s.pool.query<{ id: number }>(
+      `INSERT INTO tables (name, created_by, invite_code, is_public, max_seats, starting_stack, small_blind, big_blind,
+                           blind_structure, turn_time_seconds, time_bank_seconds)
+       VALUES ('T', $1, 'code', true, 9, 1500, 10, 20, '{"type":"fixed","level":{"smallBlind":10,"bigBlind":20}}', 20, 60)
+       RETURNING id`,
+      [adminAcc.id],
+    );
+    const tableId = t[0]?.id ?? 0;
+    const entry = { tableId, roundId: 7, handNumber: 3, seat: 2 };
+    expect(await recordCardRedraw(s.pool, { ...entry, adminId: other.id })).toBe(false);
+    expect(await recordCardRedraw(s.pool, { ...entry, adminId: adminAcc.id })).toBe(true);
+    const { rows } = await s.pool.query('SELECT admin_id, action, target_user_id, details FROM admin_audit_log');
+    expect(rows).toEqual([
+      {
+        admin_id: adminAcc.id,
+        action: 'table.redraw_cards',
+        target_user_id: adminAcc.id,
+        details: { roundId: 7, handNumber: 3, seat: 2 },
       },
     ]);
   });
