@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactNode } from 'react';
 import './table.css';
 import './seat-extras.css';
+import './seat-hints.css';
 import './fx/fx.css';
 import { Card, winHighlight } from './Card';
 import { formatChips } from './format';
@@ -133,6 +134,9 @@ function TableSeat({
         toAct={toAct}
         timeRemaining={toAct ? view.timeRemaining : undefined}
         timeBankSeconds={toAct ? view.timeBankSeconds : undefined}
+        timeSeconds={toAct ? view.timeSeconds : undefined}
+        lastAction={player.lastAction}
+        heroHand={isHero ? view.heroHand : undefined}
         isHero={isHero}
         avatar={player.avatar}
         avatarSide={slot.markerSide === 'left' ? 'right' : 'left'}

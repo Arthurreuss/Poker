@@ -2,6 +2,7 @@ import type { TableView as ServerTableView } from '@poker/engine/protocol';
 import { describe, expect, it } from 'vitest';
 import type { PlayerSeatView, SeatView } from '../table/types';
 import { heroHandContext, toReactionViews, toTableView } from './adapter';
+import { heroHandName } from './handName';
 import { act, NOW, serverView, startGame, toAct, type Game } from './test/fixtures';
 
 function player(seat: SeatView | undefined): PlayerSeatView {
@@ -239,5 +240,68 @@ describe('Avatare und Reaktionen (WP-032)', () => {
         view,
       ),
     ).toEqual([{ id: 1, seat: 1, emoji: '👍', label: 'Daumen hoch' }]);
+  });
+});
+
+describe('Letzte Aktion und eigene Hand (WP-037)', () => {
+  it('letzte Aktion der Straße am Sitz, Blinds ohne Schriftzug, neue Straße leert', () => {
+    const game = startGame();
+    const bb = hand(serverView(game, 1)).bigBlind;
+    const caller = toAct(game);
+    act(game, { type: 'call' });
+    let view = toTableView(serverView(game, 1));
+    expect(player(view.seats[caller - 1]).lastAction).toEqual({ kind: 'call', amount: bb });
+    for (const id of [1, 2, 3].filter((i) => i !== caller)) {
+      expect(player(view.seats[id - 1]).lastAction).toBeUndefined();
+    }
+    checkDownStreet(game);
+    view = toTableView(serverView(game, 1));
+    expect(view.board).toHaveLength(3);
+    for (const id of [1, 2, 3]) expect(player(view.seats[id - 1]).lastAction).toBeUndefined();
+    const checker = toAct(game);
+    act(game, { type: 'check' });
+    expect(player(toTableView(serverView(game, 1)).seats[checker - 1]).lastAction).toEqual({ kind: 'check' });
+  });
+
+  it('nach der Hand keine Schriftzüge', () => {
+    const game = startGame();
+    checkDown(game);
+    const view = toTableView(serverView(game, 1));
+    for (const s of view.seats) if (s.kind === 'player') expect(s.lastAction).toBeUndefined();
+  });
+
+  it('eigene Hand: preflop aus den eigenen Karten, danach mit dem gezeigten Board', () => {
+    const game = startGame();
+    expect(toTableView(serverView(game, 1)).heroHand?.short).toMatch(/^(Paar|Höchste Karte) /);
+    checkDownStreet(game);
+    const flop = toTableView(serverView(game, 1));
+    const hero = player(flop.seats[0]);
+    if (hero.holeCards.kind !== 'visible') throw new Error('eigene Karten fehlen');
+    expect(flop.heroHand).toEqual(heroHandName(hero.holeCards.cards, flop.board));
+    // Zuschauer: keine eigene Hand
+    expect(toTableView(serverView(game, null)).heroHand).toBeUndefined();
+  });
+
+  it('Runout: Hand passt zum gekürzten Board; gefoldet: keine Hand', () => {
+    const heads = startGame(2);
+    act(heads, { type: 'allIn' });
+    act(heads, { type: 'call' });
+    const server = serverView(heads, 1);
+    const view = toTableView(server, { reveal: { board: 3, result: false } });
+    const hero = player(view.seats[0]);
+    if (hero.holeCards.kind !== 'visible') throw new Error('eigene Karten fehlen');
+    expect(view.heroHand).toEqual(heroHandName(hero.holeCards.cards, hand(server).board.slice(0, 3)));
+
+    const game = startGame();
+    while (toAct(game) !== 1) act(game, { type: 'call' });
+    act(game, { type: 'fold' });
+    expect(toTableView(serverView(game, 1)).heroHand).toBeUndefined();
+  });
+
+  it('Restsekunden des Timers', () => {
+    const game = startGame();
+    const seat = toAct(game) - 1;
+    const clock = { seat, startedMs: NOW, turnEndsMs: NOW + 20_000, deadlineMs: NOW + 20_000 };
+    expect(toTableView(serverView(game, 1), { turnClock: clock, nowMs: NOW + 5_500 }).timeSeconds).toBe(15);
   });
 });
