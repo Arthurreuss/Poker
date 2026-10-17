@@ -1,8 +1,11 @@
 // Zeitliche Darstellung einer Hand (WP-031): Liefert der Server einen All-in-Runout auf einmal (Hand
 // fertig, mehrere Straßen neu), deckt der Client Flop, Turn und River nacheinander auf und zeigt das
-// Ergebnis (Auszahlung, Gewinner) erst danach. Der Server bleibt die Wahrheit (D-003): Das ist nur eine
+// Ergebnis (Auszahlung, Gewinner) erst danach. Bei einem Showdown (WP-039) drehen sich vorher die Karten der
+// Mitspieler um (ca. 1 s, `TableFx`); Gewinner, Krone und Auszahlung erscheinen erst danach – auch ohne
+// Animationen, damit der Zeitablauf gleich bleibt. Der Server bleibt die Wahrheit (D-003): Das ist nur eine
 // kurze, begrenzte Verzögerung der Anzeige; ein neuer Stand einer anderen Hand beendet sie sofort.
-// Die Server-Pause nach der Hand ist dafür je Runout-Straße länger (`DEFAULT_RUNOUT_PAUSE_MS`).
+// Die Server-Pause nach der Hand ist dafür bei einem Showdown (`DEFAULT_SHOWDOWN_PAUSE_MS`) und je
+// Runout-Straße (`DEFAULT_RUNOUT_PAUSE_MS`) länger.
 import { useEffect, useState } from 'react';
 import type { HandView } from '@poker/engine/protocol';
 import type { Reveal } from './adapter';
@@ -11,6 +14,11 @@ import type { Reveal } from './adapter';
 export const RUNOUT_STEP_MS = 900;
 /** Pause nach der letzten aufgedeckten Straße, bis das Ergebnis erscheint. */
 export const RESULT_DELAY_MS = 700;
+/**
+ * Showdown (WP-039): so lange drehen sich die Karten der Mitspieler um (Flip in `TableFx`), bevor ein Runout
+ * beginnt bzw. das Ergebnis erscheint. Etwas länger als die Animation (ca. 1 s), damit man die Karten sieht.
+ */
+export const SHOWDOWN_FLIP_MS = 1200;
 
 export interface RevealStep {
   readonly atMs: number;
@@ -23,11 +31,12 @@ export interface Seen {
   readonly reveal: Reveal;
 }
 
-type HandLike = Pick<HandView, 'handNumber' | 'board' | 'phase'>;
+type HandLike = Pick<HandView, 'handNumber' | 'board' | 'phase' | 'showdown'>;
 
 /**
  * Plan für die nächste Sicht: erster Schritt sofort (`atMs` 0), weitere zeitversetzt. Gestaffelt wird nur,
- * wenn die Hand fertig ist und dabei neue Straßen ausgeteilt wurden (Runout); sonst alles sofort.
+ * wenn die Hand gerade fertig geworden ist und es einen Showdown gab (erst Karten umdrehen, dann Runout,
+ * dann Ergebnis) bzw. dabei neue Straßen ausgeteilt wurden (Runout); sonst alles sofort.
  * `seen = null` (erster Stand, Seite neu geladen): alles sofort.
  */
 export function planReveal(seen: Seen | null, hand: HandLike | null): RevealStep[] {
@@ -37,12 +46,16 @@ export function planReveal(seen: Seen | null, hand: HandLike | null): RevealStep
   const start: Reveal = seen.handNumber === hand.handNumber ? seen.reveal : { board: 0, result: false };
   if (start.result && seen.handNumber === hand.handNumber) return [{ atMs: 0, reveal: full }];
   const streets = [3, 4, 5].filter((n) => n > start.board && n <= hand.board.length);
-  if (hand.phase !== 'complete' || streets.length === 0) return [{ atMs: 0, reveal: full }];
-  const steps: RevealStep[] = streets.map((board, i) => ({
-    atMs: i * RUNOUT_STEP_MS,
-    reveal: { board, result: false },
-  }));
-  steps.push({ atMs: (streets.length - 1) * RUNOUT_STEP_MS + RESULT_DELAY_MS, reveal: full });
+  const showdown = hand.showdown !== null;
+  if (hand.phase !== 'complete' || (streets.length === 0 && !showdown)) return [{ atMs: 0, reveal: full }];
+  // Showdown: Karten drehen sich um, Board steht noch wie zuletzt gesehen; erst danach Runout bzw. Ergebnis.
+  const flip = showdown ? SHOWDOWN_FLIP_MS : 0;
+  const steps: RevealStep[] = showdown ? [{ atMs: 0, reveal: { board: start.board, result: false } }] : [];
+  streets.forEach((board, i) => {
+    steps.push({ atMs: flip + i * RUNOUT_STEP_MS, reveal: { board, result: false } });
+  });
+  const resultAt = streets.length === 0 ? flip : flip + (streets.length - 1) * RUNOUT_STEP_MS + RESULT_DELAY_MS;
+  steps.push({ atMs: resultAt, reveal: full });
   return steps;
 }
 
@@ -55,7 +68,9 @@ interface RevealState {
 }
 
 function keyOf(hand: HandLike | null): string {
-  return hand === null ? '-' : `${String(hand.handNumber)}/${String(hand.board.length)}/${hand.phase}`;
+  return hand === null
+    ? '-'
+    : `${String(hand.handNumber)}/${String(hand.board.length)}/${hand.phase}/${hand.showdown === null ? '' : 'sd'}`;
 }
 
 function seenOf(state: RevealState): Seen | null {

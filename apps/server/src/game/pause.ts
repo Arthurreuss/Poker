@@ -1,5 +1,6 @@
-// Pause nach einer Hand (WP-031): Grundpause für die Showdown-Anzeige plus Zeit für einen All-in-Runout,
-// den der Client Straße für Straße aufdeckt (Flop, Turn, River nacheinander, siehe ARCHITECTURE.md
+// Pause nach einer Hand (WP-031, WP-039): Grundpause für die Ergebnis-Anzeige, bei einem Showdown zusätzlich
+// Zeit für das Umdrehen der Karten und die Gewinneranzeige (Krone), plus Zeit für einen All-in-Runout, den der
+// Client Straße für Straße aufdeckt (Flop, Turn, River nacheinander, siehe ARCHITECTURE.md
 // „Frontend: Animationen und Sounds“). Rein, damit sie ohne Uhr testbar ist.
 import type { HandState, Street } from '@poker/engine';
 
@@ -24,11 +25,17 @@ export function runoutStreets(hand: Pick<HandState, 'board' | 'log' | 'showdown'
   return Math.max(0, boardStreetIndex(hand.board.length) - lastStreet);
 }
 
-/** Pause bis zur nächsten Hand: Grundpause + je Runout-Straße `perRunoutStreetMs`. */
-export function handPauseFor(
-  hand: Pick<HandState, 'board' | 'log' | 'showdown'>,
-  baseMs: number,
-  perRunoutStreetMs: number,
-): number {
-  return baseMs + runoutStreets(hand) * perRunoutStreetMs;
+export interface HandPauseTimes {
+  /** Jede Hand (auch durch Fold beendet). */
+  readonly baseMs: number;
+  /** Zusätzlich nach einem Showdown. */
+  readonly showdownMs: number;
+  /** Zusätzlich je Runout-Straße. */
+  readonly perRunoutStreetMs: number;
+}
+
+/** Pause bis zur nächsten Hand: Grundpause + bei Showdown `showdownMs` + je Runout-Straße `perRunoutStreetMs`. */
+export function handPauseFor(hand: Pick<HandState, 'board' | 'log' | 'showdown'>, times: HandPauseTimes): number {
+  const showdown = hand.showdown === null ? 0 : times.showdownMs;
+  return times.baseMs + showdown + runoutStreets(hand) * times.perRunoutStreetMs;
 }

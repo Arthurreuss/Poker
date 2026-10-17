@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GameTable } from './GameTable';
 import { useTableGame } from './hooks';
 import { fakeConnection } from './test/fakeSocket';
-import { RESULT_DELAY_MS, RUNOUT_STEP_MS } from './presentation';
+import { RESULT_DELAY_MS, RUNOUT_STEP_MS, SHOWDOWN_FLIP_MS } from './presentation';
 import { ROUND_END_HOLD_MS } from './roundEndHold';
 import { act as play, serverView, startGame, toAct, USERS } from './test/fixtures';
 
@@ -240,9 +240,12 @@ describe('GameTable', () => {
           standings: standings.map((s) => ({ ...s, user: { id: Number(s.playerId), username: 'x' } })),
         });
       });
-      expect(boardCards()).toBe(3);
+      // WP-039: erst drehen sich die Karten um, dann folgt der Runout.
+      expect(boardCards()).toBe(0);
       expect(screen.queryByTestId('hand-result')).toBeNull();
       expect(screen.queryByRole('dialog')).toBeNull();
+      tick(SHOWDOWN_FLIP_MS);
+      expect(boardCards()).toBe(3);
       tick(RUNOUT_STEP_MS);
       expect(boardCards()).toBe(4);
       tick(RUNOUT_STEP_MS);
@@ -252,6 +255,7 @@ describe('GameTable', () => {
       // Ergebnis am Tisch: Gewinner hervorgehoben, Text im Aktionsbereich – noch kein Dialog.
       expect(screen.getByTestId('hand-result')).toBeInTheDocument();
       expect(document.querySelector('[data-winner="true"]')).not.toBeNull();
+      expect(screen.getAllByTestId('winner-crown')).toHaveLength(1);
       expect(screen.queryByRole('dialog')).toBeNull();
       tick(ROUND_END_HOLD_MS - 1);
       expect(screen.queryByRole('dialog')).toBeNull();

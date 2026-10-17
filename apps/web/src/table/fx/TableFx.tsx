@@ -1,6 +1,6 @@
 /**
  * Animationen am Tisch (WP-031): Austeilen, Board aufdecken, Einsätze, Check, Fold, Einsätze → Pot,
- * Pot → Gewinner. Wird als `overlay` in die Tischfläche von `PokerTable` gelegt und arbeitet nur über die
+ * Pot → Gewinner; Showdown-Karten drehen sich um (WP-039). Wird als `overlay` in die Tischfläche von `PokerTable` gelegt und arbeitet nur über die
  * Web Animations API (`element.animate`) und kurzlebige „Geister“-Elemente in der eigenen Ebene – keine
  * `<style>`-Elemente, keine Inline-Styles im Markup (CSP `style-src 'self'`, D-014).
  *
@@ -12,6 +12,7 @@ import { useLayoutEffect, useRef } from 'react';
 import type { TableView } from '../types';
 import { diffTableViews, type TableEvent } from './events';
 import './fx.css';
+import '../showdown.css';
 
 export interface TableFxProps {
   readonly view: TableView;
@@ -121,6 +122,46 @@ function ghost(
   animation.oncancel = remove;
   // Sicherheitsnetz: nie liegen bleiben (z. B. wenn der Tab im Hintergrund war).
   window.setTimeout(remove, Number(options.duration ?? 0) + (options.delay ?? 0) + 500);
+}
+
+/** Showdown-Flip (WP-039): eine Hälfte Rückseite, eine Hälfte Vorderseite; mit Versatz der zweiten Karte ca. 1 s. */
+export const FLIP_HALF_MS = 450;
+export const FLIP_CARD_STAGGER_MS = 120;
+
+/**
+ * Karte im Showdown umdrehen (WP-039): Eine Rückseite (Geist in der Effekt-Ebene) dreht sich bis zur Kante weg,
+ * dann dreht sich die echte, schon offene Karte von der Kante her auf. Die Karte selbst steht sofort richtig
+ * im DOM (`fill: 'backwards'` hält sie nur während der ersten Hälfte unsichtbar auf der Kante).
+ */
+function flipCard(layer: HTMLElement, card: Element, box: Box, delay: number): void {
+  if (typeof card.animate !== 'function') return;
+  const back = document.createElement('div');
+  back.className = 'fx-flip-back';
+  back.style.left = `${String(box.x)}px`;
+  back.style.top = `${String(box.y)}px`;
+  back.style.width = `${String(box.w)}px`;
+  back.style.height = `${String(box.h)}px`;
+  layer.appendChild(back);
+  const remove = () => {
+    back.remove();
+  };
+  const half = back.animate([{ rotate: 'y 0deg' }, { rotate: 'y 90deg' }], {
+    duration: FLIP_HALF_MS,
+    delay,
+    easing: 'ease-in',
+    fill: 'both',
+  });
+  half.onfinish = remove;
+  half.oncancel = remove;
+  window.setTimeout(remove, delay + FLIP_HALF_MS + 500);
+  animate(
+    card,
+    [
+      { rotate: 'y 90deg', scale: '1.08' },
+      { rotate: 'y 0deg', scale: '1' },
+    ],
+    { duration: FLIP_HALF_MS, delay: delay + FLIP_HALF_MS, easing: EASE_OUT },
+  );
 }
 
 function chipBox(at: { x: number; y: number }, size: number): Box {
@@ -236,16 +277,11 @@ function run(events: readonly TableEvent[], area: HTMLElement, layer: HTMLElemen
         break;
       }
       case 'reveal': {
-        for (const card of seatEl(area, event.seat)?.querySelectorAll('[data-testid="hole-cards"] .pt-card') ?? []) {
-          animate(
-            card,
-            [
-              { scale: '0 1', opacity: 0.4 },
-              { scale: '1 1', opacity: 1 },
-            ],
-            { duration: 260, easing: EASE_OUT },
-          );
-        }
+        const cards = seatEl(area, event.seat)?.querySelectorAll('[data-testid="hole-cards"] .pt-card') ?? [];
+        cards.forEach((card, i) => {
+          const box = boxOf(card, area.getBoundingClientRect());
+          if (box !== null) flipCard(layer, card, box, i * FLIP_CARD_STAGGER_MS);
+        });
         break;
       }
       case 'win': {

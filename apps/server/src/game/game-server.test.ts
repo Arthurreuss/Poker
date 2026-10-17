@@ -82,8 +82,35 @@ describe('GameServer ohne Netzwerk', () => {
     expect(s.last(2).round?.hand?.phase).toBe('betting');
   });
 
+  it('Showdown verlängert die Pause für Aufdecken und Gewinneranzeige (WP-039)', async () => {
+    const s = setup({ showdownPauseMs: 1500 });
+    const { a, b, id } = await twoSeated(s);
+    await s.send(a, { type: 'table.start', tableId: id });
+    // Heads-up bis zum Showdown durchchecken (bzw. den Small Blind mitgehen).
+    for (let guard = 0; guard < 20; guard++) {
+      const hand = s.last(1).round?.hand;
+      if (hand?.phase !== 'betting' || hand.toActId === null) break;
+      const me = hand.players.find((p) => p.playerId === hand.toActId);
+      await s.send(hand.toActId === '1' ? a : b, {
+        type: 'table.action',
+        tableId: id,
+        handNumber: hand.handNumber,
+        seq: hand.actionSeq,
+        action: { type: (me?.streetBet ?? 0) < hand.currentBet ? 'call' : 'check' },
+      });
+    }
+    const done = s.last(1).round?.hand;
+    expect(done?.phase).toBe('complete');
+    expect(done?.showdown).not.toBeNull();
+    // 3000 (Grundpause) + 1500 (Showdown), kein Runout
+    s.clock.advance(4499);
+    expect(s.last(1).round?.handNumber).toBe(1);
+    s.clock.advance(1);
+    expect(s.last(1).round?.handNumber).toBe(2);
+  });
+
   it('All-in-Runout verlängert die Pause je ausgeteilter Straße (WP-031)', async () => {
-    const s = setup({ runoutPauseMs: 1000 });
+    const s = setup({ runoutPauseMs: 1000, showdownPauseMs: 1500 });
     const a = await s.client(1);
     const b = await s.client(2);
     const c = await s.client(3);
@@ -118,8 +145,8 @@ describe('GameServer ohne Netzwerk', () => {
     expect(done.round?.hand?.phase).toBe('complete');
     expect(done.round?.hand?.board).toHaveLength(5);
     expect(done.status).toBe('running');
-    // 3000 (Grundpause) + 3 Straßen × 1000
-    s.clock.advance(5999);
+    // 3000 (Grundpause) + 1500 (Showdown) + 3 Straßen × 1000
+    s.clock.advance(7499);
     expect(s.last(1).round?.handNumber).toBe(1);
     s.clock.advance(1);
     expect(s.last(1).round?.handNumber).toBe(2);

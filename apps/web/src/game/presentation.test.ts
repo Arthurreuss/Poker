@@ -1,13 +1,16 @@
 // @vitest-environment jsdom
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { planReveal, RESULT_DELAY_MS, RUNOUT_STEP_MS, useHandReveal } from './presentation';
+import { planReveal, RESULT_DELAY_MS, RUNOUT_STEP_MS, SHOWDOWN_FLIP_MS, useHandReveal } from './presentation';
 
 const board = (n: number) => ['As', 'Kd', '7h', '2c', '9s'].slice(0, n) as never[];
-const hand = (n: number, phase: 'betting' | 'complete', handNumber = 1) => ({
+const SHOWDOWN = { uncalled: null, pots: [], reveals: [], allHandsShown: true };
+/** Fertige Hände enden hier per Showdown, außer `fold` (alle anderen haben gefoldet). */
+const hand = (n: number, phase: 'betting' | 'complete', handNumber = 1, fold = false) => ({
   handNumber,
   board: board(n),
   phase,
+  showdown: phase === 'complete' && !fold ? SHOWDOWN : null,
 });
 
 describe('planReveal', () => {
@@ -20,32 +23,48 @@ describe('planReveal', () => {
     expect(planReveal(seen, hand(3, 'betting'))).toEqual([{ atMs: 0, reveal: { board: 3, result: true } }]);
   });
 
-  it('Showdown nach dem River ohne neue Karten: Ergebnis sofort', () => {
+  it('Showdown nach dem River (WP-039): erst Karten umdrehen, Ergebnis nach SHOWDOWN_FLIP_MS', () => {
     const seen = { handNumber: 1, reveal: { board: 5, result: false } };
-    expect(planReveal(seen, hand(5, 'complete'))).toEqual([{ atMs: 0, reveal: { board: 5, result: true } }]);
+    expect(planReveal(seen, hand(5, 'complete'))).toEqual([
+      { atMs: 0, reveal: { board: 5, result: false } },
+      { atMs: SHOWDOWN_FLIP_MS, reveal: { board: 5, result: true } },
+    ]);
+    expect(SHOWDOWN_FLIP_MS).toBeGreaterThanOrEqual(1000);
   });
 
-  it('All-in preflop: Flop, Turn, River nacheinander, dann das Ergebnis', () => {
+  it('Hand durch Fold beendet: kein Aufdecken, Ergebnis sofort', () => {
+    const seen = { handNumber: 1, reveal: { board: 3, result: false } };
+    expect(planReveal(seen, hand(3, 'complete', 1, true))).toEqual([{ atMs: 0, reveal: { board: 3, result: true } }]);
+  });
+
+  it('All-in preflop: Karten umdrehen, dann Flop, Turn, River nacheinander, dann das Ergebnis', () => {
     const seen = { handNumber: 1, reveal: { board: 0, result: false } };
     expect(planReveal(seen, hand(5, 'complete'))).toEqual([
-      { atMs: 0, reveal: { board: 3, result: false } },
-      { atMs: RUNOUT_STEP_MS, reveal: { board: 4, result: false } },
-      { atMs: 2 * RUNOUT_STEP_MS, reveal: { board: 5, result: false } },
-      { atMs: 2 * RUNOUT_STEP_MS + RESULT_DELAY_MS, reveal: { board: 5, result: true } },
+      { atMs: 0, reveal: { board: 0, result: false } },
+      { atMs: SHOWDOWN_FLIP_MS, reveal: { board: 3, result: false } },
+      { atMs: SHOWDOWN_FLIP_MS + RUNOUT_STEP_MS, reveal: { board: 4, result: false } },
+      { atMs: SHOWDOWN_FLIP_MS + 2 * RUNOUT_STEP_MS, reveal: { board: 5, result: false } },
+      { atMs: SHOWDOWN_FLIP_MS + 2 * RUNOUT_STEP_MS + RESULT_DELAY_MS, reveal: { board: 5, result: true } },
     ]);
   });
 
-  it('All-in am Turn: River, dann das Ergebnis', () => {
+  it('All-in am Turn: Karten umdrehen, River, dann das Ergebnis', () => {
     const seen = { handNumber: 1, reveal: { board: 4, result: false } };
     expect(planReveal(seen, hand(5, 'complete'))).toEqual([
-      { atMs: 0, reveal: { board: 5, result: false } },
-      { atMs: RESULT_DELAY_MS, reveal: { board: 5, result: true } },
+      { atMs: 0, reveal: { board: 4, result: false } },
+      { atMs: SHOWDOWN_FLIP_MS, reveal: { board: 5, result: false } },
+      { atMs: SHOWDOWN_FLIP_MS + RESULT_DELAY_MS, reveal: { board: 5, result: true } },
     ]);
   });
 
   it('neue Hand, schon fertig (alle All-in durch die Blinds): ab Preflop gestaffelt', () => {
     const seen = { handNumber: 1, reveal: { board: 5, result: true } };
-    expect(planReveal(seen, hand(5, 'complete', 2))).toHaveLength(4);
+    expect(planReveal(seen, hand(5, 'complete', 2))).toHaveLength(5);
+  });
+
+  it('Showdown schon gesehen (gleicher Stand erneut geplant): nichts erneut zurückhalten', () => {
+    const seen = { handNumber: 1, reveal: { board: 5, result: true } };
+    expect(planReveal(seen, hand(5, 'complete'))).toEqual([{ atMs: 0, reveal: { board: 5, result: true } }]);
   });
 
   it('keine Hand: nichts zurückhalten', () => {
@@ -63,7 +82,11 @@ describe('useHandReveal', () => {
     const { result, rerender } = renderHook(({ h }) => useHandReveal(h), { initialProps: { h: hand(0, 'betting') } });
     expect(result.current).toEqual({ reveal: { board: 0, result: true }, resultShown: true });
     rerender({ h: hand(5, 'complete') });
-    expect(result.current).toEqual({ reveal: { board: 3, result: false }, resultShown: false });
+    expect(result.current).toEqual({ reveal: { board: 0, result: false }, resultShown: false });
+    act(() => {
+      vi.advanceTimersByTime(SHOWDOWN_FLIP_MS);
+    });
+    expect(result.current.reveal).toEqual({ board: 3, result: false });
     act(() => {
       vi.advanceTimersByTime(RUNOUT_STEP_MS);
     });
@@ -81,6 +104,10 @@ describe('useHandReveal', () => {
     vi.useFakeTimers();
     const { result, rerender } = renderHook(({ h }) => useHandReveal(h), { initialProps: { h: hand(3, 'betting') } });
     rerender({ h: hand(5, 'complete') });
+    expect(result.current.reveal).toEqual({ board: 3, result: false });
+    act(() => {
+      vi.advanceTimersByTime(SHOWDOWN_FLIP_MS);
+    });
     expect(result.current.reveal).toEqual({ board: 4, result: false });
     act(() => {
       vi.advanceTimersByTime(RUNOUT_STEP_MS);
