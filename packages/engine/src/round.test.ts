@@ -289,7 +289,13 @@ describe('Blind-Level', () => {
 
   it('Level-Wechsel greift erst ab der nächsten Hand', () => {
     let round = begin(config({ blindStructure: levels }), seats('A', 'B', 'C'), 0);
-    expect(roundBlindLevel(round, t0)).toEqual({ smallBlind: 10, bigBlind: 20, levelIndex: 0, nextLevelAtMs: null });
+    expect(roundBlindLevel(round, t0)).toEqual({
+      smallBlind: 10,
+      bigBlind: 20,
+      levelIndex: 0,
+      nextLevelAtMs: null,
+      handsLeftInLevel: null,
+    });
 
     round = ok(startNextHand(round, t0 + 9 * MIN, createSeededRng(1))); // Rundenstart = erste Hand
     expect(round.startedAtMs).toBe(t0 + 9 * MIN);
@@ -299,6 +305,7 @@ describe('Blind-Level', () => {
       bigBlind: 20,
       levelIndex: 0,
       nextLevelAtMs: t0 + 19 * MIN,
+      handsLeftInLevel: null,
     });
 
     // Level läuft während der Hand ab: Die Hand bleibt bei 10/20 (Engine kennt keine Uhr).
@@ -349,7 +356,96 @@ describe('Blind-Level', () => {
       bigBlind: 20,
       levelIndex: 0,
       nextLevelAtMs: null,
+      handsLeftInLevel: null,
     });
+  });
+});
+
+describe('Blind-Level nach Anzahl Hände (WP-036, D-033)', () => {
+  const byHands: BlindStructure = {
+    type: 'increasing',
+    levels: [
+      { smallBlind: 10, bigBlind: 20 },
+      { smallBlind: 20, bigBlind: 40 },
+      { smallBlind: 50, bigBlind: 100 },
+    ],
+    levelHands: 3,
+  };
+
+  /** Spielt die laufende Hand mit Fold zu Ende und startet die nächste. */
+  function nextHand(round: RoundState, nowMs: number): RoundState {
+    let r = round;
+    if (r.phase === 'hand') r = act(r, r.hand?.toActId ?? '', fold);
+    return ok(startNextHand(r, nowMs, createSeededRng(r.handNumber + 1)));
+  }
+
+  it('Level steigt genau nach N Händen, unabhängig von der Zeit; nach dem letzten Level bleibt es', () => {
+    let round = begin(config({ blindStructure: byHands }), seats('A', 'B'), 0);
+    expect(roundBlindLevel(round, 0)).toEqual({
+      smallBlind: 10,
+      bigBlind: 20,
+      levelIndex: 0,
+      nextLevelAtMs: null,
+      handsLeftInLevel: 3,
+    });
+    const bigBlinds: number[] = [];
+    const left: (number | null)[] = [];
+    for (let i = 0; i < 9; i++) {
+      // Zeit spielt keine Rolle: auch nach Tagen bleibt Level 1, solange keine 3 Hände gespielt sind.
+      round = nextHand(round, i * 24 * 60 * MIN);
+      bigBlinds.push(round.hand?.bigBlind ?? 0);
+      left.push(roundBlindLevel(round, 0).handsLeftInLevel);
+    }
+    expect(bigBlinds).toEqual([20, 20, 20, 40, 40, 40, 100, 100, 100]);
+    expect(left).toEqual([3, 2, 1, 3, 2, 1, null, null, null]);
+    expect(round.levelIndex).toBe(2);
+  });
+
+  it('roundBlindLevel: während der Hand gilt die laufende Hand, danach die nächste', () => {
+    let round = begin(config({ blindStructure: byHands }), seats('A', 'B'), 0);
+    round = nextHand(round, 0);
+    round = nextHand(round, 0);
+    round = nextHand(round, 0); // Hand 3 = letzte Hand von Level 1
+    expect(round.phase).toBe('hand');
+    expect(roundBlindLevel(round, 0)).toMatchObject({ levelIndex: 0, bigBlind: 20, handsLeftInLevel: 1 });
+    round = act(round, round.hand?.toActId ?? '', fold);
+    expect(round.phase).toBe('waiting');
+    // Zwischen den Händen: Level der nächsten Hand (Hand 4 → Level 2).
+    expect(roundBlindLevel(round, 0)).toEqual({
+      smallBlind: 20,
+      bigBlind: 40,
+      levelIndex: 1,
+      nextLevelAtMs: null,
+      handsLeftInLevel: 3,
+    });
+  });
+
+  it('ein Level pro Hand (N = 1) und nur ein Level', () => {
+    let round = begin(config({ blindStructure: { ...byHands, levelHands: 1 } }), seats('A', 'B'), 0);
+    round = nextHand(round, 0);
+    expect(round.hand?.bigBlind).toBe(20);
+    round = nextHand(round, 0);
+    expect(round.hand?.bigBlind).toBe(40);
+    const single: BlindStructure = { type: 'increasing', levels: [{ smallBlind: 5, bigBlind: 10 }], levelHands: 2 };
+    round = nextHand(begin(config({ blindStructure: single }), seats('A', 'B'), 0), 0);
+    expect(roundBlindLevel(round, 0)).toMatchObject({ levelIndex: 0, handsLeftInLevel: null });
+  });
+
+  it('Konfiguration wird kopiert, gemischte oder ungültige Varianten abgelehnt', () => {
+    const round = begin(config({ blindStructure: byHands }), seats('A', 'B'), 0);
+    expect(round.config.blindStructure).toEqual(byHands);
+    expect(round.config.blindStructure).not.toBe(byHands);
+    const level = { smallBlind: 10, bigBlind: 20 };
+    for (const bad of [
+      { type: 'increasing', levels: [level], levelHands: 0 },
+      { type: 'increasing', levels: [level], levelHands: 1.5 },
+      { type: 'increasing', levels: [level], levelHands: 10, levelMinutes: 10 },
+      { type: 'increasing', levels: [level] },
+    ]) {
+      expect(validateRoundConfig(config({ blindStructure: bad as unknown as BlindStructure }))).toEqual(
+        expect.any(String),
+      );
+    }
   });
 });
 

@@ -7,8 +7,11 @@
 import { applyAction, redrawHoleCards, startHand } from './betting';
 import {
   blindLevelEndsAfterMs,
+  blindLevelHandsLeft,
   blindLevelIndexAt,
+  blindLevelIndexForHand,
   blindLevels,
+  isHandsBlindStructure,
   type BlindLevel,
   type BlindStructure,
 } from './blind-structure';
@@ -111,8 +114,16 @@ export interface StartRoundOptions {
 /** Aktuelles Blind-Level aus Sicht des Servers (z. B. für die Anzeige „nächstes Level in …“). */
 export interface RoundBlindLevel extends BlindLevel {
   levelIndex: number;
-  /** Zeitpunkt (ms), ab dem das nächste Level gilt – wirksam ab der ersten danach gestarteten Hand; `null` = keins. */
+  /**
+   * Zeit-Variante: Zeitpunkt (ms), ab dem das nächste Level gilt – wirksam ab der ersten danach gestarteten
+   * Hand; `null` = keins bzw. Blinds steigen nicht nach Zeit.
+   */
   nextLevelAtMs: number | null;
+  /**
+   * Hände-Variante (WP-036, D-033): Hände, die noch auf diesem Level gespielt werden – die laufende Hand bzw.
+   * (zwischen den Händen) die nächste eingeschlossen; `null` = letztes Level bzw. Blinds steigen nicht nach Händen.
+   */
+  handsLeftInLevel: number | null;
 }
 
 const MIN_PLAYERS = 2;
@@ -143,8 +154,16 @@ export function validateRoundConfig(config: RoundConfig): string | null {
     case 'fixed':
       levels = [blindStructure.level];
       break;
-    case 'increasing':
-      if (!isPositiveInt(blindStructure.levelMinutes)) return 'levelMinutes muss eine positive ganze Zahl sein';
+    case 'increasing': {
+      const { levelMinutes, levelHands } = blindStructure as { levelMinutes?: unknown; levelHands?: unknown };
+      if (levelMinutes !== undefined && levelHands !== undefined) {
+        return 'Blinds steigen entweder nach Zeit (levelMinutes) oder nach Händen (levelHands)';
+      }
+      if (levelHands !== undefined) {
+        if (!isPositiveInt(levelHands)) return 'levelHands muss eine positive ganze Zahl sein';
+      } else if (!isPositiveInt(levelMinutes)) {
+        return 'levelMinutes muss eine positive ganze Zahl sein';
+      }
       if (!Array.isArray(blindStructure.levels) || blindStructure.levels.length === 0) {
         return 'levels muss mindestens ein Level enthalten';
       }
@@ -153,6 +172,7 @@ export function validateRoundConfig(config: RoundConfig): string | null {
       }
       levels = blindStructure.levels;
       break;
+    }
     default:
       return `Unbekannte Blind-Struktur ${JSON.stringify((blindStructure as { type?: unknown }).type)} (erlaubt: fixed, increasing)`;
   }
@@ -232,7 +252,7 @@ export function startNextHand(round: RoundState, nowMs: number, rng: Rng): Round
   const next = cloneRound(round);
   next.startedAtMs ??= nowMs;
   // Level nie zurückdrehen, auch wenn die übergebene Zeit (z. B. nach Uhrumstellung) kleiner ist.
-  next.levelIndex = Math.max(round.levelIndex, blindLevelIndexAt(next.config.blindStructure, nowMs - next.startedAtMs));
+  next.levelIndex = Math.max(round.levelIndex, levelIndexFor(next, round.handNumber + 1, nowMs));
   const level = blindLevels(next.config.blindStructure)[next.levelIndex] as BlindLevel;
 
   const alive = next.players.filter((p) => p.stack > 0);
@@ -290,20 +310,37 @@ export function redrawRoundHoleCards(round: RoundState, playerId: string, rng: R
 /**
  * Blind-Level zum Zeitpunkt `nowMs`, also das Level, mit dem eine jetzt gestartete Hand gespielt würde.
  * Vor der ersten Hand: Level 1 ohne Zeitpunkt für das nächste Level.
+ * Hände-Variante (D-033): Während einer Hand gilt deren Level (eine neue Hand kann erst danach starten),
+ * sonst das Level der nächsten Hand; dazu `handsLeftInLevel`.
  */
 export function roundBlindLevel(round: RoundState, nowMs: number): RoundBlindLevel {
   const structure = round.config.blindStructure;
   const levels = blindLevels(structure);
+  const handNumber = round.phase === 'hand' ? round.handNumber : round.handNumber + 1;
   if (round.startedAtMs === null) {
-    return { ...(levels[0] as BlindLevel), levelIndex: 0, nextLevelAtMs: null };
+    return {
+      ...(levels[0] as BlindLevel),
+      levelIndex: 0,
+      nextLevelAtMs: null,
+      handsLeftInLevel: blindLevelHandsLeft(structure, 1),
+    };
   }
-  const levelIndex = Math.max(round.levelIndex, blindLevelIndexAt(structure, nowMs - round.startedAtMs));
+  const levelIndex = Math.max(round.levelIndex, levelIndexFor(round, handNumber, nowMs));
   const endsAfter = blindLevelEndsAfterMs(structure, levelIndex);
   return {
     ...(levels[levelIndex] as BlindLevel),
     levelIndex,
     nextLevelAtMs: endsAfter === null ? null : round.startedAtMs + endsAfter,
+    handsLeftInLevel: blindLevelHandsLeft(structure, handNumber),
   };
+}
+
+/** Level-Index für Hand `handNumber`, gestartet zu `nowMs` – je nach Variante aus Zeit oder Handnummer. */
+function levelIndexFor(round: RoundState, handNumber: number, nowMs: number): number {
+  const structure = round.config.blindStructure;
+  return isHandsBlindStructure(structure)
+    ? blindLevelIndexForHand(structure, handNumber)
+    : blindLevelIndexAt(structure, nowMs - (round.startedAtMs ?? nowMs));
 }
 
 // ---------------------------------------------------------------------------
@@ -404,11 +441,17 @@ function copyConfig(config: RoundConfig): RoundConfig {
     blindStructure:
       s.type === 'fixed'
         ? { type: 'fixed', level: { smallBlind: s.level.smallBlind, bigBlind: s.level.bigBlind } }
-        : {
-            type: 'increasing',
-            levels: s.levels.map((l) => ({ smallBlind: l.smallBlind, bigBlind: l.bigBlind })),
-            levelMinutes: s.levelMinutes,
-          },
+        : isHandsBlindStructure(s)
+          ? {
+              type: 'increasing',
+              levels: s.levels.map((l) => ({ smallBlind: l.smallBlind, bigBlind: l.bigBlind })),
+              levelHands: s.levelHands,
+            }
+          : {
+              type: 'increasing',
+              levels: s.levels.map((l) => ({ smallBlind: l.smallBlind, bigBlind: l.bigBlind })),
+              levelMinutes: s.levelMinutes,
+            },
     turnTimeSeconds: config.turnTimeSeconds,
     timeBankSeconds: config.timeBankSeconds,
   };

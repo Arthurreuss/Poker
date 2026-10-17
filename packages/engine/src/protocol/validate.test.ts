@@ -4,8 +4,10 @@ import { AVATAR_IDS, REACTION_COOLDOWN_MS, REACTION_IDS, isAvatarId, isReactionI
 import { MAX_REQUEST_ID_LENGTH, PROTOCOL_VERSION } from './messages';
 import {
   DEFAULT_STARTING_STACK,
+  MAX_LEVEL_HANDS,
   MAX_TIME_BANK_SECONDS,
   MAX_TURN_TIME_SECONDS,
+  MIN_LEVEL_HANDS,
   MIN_TURN_TIME_SECONDS,
   parseClientMessage,
   validateTableSettings,
@@ -159,6 +161,33 @@ describe('validateTableSettings', () => {
     expect(validateTableSettings(settings)).toEqual({ ok: true, value: settings });
   });
 
+  it('steigende Blinds nach Anzahl Hände (WP-036, D-033): 1–1.000 Hände pro Level', () => {
+    const levels = [
+      { smallBlind: 1, bigBlind: 2 },
+      { smallBlind: 2, bigBlind: 4 },
+    ];
+    for (const levelHands of [MIN_LEVEL_HANDS, 10, MAX_LEVEL_HANDS]) {
+      const settings = { name: 'a', blindStructure: { type: 'increasing', levels, levelHands } };
+      const result = validateTableSettings(settings);
+      expect(result.ok && result.value.blindStructure).toEqual({ type: 'increasing', levels, levelHands });
+    }
+    // Zeit-Variante bleibt unverändert gültig (gespeicherte Tische, alte Clients).
+    const byTime = validateTableSettings({
+      name: 'a',
+      blindStructure: { type: 'increasing', levels, levelMinutes: 5 },
+    });
+    expect(byTime.ok && byTime.value.blindStructure).toEqual({ type: 'increasing', levels, levelMinutes: 5 });
+    expect(validateTableSettings({ name: 'a', blindStructure: { type: 'increasing', levels, levelHands: 0 } })).toEqual(
+      { ok: false, message: 'levelHands muss eine ganze Zahl von 1 bis 1000 sein' },
+    );
+    expect(
+      validateTableSettings({
+        name: 'a',
+        blindStructure: { type: 'increasing', levels, levelHands: 5, levelMinutes: 5 },
+      }),
+    ).toEqual({ ok: false, message: 'Blinds steigen entweder nach Zeit (levelMinutes) oder nach Händen (levelHands)' });
+  });
+
   it.each([
     [{ name: 'x'.repeat(51) }],
     [{ name: '   ' }],
@@ -185,6 +214,8 @@ describe('validateTableSettings', () => {
     [{ name: 'a', blindStructure: { type: 'increasing', levels: [], levelMinutes: 10 } }],
     [{ name: 'a', blindStructure: { type: 'increasing', levels: [{ smallBlind: 1, bigBlind: 2 }] } }],
     [{ name: 'a', blindStructure: { type: 'weird' } }],
+    [{ name: 'a', blindStructure: { type: 'increasing', levels: [{ smallBlind: 1, bigBlind: 2 }], levelHands: 1001 } }],
+    [{ name: 'a', blindStructure: { type: 'increasing', levels: [{ smallBlind: 1, bigBlind: 2 }], levelHands: '5' } }],
     [{ name: 'a', startingStack: 10, blindStructure: { type: 'fixed', level: { smallBlind: 10, bigBlind: 20 } } }],
   ])('lehnt %j ab', (settings) => {
     expect(validateTableSettings(settings).ok).toBe(false);

@@ -100,6 +100,7 @@ export function toClientView(round: RoundState, viewerId: string | null, nowMs: 
       bigBlind: level.bigBlind,
       levelIndex: level.levelIndex,
       nextLevelAtMs: level.nextLevelAtMs,
+      handsLeftInLevel: level.handsLeftInLevel,
     },
     players: round.players.map((p) => ({ ...p })),
     hand: round.hand === null ? null : toHandView(round.hand, round.handNumber, viewerId),

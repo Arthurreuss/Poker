@@ -166,6 +166,14 @@ describe('PokerTable – Einsätze und Pots', () => {
     expect(screen.getByTestId('blinds').textContent).toBe('Level 2 · Blinds 50/100');
   });
 
+  it('Blinds nach Händen (WP-036): Kopfzeile zeigt die restlichen Hände des Levels', () => {
+    const base = mock('heads-up');
+    const { rerender } = render(<PokerTable view={{ ...base, blinds: { ...base.blinds, handsLeft: 3 } }} />);
+    expect(screen.getByTestId('blinds').textContent).toBe('Level 2 · Blinds 50/100 · noch 3 Hände');
+    rerender(<PokerTable view={{ ...base, blinds: { ...base.blinds, handsLeft: 1 } }} />);
+    expect(screen.getByTestId('blinds').textContent).toBe('Level 2 · Blinds 50/100 · noch 1 Hand');
+  });
+
   it('lässt unten Platz für die Aktionsleiste', () => {
     render(<PokerTable view={mock('heads-up')} actionBar={<button type="button">Fold</button>} />);
     expect(within(screen.getByTestId('action-slot')).getByRole('button').textContent).toBe('Fold');

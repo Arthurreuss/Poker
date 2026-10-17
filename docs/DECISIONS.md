@@ -256,3 +256,14 @@ Format: Kontext → Entscheidung → Konsequenzen. Status: `akzeptiert`, `offen`
   - Jedes Neuziehen wird im Admin-Protokoll vermerkt (`table.redraw_cards`); die Mitspieler sehen davon nichts.
   - Die Hand-Historie speichert die tatsächlich gespielten Karten (Deck und Spieler werden am Handende überschrieben), damit das Replay stimmt.
 - **Konsequenzen:** Ein Admin kann das Ergebnis einer Hand massiv beeinflussen; wie bei D-027 nur Vertrauenspersonen Admin-Rechte geben, das Protokoll macht es nachvollziehbar. Die beim Handstart gespeicherte Hand zeigt bis zum Handende die ursprünglichen Karten; bricht die Runde vorher ab, bleiben sie so stehen.
+
+## D-033: Blinds wahlweise nach Anzahl Hände erhöhen (WP-036)
+- **Status:** akzeptiert
+- **Kontext:** Arthur möchte, dass die Blinds nicht nur nach Zeit steigen („Blinds je Runde statt nur nach Zeit“). Eine „Runde“ ist hier das ganze Freezeout (D-012), gemeint ist also: alle N Hände.
+- **Entscheidung:**
+  - `increasing` bekommt eine zweite Variante `{ type: 'increasing', levels, levelHands }` neben `{ …, levelMinutes }`; genau eins der beiden Felder ist gesetzt, beides zusammen wird abgelehnt. Keine Kombination aus Zeit und Händen.
+  - Ohne `levelHands` ist es die Zeit-Variante – bestehende Strukturen (Code, Tests, gespeicherte `tables.blind_structure`) bleiben unverändert gültig, keine Migration.
+  - Level für Hand Nummer h (ab 1): `floor((h − 1) / levelHands)`, gekappt auf das letzte Level; die Zeit spielt dabei keine Rolle. Ein Level-Wechsel wirkt wie bisher nur ab Handbeginn.
+  - Grenzen: 1–1.000 Hände pro Level (`MIN_/MAX_LEVEL_HANDS`), Vorschlag im Formular 10 (`DEFAULT_LEVEL_HANDS`). Standard beim Tisch-Erstellen bleibt „nach Zeit, 10 Minuten“.
+  - Anzeige: `blindLevel.handsLeftInLevel` (Hände, die noch auf dem Level gespielt werden, laufende bzw. nächste Hand eingeschlossen); die Tisch-Kopfzeile zeigt „noch N Hände“ bzw. „noch 1 Hand“.
+- **Konsequenzen:** `BlindLevelView` hat ein zusätzliches Feld (Protokoll bleibt Version 1, Client und Server werden gemeinsam ausgeliefert). Bei wenigen Spielern steigen die Blinds pro Spielzeit schneller als an vollen Tischen, weil Hände dort schneller gehen – das ist bei dieser Variante gewollt.

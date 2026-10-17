@@ -193,7 +193,13 @@ describe('toClientView', () => {
     if (!started.ok) throw new Error(started.error.message);
     const before = toClientView(started.round, 'A', 0);
     expect(before.hand).toBeNull();
-    expect(before.blindLevel).toEqual({ smallBlind: 10, bigBlind: 20, levelIndex: 0, nextLevelAtMs: null });
+    expect(before.blindLevel).toEqual({
+      smallBlind: 10,
+      bigBlind: 20,
+      levelIndex: 0,
+      nextLevelAtMs: null,
+      handsLeftInLevel: null,
+    });
 
     const next = startNextHand(started.round, 1_000, rng);
     if (!next.ok) throw new Error(next.error.message);

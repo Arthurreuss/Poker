@@ -170,8 +170,41 @@ export function CreateTableForm({ username, onSubmit, onCancel, disabled = false
             Fest
           </label>
         </fieldset>
-        {values.blindMode === 'increasing' && numberInput('levelMinutes', 'Minuten pro Level')}
+        {values.blindMode === 'increasing' && (
+          <fieldset className={styles.choice}>
+            <legend>Level steigt</legend>
+            <label className={styles.option}>
+              <input
+                type="radio"
+                name="levelBy"
+                checked={values.levelBy === 'time'}
+                onChange={() => {
+                  set('levelBy', 'time');
+                }}
+              />
+              Nach Zeit
+            </label>
+            <label className={styles.option}>
+              <input
+                type="radio"
+                name="levelBy"
+                checked={values.levelBy === 'hands'}
+                onChange={() => {
+                  set('levelBy', 'hands');
+                }}
+              />
+              Nach Händen
+            </label>
+          </fieldset>
+        )}
       </div>
+      {values.blindMode === 'increasing' && (
+        <div className={styles.grid}>
+          {values.levelBy === 'time'
+            ? numberInput('levelMinutes', 'Minuten pro Level', '1–1.440')
+            : numberInput('levelHands', 'Hände pro Level', '1–1.000')}
+        </div>
+      )}
 
       <div className={styles.grid}>
         {numberInput('turnTimeSeconds', 'Zugzeit (Sekunden)', '10–120')}

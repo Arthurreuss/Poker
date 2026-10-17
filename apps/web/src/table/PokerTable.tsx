@@ -33,10 +33,11 @@ function at(x: number, y: number): CSSProperties {
 }
 
 function blindsText(view: TableView): string {
-  const { small, big, level, ante } = view.blinds;
+  const { small, big, level, handsLeft, ante } = view.blinds;
   const parts = [`Blinds ${formatChips(small)}/${formatChips(big)}`];
   if (ante !== undefined && ante > 0) parts.push(`Ante ${formatChips(ante)}`);
   if (level !== undefined) parts.unshift(`Level ${String(level)}`);
+  if (handsLeft !== undefined) parts.push(handsLeft === 1 ? 'noch 1 Hand' : `noch ${String(handsLeft)} Hände`);
   return parts.join(' · ');
 }
 

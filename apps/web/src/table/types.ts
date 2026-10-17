@@ -64,6 +64,8 @@ export interface BlindsView {
   readonly big: number;
   /** Blind-Level (1-basiert), falls die Blinds steigen (D-012). */
   readonly level?: number;
+  /** Blinds steigen nach Händen (WP-036, D-033): Hände, die noch auf diesem Level gespielt werden. */
+  readonly handsLeft?: number;
   readonly ante?: number;
 }
 
