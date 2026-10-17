@@ -40,10 +40,10 @@
 | M6 | [WP-033](work-packages/WP-033.md) | Admin: verdeckte Karten aufdecken | done | WP-028 |
 | M6 | [WP-034](work-packages/WP-034.md) | Tisch kleiner, alle Spieler sichtbar | review | WP-017 |
 | M6 | [WP-035](work-packages/WP-035.md) | Admin: eigene Karten neu ziehen | review | WP-028 |
-| M6 | [WP-036](work-packages/WP-036.md) | Blinds nach Anzahl Hände erhöhen | in-progress | WP-008, WP-015 |
-| M6 | [WP-037](work-packages/WP-037.md) | Tisch verständlicher: Timer, Check-Hinweis, eigene Hand | in-progress | WP-018 |
-| M6 | [WP-038](work-packages/WP-038.md) | Übersicht der Pokerhände | in-progress | WP-032 |
-| M6 | [WP-039](work-packages/WP-039.md) | Showdown: langsameres Aufdecken, Gewinner mit Krone | in-progress | WP-018 |
+| M6 | [WP-036](work-packages/WP-036.md) | Blinds nach Anzahl Hände erhöhen | review | WP-008, WP-015 |
+| M6 | [WP-037](work-packages/WP-037.md) | Tisch verständlicher: Timer, Check-Hinweis, eigene Hand | review | WP-018 |
+| M6 | [WP-038](work-packages/WP-038.md) | Übersicht der Pokerhände | review | WP-032 |
+| M6 | [WP-039](work-packages/WP-039.md) | Showdown: langsameres Aufdecken, Gewinner mit Krone | review | WP-018 |
 <!-- END GENERATED -->
 
 ## Meilensteine
@@ -67,6 +67,7 @@ Parallel in Arbeit (max. 5): WP-011 (Game-Server/WebSocket), WP-014 (Web-Grundge
 ## Log
 Neueste Einträge oben. Pro Session 1–3 Zeilen.
 
+- 2026-10-17: WP-036–WP-039 review (parallel in Worktrees): Blinds nach Anzahl Hände (D-033), Tisch-Hinweise (Timer-Ring mit Stufen, Schriftzug letzte Aktion, Name der eigenen Hand), Übersicht der Pokerhände, Showdown mit 1-s-Flip, Krone und längerer Pause (D-031 ergänzt).
 - 2026-10-17: WP-035 review – Admin zieht per Tipp neue eigene Karten aus dem Restdeck (D-032), protokolliert, für Mitspieler unsichtbar; Historie speichert die gespielten Karten. Docker-Aufräumen (Build-Cache, ungenutzte Images).
 - 2026-10-08: WP-008 done – komplette Freezeout-Runde (Blind-Level, Dead Button nach TDA, Platzierungen, Punkte), 760 simulierte Runden. Engine-Reinheit per ESLint abgesichert. Offen: geteilte Plätze vs. DB-Constraint. WP-011 gestartet.
 - 2026-10-08: WP-021 review – tägliche Backups (7/4/6), Restore-Test grün, `prod:status`, Prod-Worktree + Release-Skript (D-017). Offen: Neustart-Test durch Arthur.
