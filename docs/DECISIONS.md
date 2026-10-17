@@ -268,3 +268,14 @@ Format: Kontext → Entscheidung → Konsequenzen. Status: `akzeptiert`, `offen`
   - Grenzen: 1–1.000 Hände pro Level (`MIN_/MAX_LEVEL_HANDS`), Vorschlag im Formular 10 (`DEFAULT_LEVEL_HANDS`). Standard beim Tisch-Erstellen bleibt „nach Zeit, 10 Minuten“.
   - Anzeige: `blindLevel.handsLeftInLevel` (Hände, die noch auf dem Level gespielt werden, laufende bzw. nächste Hand eingeschlossen); die Tisch-Kopfzeile zeigt „noch N Hände“ bzw. „noch 1 Hand“.
 - **Konsequenzen:** `BlindLevelView` hat ein zusätzliches Feld (Protokoll bleibt Version 1, Client und Server werden gemeinsam ausgeliefert). Bei wenigen Spielern steigen die Blinds pro Spielzeit schneller als an vollen Tischen, weil Hände dort schneller gehen – das ist bei dieser Variante gewollt.
+
+## D-034: Feier nach der Hand mit Lottie-Animationen (WP-040)
+- **Status:** akzeptiert
+- **Kontext:** Arthur möchte nach jeder Hand eine Feier wie auf dem Bildschirm einer Bowlingbahn: immer Konfetti (jedes Mal ein anderes), ein Schriftzug mit der Gewinnerhand und ihren Karten, Münzen je nach Pot-Größe und am Ende des Tisches den Sieger mit Avatar. Selbst gezeichnete Animationen in dieser Qualität wären viel Aufwand; D-008 erlaubt Assets unter freier Lizenz.
+- **Entscheidung:**
+  - Animationen von LottieFiles unter der Lottie Simple License (kostenlos, kommerziell erlaubt, keine Namensnennungspflicht), ausgesucht von Arthur, als JSON im Bundle (CSP `connect-src`/`img-src` nur eigene Origin, D-014). Herkunft und Bearbeitung in `apps/web/src/table/ASSETS.md`.
+  - Player `lottie-web` im Build `lottie_light` (nur SVG-Renderer, keine Expressions → kein `eval`/`new Function`, keine Worker, keine `<style>`-Elemente); Player und Animationen werden erst beim ersten Abspielen per dynamischem Import geladen (eigene Chunks, ca. 300 KB gzip für alle Animationen).
+  - Rein darstellend aus der `TableView` (wie D-031): für alle am Tisch gleich (Konfetti nach Handnummer, Münzen nach Anteil des Pots an allen Chips der Runde: ab 10 %, 25 %, 50 % eine, zwei bzw. drei Münz-Animationen). Keine Änderung an Server oder Protokoll, die Pausen nach der Hand bleiben (D-031).
+  - Schriftzug und Sieger erscheinen immer, die Lottie-Animationen nur mit „Animationen“ an und ohne `prefers-reduced-motion`.
+  - Rundenende: 3,5 s letzte Hand mit Feier, 6 s Sieger des Tisches, dann der Dialog (ersetzt die 5 s aus D-031); ein Tipp springt weiter.
+- **Konsequenzen:** Der Offline-Cache (PWA) wird um ca. 3,7 MB (unkomprimiert) größer. Neue Animationen nur mit geprüfter Lizenz und Eintrag in `ASSETS.md`. Beim Fold-out stehen Gewinner und Feier 4 s, beim Showdown ca. 4,3 s.

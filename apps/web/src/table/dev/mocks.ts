@@ -206,6 +206,47 @@ function withPlayers(n: number): TableView {
   };
 }
 
+// WP-040: Feier nach der Hand – Flush mit Münzstapel, Straße mit Münzregen, Fold-out ohne Münzen.
+const celebrateFlush: TableView = {
+  ...sixShowdown,
+  celebration: {
+    handNumber: 12,
+    title: 'Flush',
+    detail: 'Arthur gewinnt 12.000',
+    cards: ['Kh', 'Qh', 'Jh', 'Th', '2h'],
+    confetti: 0,
+    coins: 2,
+  },
+};
+
+const celebrateStraight: TableView = {
+  ...sixShowdown,
+  winnerSeats: [4],
+  winningCards: ['Qh', 'Js', 'Ts', '9s', '8d'],
+  board: ['Qh', 'Th', '3c', '8d', 'Jc'],
+  celebration: {
+    handNumber: 13,
+    title: 'Straße',
+    detail: 'Mia gewinnt 24.000',
+    cards: ['Qh', 'Jc', 'Ts', '9s', '8d'],
+    confetti: 1,
+    coins: 3,
+  },
+};
+
+const celebrateFold: TableView = {
+  ...sixFlop,
+  toActSeat: null,
+  winnerSeats: [sixFlop.heroSeat ?? 0],
+  celebration: {
+    handNumber: 14,
+    title: 'Arthur gewinnt',
+    detail: 'Alle anderen haben gefoldet · 1.800',
+    confetti: 2,
+    coins: 0,
+  },
+};
+
 export const MOCK_STATES: readonly MockState[] = [
   { id: 'heads-up', label: '2 Spieler – Preflop, eigene Karten', view: headsUp },
   { id: 'six-flop', label: '6 Spieler – Flop mit Einsätzen', view: sixFlop },
@@ -215,6 +256,9 @@ export const MOCK_STATES: readonly MockState[] = [
   { id: 'six-disconnected', label: '6 Spieler – Getrennt/Ausgeschieden', view: sixDisconnected },
   { id: 'six-hints', label: '6 Spieler – Aktionen, Timer, eigene Hand', view: sixHints },
   { id: 'hero-timebank', label: '2 Spieler – eigene Zeitbank', view: heroTimeBank },
+  { id: 'celebrate-flush', label: 'Feier – Flush, Münzstapel', view: celebrateFlush },
+  { id: 'celebrate-straight', label: 'Feier – Straße, Münzregen', view: celebrateStraight },
+  { id: 'celebrate-fold', label: 'Feier – Fold-out, ohne Münzen', view: celebrateFold },
   ...[3, 4, 5, 7, 8].map((n) => ({
     id: `players-${String(n)}`,
     label: `${String(n)} Spieler – Layout`,

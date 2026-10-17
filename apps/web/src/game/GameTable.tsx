@@ -12,7 +12,9 @@ import { useAnimationsPreference } from '../settings/animations';
 import { useReactionsPreference } from '../settings/reactions';
 import { cx } from '../styles/cx';
 import { useTableSounds } from '../sound/tableSounds';
-import { TableFx } from '../table/fx/TableFx';
+import { Celebration } from '../table/celebrate/Celebration';
+import { TableWinner } from '../table/celebrate/TableWinner';
+import { prefersReducedMotion, TableFx } from '../table/fx/TableFx';
 import type { CardReveal } from '../table/RevealableCards';
 import { TableScreen } from '../table/TableScreen';
 import { toReactionViews, toTableView } from './adapter';
@@ -69,6 +71,18 @@ export function GameTable({ snapshot, store, onLeave }: GameTableProps) {
   }, [store]);
   const react = useCallback((reaction: ReactionId) => store.react(reaction), [store]);
   const feedback = useFeedbackDialog({ tableId: store.tableId });
+  // WP-040: Lottie-Feiern nur mit Animationen und ohne reduzierte Bewegung; Schriftzug und Sieger immer.
+  const celebrate = animations && !prefersReducedMotion();
+  const tableWinners = useMemo(
+    () =>
+      (snapshot.standings ?? [])
+        .filter((s) => s.placement === 1)
+        .map((s) => ({
+          name: s.user.username,
+          avatar: table?.seats.find((seat) => seat.user.id === s.user.id)?.avatar ?? null,
+        })),
+    [snapshot.standings, table],
+  );
   const canReact = reactionsOn && table !== null && table.you.seat !== null;
   // Admin am Tisch (WP-033, D-027): verdeckte Karten der Mitspieler per Tipp umdrehen.
   const adminSeated = snapshot.isAdmin && table !== null && table.you.seat !== null;
@@ -123,7 +137,14 @@ export function GameTable({ snapshot, store, onLeave }: GameTableProps) {
         <div className="gp-table">
           <TableScreen
             view={view}
-            overlay={<TableFx view={view} enabled={animations} />}
+            overlay={
+              <>
+                <TableFx view={view} enabled={animations} />
+                {view.celebration !== undefined && (
+                  <Celebration key={view.celebration.handNumber} celebration={view.celebration} animate={celebrate} />
+                )}
+              </>
+            }
             reactionPicker={canReact ? <ReactionPicker onReact={react} /> : undefined}
             actionBar={<GameActionArea snapshot={snapshot} store={store} showResult={resultShown} />}
             reveal={cardReveal}
@@ -164,16 +185,20 @@ export function GameTable({ snapshot, store, onLeave }: GameTableProps) {
           />
         </div>
       )}
-      <ErrorToast error={snapshot.error} onDismiss={dismissError} />
-      {snapshot.standings !== null && !roundEnd.holding && (
-        <RoundResultDialog
-          standings={snapshot.standings}
-          youUserId={table?.you.userId ?? null}
-          onClose={closeStandings}
-          onRematch={table?.status === 'finished' && table.you.isCreator ? rematch : null}
-          away={table?.seats.filter((s) => !s.connected).map((s) => s.user.username) ?? []}
-        />
+      {roundEnd.stage === 'winner' && tableWinners.length > 0 && (
+        <TableWinner winners={tableWinners} animate={celebrate} />
       )}
+      <ErrorToast error={snapshot.error} onDismiss={dismissError} />
+      {snapshot.standings !== null &&
+        (!roundEnd.holding || (roundEnd.stage === 'winner' && tableWinners.length === 0)) && (
+          <RoundResultDialog
+            standings={snapshot.standings}
+            youUserId={table?.you.userId ?? null}
+            onClose={closeStandings}
+            onRematch={table?.status === 'finished' && table.you.isCreator ? rematch : null}
+            away={table?.seats.filter((s) => !s.connected).map((s) => s.user.username) ?? []}
+          />
+        )}
       {/* Außerhalb des Menü-Panels: bleibt offen, auch wenn das Menü schließt. */}
       {feedback.dialog}
     </div>

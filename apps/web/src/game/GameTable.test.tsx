@@ -9,7 +9,7 @@ import { GameTable } from './GameTable';
 import { useTableGame } from './hooks';
 import { fakeConnection } from './test/fakeSocket';
 import { RESULT_DELAY_MS, RUNOUT_STEP_MS, SHOWDOWN_FLIP_MS } from './presentation';
-import { ROUND_END_HOLD_MS } from './roundEndHold';
+import { ROUND_END_HAND_MS, ROUND_END_WINNER_MS } from './roundEndHold';
 import { act as play, serverView, startGame, toAct, USERS } from './test/fixtures';
 
 beforeEach(() => {
@@ -257,9 +257,17 @@ describe('GameTable', () => {
       expect(document.querySelector('[data-winner="true"]')).not.toBeNull();
       expect(screen.getAllByTestId('winner-crown')).toHaveLength(1);
       expect(screen.queryByRole('dialog')).toBeNull();
-      tick(ROUND_END_HOLD_MS - 1);
+      // WP-040: Feier der letzten Hand, dann der Sieger des Tisches, dann der Dialog.
+      expect(screen.getByTestId('celebration-banner')).toBeInTheDocument();
+      tick(ROUND_END_HAND_MS - 1);
+      expect(screen.queryByTestId('table-winner')).toBeNull();
+      tick(1);
+      expect(screen.getByTestId('table-winner')).toHaveTextContent('gewinnt den Tisch');
+      expect(screen.queryByRole('dialog')).toBeNull();
+      tick(ROUND_END_WINNER_MS - 1);
       expect(screen.queryByRole('dialog')).toBeNull();
       tick(1);
+      expect(screen.queryByTestId('table-winner')).toBeNull();
       expect(screen.getByRole('dialog', { name: 'Runde beendet' })).toBeInTheDocument();
     });
 
@@ -270,7 +278,12 @@ describe('GameTable', () => {
       g.state(before);
       g.state(after);
       expect(screen.queryByRole('dialog')).toBeNull();
+      // Erster Tipp: zum Sieger des Tisches, zweiter: zum Dialog (WP-040).
       fireEvent.pointerDown(screen.getByTestId('poker-table'));
+      expect(screen.getByTestId('table-winner')).toBeInTheDocument();
+      expect(screen.queryByRole('dialog')).toBeNull();
+      fireEvent.pointerDown(screen.getByTestId('table-winner'));
+      expect(screen.queryByTestId('table-winner')).toBeNull();
       expect(screen.getByRole('dialog', { name: 'Runde beendet' })).toBeInTheDocument();
     });
   });

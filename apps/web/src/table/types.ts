@@ -95,6 +95,24 @@ export interface HeroHandView {
   readonly long: string;
 }
 
+/**
+ * Feier nach einer Hand (WP-040): Schriftzug mit der Gewinnerhand, deren fünf Karten in einer Reihe, Konfetti
+ * (je Hand ein anderes) und – je nach Größe des Pots – bis zu drei Münz-Animationen. Abgeleitet in `game/celebration.ts`.
+ */
+export interface CelebrationView {
+  readonly handNumber: number;
+  /** Großer Schriftzug: Name der Gewinnerhand („Full House“, „Royal Flush“) bzw. beim Fold-out „Lena gewinnt“. */
+  readonly title: string;
+  /** Zeile darunter, z. B. „Lena gewinnt 1.200“ oder „Alle anderen haben gefoldet · 1.200“. */
+  readonly detail: string;
+  /** Die fünf Karten der Gewinnerhand (Main Pot) in der Reihenfolge der Engine; fehlt beim Fold-out. */
+  readonly cards?: readonly Card[];
+  /** Welches Konfetti (Index in `CONFETTI_CLIPS`); wechselt mit jeder Hand, für alle am Tisch gleich. */
+  readonly confetti: number;
+  /** Münz-Animationen 0–3 nach Anteil des Pots an allen Chips am Tisch (`COIN_TIER_SHARES`). */
+  readonly coins: 0 | 1 | 2 | 3;
+}
+
 export interface TableView {
   /** Genau `MAX_SEATS` Einträge, Index = Sitznummer 0–8. */
   readonly seats: readonly SeatView[];
@@ -126,4 +144,6 @@ export interface TableView {
   readonly reactions?: readonly SeatReactionView[];
   /** Eigene beste Hand mit dem gezeigten Board (WP-037); fehlt = keine eigenen Karten. */
   readonly heroHand?: HeroHandView;
+  /** Feier nach der Hand (WP-040), sobald das Ergebnis sichtbar ist; fehlt sonst. */
+  readonly celebration?: CelebrationView;
 }
