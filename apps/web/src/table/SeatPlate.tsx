@@ -58,18 +58,20 @@ export function SeatPlate({
 }: SeatPlateProps) {
   const hasAvatar = avatar !== undefined && avatar !== null;
   const pill = statusLabel(status, connected);
+  const remaining = timeRemaining === undefined ? null : Math.min(1, Math.max(0, timeRemaining));
+  const stage = remaining === null ? null : timerStage(remaining, timeBankSeconds !== undefined);
   const classes = [
     'pt-plate',
     isHero && 'pt-plate--hero',
     toAct && 'pt-plate--to-act',
+    // Läuft ein Timer, ist der Rahmen der Hervorhebung selbst der Timer (WP-037): Farbe je Stufe.
+    toAct && stage !== null && `pt-plate--timed pt-plate--timer-${stage}`,
     `pt-plate--${status}`,
     !connected && 'pt-plate--disconnected',
     hasAvatar && `pt-plate--avatar-${avatarSide}`,
   ]
     .filter(Boolean)
     .join(' ');
-  const remaining = timeRemaining === undefined ? null : Math.min(1, Math.max(0, timeRemaining));
-  const stage = remaining === null ? null : timerStage(remaining, timeBankSeconds !== undefined);
   const clockSeconds = timeBankSeconds ?? timeSeconds;
   const clock = toAct && stage !== null && clockSeconds !== undefined ? { seconds: clockSeconds, stage } : null;
   // „Fold“ bleibt das Etikett; sonst hat die letzte Aktion Vorrang vor „Getrennt“ (Symbol am Namen bleibt).
