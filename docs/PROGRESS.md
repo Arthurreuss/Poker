@@ -44,6 +44,7 @@
 | M6 | [WP-037](work-packages/WP-037.md) | Tisch verständlicher: Timer, Check-Hinweis, eigene Hand | review | WP-018 |
 | M6 | [WP-038](work-packages/WP-038.md) | Übersicht der Pokerhände | review | WP-032 |
 | M6 | [WP-039](work-packages/WP-039.md) | Showdown: langsameres Aufdecken, Gewinner mit Krone | review | WP-018 |
+| M6 | [WP-040](work-packages/WP-040.md) | Feier nach der Hand (Konfetti, Gewinnerhand, Münzen, Tisch-Sieger) | review | WP-039 |
 <!-- END GENERATED -->
 
 ## Meilensteine

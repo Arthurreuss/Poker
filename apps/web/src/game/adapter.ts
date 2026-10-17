@@ -16,6 +16,7 @@ import {
 } from '../table/types';
 import { REACTIONS } from '../reactions/reactions';
 import type { ReactionBubble } from './tableGame';
+import { handCelebration } from './celebration';
 import { heroHandName } from './handName';
 import { lastActionsOf } from './lastAction';
 import { turnClockDisplay, type TurnClock } from './turnClock';
@@ -186,6 +187,8 @@ export function toTableView(server: ServerTableView, options: AdaptOptions = {})
   const winnerSeats =
     winners === null || hand === null ? [] : hand.players.filter((p) => winners.has(p.playerId)).map((p) => p.seat);
   const winningCards = winners === null ? undefined : hand?.showdown?.pots[0]?.winningHand?.cards;
+  // WP-040: Feier erst mit dem sichtbaren Ergebnis (nach Aufdecken bzw. Runout).
+  const celebration = winners === null ? null : handCelebration(server);
 
   return {
     seats,
@@ -206,6 +209,7 @@ export function toTableView(server: ServerTableView, options: AdaptOptions = {})
     ...(winnerSeats.length > 0 ? { winnerSeats } : {}),
     ...(winningCards === undefined ? {} : { winningCards }),
     ...(heroHand === undefined ? {} : { heroHand }),
+    ...(celebration === null ? {} : { celebration }),
   };
 }
 

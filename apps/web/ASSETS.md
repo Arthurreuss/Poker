@@ -16,7 +16,7 @@ Schriften: keine eigenen – `--font-sans` nutzt die Systemschrift des Geräts.
 
 Werkzeug: `@resvg/resvg-js` (MPL-2.0) wird nur als Entwicklungswerkzeug zum Rendern genutzt und nicht ausgeliefert.
 
-Karten, Chips und Marker der Tischansicht (WP-016): siehe [src/table/ASSETS.md](src/table/ASSETS.md).
+Karten, Chips und Marker der Tischansicht (WP-016) sowie die Lottie-Animationen der Feiern (WP-040, LottieFiles, Lottie Simple License): siehe [src/table/ASSETS.md](src/table/ASSETS.md).
 
 Avatare (WP-032): siehe [src/avatars/ASSETS.md](src/avatars/ASSETS.md).
 

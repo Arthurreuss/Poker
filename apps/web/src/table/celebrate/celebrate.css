@@ -1,0 +1,187 @@
+/*
+ * WP-040: Feier nach der Hand und Sieger des Tisches. Farben über die Aliase aus table.css (in der Tischfläche)
+ * bzw. die globalen Tokens (Sieger-Ebene liegt über der ganzen Seite). Bewegung nur mit Animationen.
+ */
+.cel-layer {
+  position: absolute;
+  inset: 0;
+  /* Über der Effekt-Ebene (4), unter den Emoji-Reaktionen der Sitze nicht nötig: Feier gehört nach vorn. */
+  z-index: 6;
+  pointer-events: none;
+}
+
+.cel-clip {
+  position: absolute;
+  pointer-events: none;
+}
+.cel-clip svg {
+  display: block;
+}
+.cel-clip--confetti,
+.cel-clip--rain {
+  inset: 0;
+}
+
+.cel-banner {
+  position: absolute;
+  left: 50%;
+  top: 44%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(1.2 * var(--u));
+  padding: calc(2 * var(--u)) calc(3 * var(--u));
+  border-radius: calc(3 * var(--u));
+  background: rgb(10 14 20 / 0.95);
+  border: calc(0.5 * var(--u)) solid var(--pt-accent);
+  box-shadow:
+    var(--pt-shadow),
+    0 0 calc(5 * var(--u)) rgb(232 185 49 / 0.45);
+  text-align: center;
+  white-space: nowrap;
+}
+.pt-root--landscape .cel-banner {
+  top: 53%;
+}
+.cel-title {
+  margin: 0;
+  font-family: var(--pt-font);
+  font-weight: 800;
+  font-size: max(20px, calc(8 * var(--u)));
+  line-height: 1.05;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--pt-accent);
+  text-shadow: 0 2px 0 rgb(0 0 0 / 0.5);
+}
+.cel-detail {
+  margin: 0;
+  font-family: var(--pt-font);
+  font-weight: 600;
+  font-size: var(--pt-fs-md);
+  color: var(--pt-text);
+}
+.cel-cards {
+  display: flex;
+  gap: calc(1 * var(--u));
+}
+.cel-coins {
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  translate: -50% calc(-2 * var(--u));
+  display: flex;
+  justify-content: center;
+}
+.cel-clip--coins {
+  position: relative;
+  width: calc(26 * var(--u));
+  aspect-ratio: 1;
+  margin: 0 calc(-3 * var(--u));
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .cel-layer--anim .cel-banner {
+    animation: cel-pop 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.3) both;
+  }
+  .cel-layer--anim .cel-cards .pt-card {
+    animation: cel-card-in 0.35s ease-out both;
+  }
+  .cel-layer--anim .cel-cards .pt-card:nth-child(2) {
+    animation-delay: 0.08s;
+  }
+  .cel-layer--anim .cel-cards .pt-card:nth-child(3) {
+    animation-delay: 0.16s;
+  }
+  .cel-layer--anim .cel-cards .pt-card:nth-child(4) {
+    animation-delay: 0.24s;
+  }
+  .cel-layer--anim .cel-cards .pt-card:nth-child(5) {
+    animation-delay: 0.32s;
+  }
+  .cel-winner--anim .cel-winner-people {
+    animation: cel-pop 0.6s 0.4s cubic-bezier(0.2, 0.9, 0.3, 1.3) both;
+  }
+  .cel-winner--anim .cel-winner-text {
+    animation: cel-card-in 0.5s 0.8s ease-out both;
+  }
+}
+@keyframes cel-pop {
+  from {
+    opacity: 0;
+    scale: 0.6;
+  }
+  to {
+    opacity: 1;
+    scale: 1;
+  }
+}
+@keyframes cel-card-in {
+  from {
+    opacity: 0;
+    translate: 0 calc(-3 * var(--u, 4px));
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+/* ---------- Sieger des Tisches ---------- */
+.cel-winner {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3, 12px);
+  background: radial-gradient(circle at 50% 40%, rgb(40 32 8 / 0.88), rgb(8 10 14 / 0.94) 70%);
+  color: var(--color-text, #f2f4f7);
+  font-family: var(--font-sans, system-ui, sans-serif);
+  text-align: center;
+  cursor: pointer;
+}
+.cel-clip--trophy {
+  position: relative;
+  width: min(64vw, 40vh, 320px);
+  aspect-ratio: 1;
+  margin-bottom: calc(-1 * min(4vw, 2.5vh, 20px));
+}
+.cel-winner-people {
+  display: flex;
+  gap: var(--space-4, 16px);
+  justify-content: center;
+}
+.cel-winner-person {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2, 8px);
+}
+.cel-winner-avatar {
+  width: min(28vw, 18vh, 128px);
+  height: min(28vw, 18vh, 128px);
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 4px var(--color-accent, #e8b931),
+    0 0 32px rgb(232 185 49 / 0.7);
+}
+.cel-winner-name {
+  margin: 0;
+  font-size: clamp(24px, 7vw, 40px);
+  font-weight: 800;
+  color: var(--color-accent, #e8b931);
+}
+.cel-winner-text {
+  margin: 0;
+  font-size: clamp(16px, 4.5vw, 24px);
+  font-weight: 600;
+}
+
+/* Board und Pots hinter dem Schriftzug ausblenden – die Gewinnerhand steht im Schriftzug. */
+.pt-area:has(> .cel-layer) .pt-center {
+  opacity: 0;
+}

@@ -9,6 +9,8 @@ import { TableFx } from '../fx/TableFx';
 import { ReactionPicker } from '../../reactions/ReactionPicker';
 import { TableScreen } from '../TableScreen';
 import { FX_DEMO } from './fxDemo';
+import { Celebration } from '../celebrate/Celebration';
+import { TableWinner } from '../celebrate/TableWinner';
 import { MOCK_STATES, mockById } from './mocks';
 import './dev.css';
 
@@ -24,6 +26,7 @@ function readParams(): {
   fourColor: boolean;
   layout: OrientationPreference | null;
   fx: boolean;
+  winner: boolean;
 } {
   const params = new URLSearchParams(window.location.search);
   return {
@@ -32,6 +35,7 @@ function readParams(): {
     fourColor: params.get('four') === '1',
     layout: parseLayout(params.get('layout')),
     fx: params.get('fx') === '1',
+    winner: params.get('winner') === '1',
   };
 }
 
@@ -42,6 +46,7 @@ function readParams(): {
  * `layout=auto|portrait|landscape` (WP-017; nur für diese Seite, ohne die gespeicherte Einstellung
  * zu ändern). Ohne `layout` gilt die gespeicherte Einstellung wie am echten Tisch.
  * `fx=1` (WP-031): statt der Mock-Zustände läuft eine Hand mit allen Animationen in Schleife (`fxDemo.ts`).
+ * `winner=1` (WP-040): zusätzlich die Einblendung „Sieger des Tisches“.
  */
 export function TableDevPage() {
   const initial = readParams();
@@ -131,13 +136,26 @@ export function TableDevPage() {
         <TableScreen
           view={view}
           fourColor={fourColor}
-          overlay={initial.fx ? <TableFx view={view} enabled /> : undefined}
+          overlay={
+            <>
+              {initial.fx && <TableFx view={view} enabled />}
+              {view.celebration !== undefined && (
+                <Celebration
+                  key={view.celebration.handNumber}
+                  celebration={view.celebration}
+                  fourColor={fourColor}
+                  animate
+                />
+              )}
+            </>
+          }
           preference={preference}
           onPreferenceChange={setPreference}
           actionBar={<div className="pt-dev-action">Platz für die Aktionsleiste (WP-018)</div>}
           reactionPicker={mock.view.heroSeat === null ? undefined : <ReactionPicker onReact={() => true} />}
         />
       </div>
+      {initial.winner && <TableWinner winners={[{ name: 'Lena', avatar: 'owl' }]} animate />}
     </div>
   );
 }
