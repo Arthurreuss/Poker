@@ -1,5 +1,6 @@
 // Hinweise an der Sitz-Plakette (WP-037): Zug-Timer (Ring + Sekunden), letzte Aktion als Schriftzug und
 // der Name der eigenen besten Hand. Reine Darstellung; Stile in `seat-hints.css`.
+import type { CSSProperties } from 'react';
 import { formatChips } from './format';
 import type { HeroHandView, LastActionView } from './types';
 
@@ -46,16 +47,15 @@ export function ActionTag({ action }: { action: LastActionView }) {
 }
 
 /**
- * Timer-Ring um die Plakette (WP-018, deutlicher seit WP-037): Restzeit als Anteil des Umfangs, im
- * Uhrzeigersinn ab oben links; Farbe je Stufe. `pathLength` = 100, damit der Anteil direkt die Strichlänge ist.
+ * Zug-Timer als Rahmen der Plakette (WP-018, seit WP-037 die Hervorhebung selbst): der farbige Rahmen des Spielers
+ * am Zug läuft im Uhrzeigersinn ab 12 Uhr ab; der abgelaufene Teil sieht aus wie ein normaler Rahmen. Liegt genau
+ * auf dem Rahmen der Plakette (kein zweiter Ring); gezeichnet per CSS (`--pt-remaining` 0–1, `seat-hints.css`).
  */
 export function TimerRing({ remaining, stage }: { remaining: number; stage: TimerStage }) {
-  const percent = Math.round(remaining * 1000) / 10;
   return (
-    <svg
+    <span
       className={`pt-timer-ring pt-timer-ring--${stage}`}
-      viewBox="0 0 100 100"
-      preserveAspectRatio="none"
+      style={{ '--pt-remaining': String(remaining) } as CSSProperties}
       data-testid="timer"
       data-stage={stage}
       role="progressbar"
@@ -63,19 +63,7 @@ export function TimerRing({ remaining, stage }: { remaining: number; stage: Time
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={Math.round(remaining * 100)}
-    >
-      <rect className="pt-timer-track" x="1" y="1" width="98" height="98" rx="8" pathLength={100} />
-      <rect
-        className="pt-timer-arc"
-        x="1"
-        y="1"
-        width="98"
-        height="98"
-        rx="8"
-        pathLength={100}
-        strokeDasharray={`${String(percent)} 100`}
-      />
-    </svg>
+    />
   );
 }
 

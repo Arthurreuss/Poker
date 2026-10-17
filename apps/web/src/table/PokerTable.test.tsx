@@ -125,7 +125,16 @@ describe('PokerTable – Status', () => {
     expect(screen.queryByTestId('timer')).toBeNull();
   });
 
-  it('färbt den Ring gegen Ende gelb, dann rot (WP-037)', () => {
+  it('der Rahmen der Hervorhebung ist selbst der Timer, kein zweiter Ring (WP-037)', () => {
+    render(<PokerTable view={{ ...mock('six-flop'), timeRemaining: 0.1 }} />);
+    const plate = within(seatEl(7)).getByTestId('seat-plate');
+    expect(plate.className).toContain('pt-plate--timed');
+    expect(plate.className).toContain('pt-plate--timer-low');
+    expect(plate.contains(screen.getByTestId('timer'))).toBe(true);
+    expect(screen.getAllByTestId('timer')).toHaveLength(1);
+  });
+
+  it('färbt den Timer gegen Ende orange, dann rot (WP-037)', () => {
     const { rerender } = render(<PokerTable view={{ ...mock('six-flop'), timeRemaining: 0.8 }} />);
     expect(screen.getByTestId('timer').getAttribute('class')).toContain('pt-timer-ring--ok');
     rerender(<PokerTable view={{ ...mock('six-flop'), timeRemaining: 0.45 }} />);

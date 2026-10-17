@@ -12,43 +12,53 @@
   --pt-ink: var(--color-card-black, #16181d);
 }
 
-/* ---------- Timer-Ring um die Plakette (WP-018, deutlicher seit WP-037) ---------- */
-.pt-timer-ring {
-  --pt-timer: var(--pt-success);
-  position: absolute;
-  inset: calc(-1.1 * var(--u));
-  width: calc(100% + 2.2 * var(--u));
-  height: calc(100% + 2.2 * var(--u));
-  overflow: visible;
-  pointer-events: none;
-}
-.pt-timer-ring--mid {
+/* ---------- Zug-Timer: der Rahmen der Hervorhebung läuft ab (WP-037) ---------- */
+/* Farbe je Stufe: gold (wie die Hervorhebung), gegen Ende orange, dann rot; Zeitbank blau. */
+.pt-plate--timed {
   --pt-timer: var(--pt-accent);
 }
-.pt-timer-ring--low {
+.pt-plate--timer-mid {
+  --pt-timer: var(--pt-raise);
+}
+.pt-plate--timer-low {
   --pt-timer: var(--pt-danger);
 }
-.pt-timer-ring--bank {
+.pt-plate--timer-bank {
   --pt-timer: var(--pt-blue);
 }
-.pt-timer-ring rect {
-  fill: none;
-  vector-effect: non-scaling-stroke;
-  stroke-width: max(3px, calc(1.3 * var(--u)));
+/* Statt des festen goldenen Rahmens: normaler Rahmen, Leuchten in Timer-Farbe, den Rest zeichnet der Timer. */
+.pt-plate--to-act.pt-plate--timed {
+  border-color: rgb(255 255 255 / 0.12);
+  box-shadow:
+    var(--pt-shadow),
+    0 0 calc(2.5 * var(--u)) var(--pt-timer);
 }
-.pt-timer-track {
-  /* Abgelaufener Teil: deutlich heller als der Hintergrund, damit der Rest-Bogen lesbar bleibt. */
-  stroke: rgb(255 255 255 / 0.22);
+/* Registriert, damit der Rest-Anteil weich übergeht (sonst springt der Winkel bei jedem Update). */
+@property --pt-remaining {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: 1;
 }
-.pt-timer-arc {
-  stroke: var(--pt-timer);
-  stroke-linecap: round;
+/* Der Rahmen: Kegelverlauf in Timer-Farbe, per Maske auf ein Band am Rand der Plakette beschnitten. */
+.pt-timer-ring {
+  position: absolute;
+  /* Genau dort, wo sonst die Hervorhebung liegt: Rahmen (0.5u) plus Außenring (0.5u). */
+  inset: calc(-1 * var(--u));
+  border-radius: calc(var(--pt-radius-md) + 0.5 * var(--u));
+  padding: calc(1 * var(--u));
+  background: conic-gradient(var(--pt-timer) calc(var(--pt-remaining) * 360deg), transparent 0);
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box exclude,
+    linear-gradient(#000 0 0);
+  pointer-events: none;
 }
 @media (prefers-reduced-motion: no-preference) {
-  .pt-timer-arc {
-    transition:
-      stroke-dasharray 0.25s linear,
-      stroke 0.3s ease;
+  .pt-timer-ring {
+    transition: --pt-remaining 0.25s linear;
   }
 }
 
@@ -77,11 +87,11 @@
 }
 .pt-clock {
   font-variant-numeric: tabular-nums;
-  background: var(--pt-success);
+  background: var(--pt-accent);
   color: var(--pt-ink);
 }
 .pt-clock--mid {
-  background: var(--pt-accent);
+  background: var(--pt-raise);
 }
 .pt-clock--low {
   background: var(--pt-danger);
