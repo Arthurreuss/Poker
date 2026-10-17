@@ -1,0 +1,160 @@
+/*
+ * Hinweise an der Plakette (WP-037): Zug-Timer (Ring + Sekunden, Zeitbank), letzte Aktion als Schriftzug,
+ * Name der eigenen Hand. Eigene Datei neben table.css, damit parallele Änderungen nicht kollidieren.
+ * Farben nur über Design-Tokens (Aliase mit Fallback wie in table.css). Bewegung nur mit „Animationen“
+ * an (`.pg-anim` an der Spielseite) und ohne `prefers-reduced-motion: reduce`.
+ */
+.pt-host {
+  --pt-success: var(--color-success, #3fb26f);
+  --pt-raise: var(--color-raise, #e0891f);
+  /* Zeitbank und Call: das Blau des Vier-Farben-Decks – einziges Blau unter den Tokens. */
+  --pt-blue: var(--color-card-blue, #1f5fc4);
+  --pt-ink: var(--color-card-black, #16181d);
+}
+
+/* ---------- Timer-Ring um die Plakette (WP-018, deutlicher seit WP-037) ---------- */
+.pt-timer-ring {
+  --pt-timer: var(--pt-success);
+  position: absolute;
+  inset: calc(-1.1 * var(--u));
+  width: calc(100% + 2.2 * var(--u));
+  height: calc(100% + 2.2 * var(--u));
+  overflow: visible;
+  pointer-events: none;
+}
+.pt-timer-ring--mid {
+  --pt-timer: var(--pt-accent);
+}
+.pt-timer-ring--low {
+  --pt-timer: var(--pt-danger);
+}
+.pt-timer-ring--bank {
+  --pt-timer: var(--pt-blue);
+}
+.pt-timer-ring rect {
+  fill: none;
+  vector-effect: non-scaling-stroke;
+  stroke-width: max(3px, calc(1.3 * var(--u)));
+}
+.pt-timer-track {
+  /* Abgelaufener Teil: deutlich heller als der Hintergrund, damit der Rest-Bogen lesbar bleibt. */
+  stroke: rgb(255 255 255 / 0.22);
+}
+.pt-timer-arc {
+  stroke: var(--pt-timer);
+  stroke-linecap: round;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .pt-timer-arc {
+    transition:
+      stroke-dasharray 0.25s linear,
+      stroke 0.3s ease;
+  }
+}
+
+/* ---------- Fußzeile unter der Plakette: Sekunden und eigene Hand ---------- */
+.pt-plate-foot {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: calc(1 * var(--u));
+  transform: translate(-50%, 62%);
+  white-space: nowrap;
+  pointer-events: none;
+}
+.pt-clock,
+.pt-hero-hand {
+  padding: calc(0.3 * var(--u)) calc(2 * var(--u));
+  border-radius: var(--pt-radius-pill);
+  font-size: var(--pt-fs-md);
+  font-weight: 700;
+  line-height: 1.25;
+  white-space: nowrap;
+  box-shadow: var(--pt-shadow);
+}
+.pt-clock {
+  font-variant-numeric: tabular-nums;
+  background: var(--pt-success);
+  color: var(--pt-ink);
+}
+.pt-clock--mid {
+  background: var(--pt-accent);
+}
+.pt-clock--low {
+  background: var(--pt-danger);
+  color: var(--pt-text);
+}
+.pt-clock--bank {
+  background: var(--pt-blue);
+  color: var(--pt-text);
+}
+.pt-hero-hand {
+  background: var(--pt-surface);
+  color: var(--pt-accent);
+  border: calc(0.3 * var(--u)) solid var(--pt-accent);
+}
+
+/* ---------- Letzte Aktion: Schriftzug an der Stelle des Etiketts (.pt-pill aus table.css) ---------- */
+/* Etiketten liegen über Timer-Ring und Avatar-Abzeichen: die Schrift ist wichtiger als die Deko. */
+.pt-plate > .pt-pill {
+  z-index: 3;
+}
+.pt-pill.pt-action-tag {
+  font-size: var(--pt-fs-md);
+  letter-spacing: 0.02em;
+  box-shadow: var(--pt-shadow);
+}
+.pt-action-tag--check {
+  background: var(--pt-success);
+  color: var(--pt-ink);
+}
+.pt-action-tag--call {
+  background: var(--pt-blue);
+}
+.pt-action-tag--bet,
+.pt-action-tag--raise {
+  background: var(--pt-raise);
+  color: var(--pt-ink);
+}
+.pt-action-tag--allIn {
+  background: var(--pt-danger);
+}
+.pt-action-tag--fold {
+  background: var(--pt-fold);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .pg-anim .pt-action-tag {
+    animation: pt-tag-pop 0.3s ease-out both;
+  }
+  .pg-anim .pt-clock--low {
+    animation: pt-clock-pulse 1s ease-in-out infinite;
+  }
+}
+/* `scale` statt `transform`: die Position der Etiketten steckt im `transform`. */
+@keyframes pt-tag-pop {
+  0% {
+    opacity: 0;
+    scale: 0.6;
+  }
+  70% {
+    opacity: 1;
+    scale: 1.12;
+  }
+  100% {
+    opacity: 1;
+    scale: 1;
+  }
+}
+@keyframes pt-clock-pulse {
+  0%,
+  100% {
+    scale: 1;
+  }
+  50% {
+    scale: 1.12;
+  }
+}

@@ -159,6 +159,41 @@ const sixDisconnected: TableView = {
   blinds: { small: 200, big: 400, level: 7 },
 };
 
+/** WP-037: letzte Aktionen als Schriftzug, Timer gegen Ende (rot) mit Sekunden, eigene Hand. */
+const sixHints: TableView = {
+  ...sixFlop,
+  seats: seats({
+    0: player('Arthur', 8_450, {
+      bet: 600,
+      holeCards: own('Qh', 'Qc'),
+      avatar: 'fox',
+      lastAction: { kind: 'call', amount: 600 },
+    }),
+    1: player('Lena', 12_300, { bet: 600, avatar: 'owl', lastAction: { kind: 'bet', amount: 600 } }),
+    2: player('Tobias', 4_100, { lastAction: { kind: 'check' } }),
+    4: player('Mia', 9_900, { bet: 1_800, avatar: 'cat', lastAction: { kind: 'raise', amount: 1_800 } }),
+    5: player('Jonas', 7_200, { status: 'folded', holeCards: NONE, lastAction: { kind: 'fold' } }),
+    7: player('Sophie', 15_750, { avatar: 'rocket', connected: false }),
+  }),
+  timeRemaining: 0.2,
+  timeSeconds: 4,
+  heroHand: { short: 'Paar Damen', long: 'Paar, Damen, Kicker Zehn, Sieben und Zwei' },
+  reactions: [],
+};
+
+/** WP-037: eigener Sitz am Zug mit laufender Zeitbank und eigener Hand. */
+const heroTimeBank: TableView = {
+  ...headsUp,
+  seats: seats({
+    2: player('Arthur', 1450, { bet: 50, holeCards: own('As', 'Kd'), avatar: 'fox' }),
+    6: player('Lena', 1200, { bet: 300, avatar: 'owl', lastAction: { kind: 'raise', amount: 300 } }),
+  }),
+  timeRemaining: 0.6,
+  timeBankSeconds: 36,
+  timeSeconds: 36,
+  heroHand: { short: 'Höchste Karte Ass', long: 'Höchste Karte Ass' },
+};
+
 /** Variante von `ninePreflop` mit n Spielern (eigener Sitz 4 bleibt), für Layout-Prüfungen. */
 function withPlayers(n: number): TableView {
   const keep = [4, 0, 7, 2, 6, 1, 8, 3, 5].slice(0, n);
@@ -178,6 +213,8 @@ export const MOCK_STATES: readonly MockState[] = [
   { id: 'nine-allin', label: '9 Spieler – All-in mit Side Pots', view: nineAllIn },
   { id: 'six-showdown', label: '6 Spieler – Showdown', view: sixShowdown },
   { id: 'six-disconnected', label: '6 Spieler – Getrennt/Ausgeschieden', view: sixDisconnected },
+  { id: 'six-hints', label: '6 Spieler – Aktionen, Timer, eigene Hand', view: sixHints },
+  { id: 'hero-timebank', label: '2 Spieler – eigene Zeitbank', view: heroTimeBank },
   ...[3, 4, 5, 7, 8].map((n) => ({
     id: `players-${String(n)}`,
     label: `${String(n)} Spieler – Layout`,

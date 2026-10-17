@@ -37,6 +37,8 @@ export interface TurnClockDisplay {
   readonly fraction: number;
   /** Restliche Zeitbank in ganzen Sekunden, solange sie läuft; sonst `undefined`. */
   readonly timeBankSeconds: number | undefined;
+  /** Restsekunden (aufgerundet) der laufenden Phase – normale Zugzeit bzw. Zeitbank (WP-037). */
+  readonly seconds: number;
 }
 
 /** Anzeige zum lokalen Zeitpunkt `nowMs`. */
@@ -44,8 +46,13 @@ export function turnClockDisplay(clock: TurnClock, nowMs: number): TurnClockDisp
   const ratio = (left: number, total: number) => (total <= 0 ? 0 : Math.min(1, Math.max(0, left / total)));
   if (nowMs < clock.turnEndsMs || clock.deadlineMs <= clock.turnEndsMs) {
     const end = Math.min(clock.turnEndsMs, clock.deadlineMs);
-    return { fraction: ratio(end - nowMs, clock.turnEndsMs - clock.startedMs), timeBankSeconds: undefined };
+    return {
+      fraction: ratio(end - nowMs, clock.turnEndsMs - clock.startedMs),
+      timeBankSeconds: undefined,
+      seconds: Math.ceil(Math.max(0, end - nowMs) / 1000),
+    };
   }
   const left = Math.max(0, clock.deadlineMs - nowMs);
-  return { fraction: ratio(left, clock.deadlineMs - clock.turnEndsMs), timeBankSeconds: Math.ceil(left / 1000) };
+  const seconds = Math.ceil(left / 1000);
+  return { fraction: ratio(left, clock.deadlineMs - clock.turnEndsMs), timeBankSeconds: seconds, seconds };
 }

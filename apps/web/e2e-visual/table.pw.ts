@@ -2,7 +2,8 @@
  * Screenshot- und Geometrie-Tests der Tischansicht im Hoch- (WP-016) und Querformat (WP-017).
  * Ohne `layout`-Parameter gilt „Auto“: Hochformat-Viewports zeigen das Hochformat-, Querformat-
  * Viewports das Querformat-Layout. Prüft pro Mock-Zustand und Viewport per Bounding-Box:
- * - Teile verschiedener Sitze (Plakette, Karten, Marker, Status-Etikett) überlappen sich nicht,
+ * - Teile verschiedener Sitze (Plakette, Karten, Marker, Status-Etikett bzw. letzte Aktion, Timer-Sekunden,
+ *   eigene Hand) überlappen sich nicht,
  * - Einsätze, Pots, Board, Kopfzeile, Menü- und Reaktions-Knopf überlappen keine Sitze und einander nicht
  *   (Avatar und Emoji-Reaktion zählen zum Sitz, WP-032),
  * - alles liegt im Viewport und außerhalb der freien Fläche für die Aktionsleiste (WP-018),
@@ -29,7 +30,12 @@ const STATES = [
 ] as const;
 
 /** Weitere Spielerzahlen: nur Geometrie-Prüfung, ohne Screenshot-Baseline. */
-const LAYOUT_ONLY = [3, 4, 5, 7, 8].map((n) => ({ id: `players-${String(n)}`, players: n }));
+const LAYOUT_ONLY = [
+  ...[3, 4, 5, 7, 8].map((n) => ({ id: `players-${String(n)}`, players: n })),
+  // WP-037: Schriftzüge der letzten Aktion, Timer-Sekunden, Zeitbank und eigene Hand
+  { id: 'six-hints', players: 6 },
+  { id: 'hero-timebank', players: 2 },
+];
 
 interface Box {
   /** Teile mit derselben Gruppe (z. B. ein Sitz) dürfen sich überlappen. */
@@ -75,6 +81,8 @@ async function measure(page: Page): Promise<Geometry> {
           ...all('.pt-card', seat).map((el, i) => box(group, `${group} Karte ${String(i + 1)}`, el)),
           ...all('[data-testid="marker"]', seat).map((el) => box(group, `${group} Marker`, el)),
           ...all('[data-testid="status"]', seat).map((el) => box(group, `${group} Status`, el)),
+          ...all('[data-testid="last-action"]', seat).map((el) => box(group, `${group} Aktion`, el)),
+          ...all('.pt-plate-foot > *', seat).map((el) => box(group, `${group} ${el.textContent}`, el)),
           ...all('[data-testid="avatar"]', seat).map((el) => box(group, `${group} Avatar`, el)),
           ...all('[data-testid="reaction"]', seat).map((el) => box(group, `${group} Reaktion`, el)),
         ];
@@ -88,7 +96,7 @@ async function measure(page: Page): Promise<Geometry> {
     ];
     const a = one('[data-testid="action-slot"]').getBoundingClientRect();
     const action = { x: a.left, y: a.top, w: a.width, h: a.height };
-    const texts = all('.pt-text, .pt-bet, .pt-pot, .pt-pill');
+    const texts = all('.pt-text, .pt-bet, .pt-pot, .pt-pill, .pt-clock, .pt-hero-hand');
     const truncated = texts.filter((t) => t.scrollWidth > t.clientWidth + 0.5).map((t) => t.textContent);
     const tooSmall = texts
       .filter((t) => parseFloat(getComputedStyle(t).fontSize) < 11)
