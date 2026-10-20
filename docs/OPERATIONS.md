@@ -11,7 +11,7 @@ Wie dev und prod gestartet, gestoppt und released werden, wie der Cloudflare-Tun
 | App | http://localhost:4310 | http://localhost:4320, öffentlich https://poker.arthur-reuss.de (Tunnel) |
 | Server direkt | http://localhost:4311 | http://localhost:4321 (nur Debugging) |
 | Datenbank | `localhost:4312`, Volume `poker-dev-db` | nicht nach außen, Volume `poker-prod-db` |
-| Backups | – | täglich nach `BACKUP_DIR` (Standard `~/poker-backups`) |
+| Backups | – | täglich nach `BACKUP_DIR` (Standard iCloud Drive → `Backups/Poker`, D-035) |
 
 Beide Umgebungen laufen gleichzeitig, ohne sich zu stören (eigene Projekte, Netze, Volumes, Ports). Alle Befehle nur über die npm-Skripte – sie fassen ausschließlich `poker-dev` bzw. `poker-prod` an, nie andere Container (z. B. Jarvis).
 
@@ -33,7 +33,7 @@ npm run prod:setup   # legt ~/code/Arthurreuss/poker-prod an (git worktree add �
 Danach `.env.prod` **im Prod-Worktree** anlegen (gitignored, nie committen). Liegt schon eine `.env.prod` im Arbeitsordner, wird sie dorthin verschoben (`prod:setup` zeigt den genauen Befehl):
 ```sh
 cp .env.prod.example ~/code/Arthurreuss/poker-prod/.env.prod
-# POSTGRES_PASSWORD setzen, z. B. Ausgabe von: openssl rand -hex 24; optional BACKUP_DIR (Standard ~/poker-backups)
+# POSTGRES_PASSWORD setzen, z. B. Ausgabe von: openssl rand -hex 24; optional BACKUP_DIR (Standard iCloud Drive → Backups/Poker)
 ```
 Solange `main` noch nicht released wurde, fehlt im Prod-Worktree `compose.prod.yml` – die prod-Befehle melden das; dann zuerst `npm run release`.
 
@@ -120,7 +120,7 @@ Tunnel stoppen: `npm run prod:down` (stoppt die ganze prod-Umgebung). Token erne
 ## Backup
 Der Dienst `backup` (Image `prodrigestivill/postgres-backup-local:16`) in `compose.prod.yml` sichert die prod-DB automatisch per `pg_dump` (Plain-SQL, gzip) in einen **Host-Ordner außerhalb von Docker-Volumes** – auch ein gelöschtes Volume `poker-prod-db` lässt sich so wiederherstellen.
 
-- **Ordner:** `BACKUP_DIR` in `.env.prod`, leer = `~/poker-backups`. Absoluter Pfad oder mit `~/` beginnend; die npm-Skripte lösen `~` auf und legen den Ordner an (Compose selbst kann `~` nicht expandieren – deshalb prod immer über die npm-Skripte starten). Externe Platte: z. B. `/Volumes/Backup/poker-backups` (muss beim Start eingehängt sein).
+- **Ordner:** `BACKUP_DIR` in `.env.prod`, leer = iCloud Drive → `Backups/Poker` (`~/Library/Mobile Documents/com~apple~CloudDocs/Backups/Poker`, D-035; damit off-site). Ein anderer Ort muss in der Datenschutzerklärung (Abschnitt 9 und 11) nachgezogen werden. Absoluter Pfad oder mit `~/` beginnend; die npm-Skripte lösen `~` auf und legen den Ordner an (Compose selbst kann `~` nicht expandieren – deshalb prod immer über die npm-Skripte starten). Externe Platte: z. B. `/Volumes/Backup/poker-backups` (muss beim Start eingehängt sein).
 - **Zeitplan:** `BACKUP_SCHEDULE` (Standard `@daily` = 00:00 in `BACKUP_TZ`, Standard `Europe/Berlin`). Schläft der Mac zu dieser Zeit, fällt das Backup des Tages aus – deshalb Mac wach halten (siehe [Betrieb nach Neustart](#betrieb-nach-neustart)); `prod:status` meldet Backups, die älter als 26 h sind.
 - **Aufbewahrung:** 7 tägliche, 4 wöchentliche, 6 monatliche Stände. Unterordner:
 
@@ -137,8 +137,9 @@ Der Dienst `backup` (Image `prodrigestivill/postgres-backup-local:16`) in `compo
 ## Restore
 ```sh
 npm run prod:status                                   # welche Backups gibt es?
-ls ~/poker-backups/daily ~/poker-backups/last
-npm run prod:restore -- ~/poker-backups/daily/poker-20261008.sql.gz   # fragt nach: "restore" eintippen
+B="$HOME/Library/Mobile Documents/com~apple~CloudDocs/Backups/Poker"
+ls "$B/daily" "$B/last"
+npm run prod:restore -- "$B/daily/poker-20261008.sql.gz"   # fragt nach: "restore" eintippen
 npm run prod:restore -- <dump> --yes                  # ohne Rückfrage
 ```
 Ablauf (`scripts/restore.sh`), prod muss laufen (`prod:up`):

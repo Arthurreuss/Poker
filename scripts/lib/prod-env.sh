@@ -69,10 +69,11 @@ env_value_or() {
 
 # Backup-Ordner auf dem Host (außerhalb von Docker-Volumes). Compose kann "~" nicht expandieren,
 # deshalb wird der Pfad hier aufgelöst und als Umgebungsvariable an Compose übergeben
-# (Shell-Variablen haben Vorrang vor --env-file). Standard: ~/poker-backups.
+# (Shell-Variablen haben Vorrang vor --env-file). Standard: iCloud Drive → Backups/Poker (D-035).
+BACKUP_DIR_DEFAULT="$HOME/Library/Mobile Documents/com~apple~CloudDocs/Backups/Poker"
 resolve_backup_dir() {
   _dir="${BACKUP_DIR:-$(env_value BACKUP_DIR)}"
-  [ -n "$_dir" ] || _dir="$HOME/poker-backups"
+  [ -n "$_dir" ] || _dir="$BACKUP_DIR_DEFAULT"
   case "$_dir" in
     "~") _dir="$HOME" ;;
     "~/"*) _dir="$HOME/${_dir#\~/}" ;;

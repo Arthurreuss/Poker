@@ -180,7 +180,7 @@ Format: Kontext → Entscheidung → Konsequenzen. Status: `akzeptiert`, `offen`
 - **Konsequenzen:** Umsetzung der Abweichungen vom Ist-Stand in WP-026.
 
 ## D-025: Speicherdauern (Datenschutz)
-- **Status:** akzeptiert
+- **Status:** akzeptiert; Ort der Backups ersetzt durch D-035
 - **Kontext:** Die Datenschutzerklärung (WP-022) braucht feste Speicherdauern.
 - **Entscheidung:** Server-Logs (enthalten IP-Adressen) werden höchstens 14 Tage aufbewahrt. Erledigtes Feedback wird 30 Tage nach dem Erledigen gelöscht, jedes Feedback spätestens 1 Jahr nach dem Absenden. Einträge im Admin-Protokoll (WP-028, D-029) werden 1 Jahr nach dem Anlegen gelöscht. Backups liegen nur lokal auf dem Mac (Aufbewahrung 7/4/6). Cloudflare ist Auftragsverarbeiter (DPA im Dashboard akzeptiert).
 - **Konsequenzen:** Umsetzung in WP-022: Request-Logs mit IP schreiben server und nginx in Dateien, die der Dienst `logrotate` täglich rotiert und nach 12 Tagen löscht; Container-Logs enthalten keine IPs und rotieren nach Größe. Ein Server-Job löscht Feedback nach den Fristen, ein zweiter das Admin-Protokoll (WP-028). Der Backup-Ordner wird nicht in Time Machine oder eine Cloud gesichert (sonst gälten längere Fristen).
@@ -279,3 +279,9 @@ Format: Kontext → Entscheidung → Konsequenzen. Status: `akzeptiert`, `offen`
   - Schriftzug und Sieger erscheinen immer, die Lottie-Animationen nur mit „Animationen“ an und ohne `prefers-reduced-motion`.
   - Rundenende: 3,5 s letzte Hand mit Feier, 6 s Sieger des Tisches, dann der Dialog (ersetzt die 5 s aus D-031); ein Tipp springt weiter.
 - **Konsequenzen:** Der Offline-Cache (PWA) wird um ca. 3,7 MB (unkomprimiert) größer. Neue Animationen nur mit geprüfter Lizenz und Eintrag in `ASSETS.md`. Beim Fold-out stehen Gewinner und Feier 4 s, beim Showdown ca. 4,3 s.
+
+## D-035: Backups in iCloud Drive (WP-041)
+- **Status:** akzeptiert (Arthur, 20.10.2026); ersetzt in D-025 „Backups liegen nur lokal auf dem Mac“
+- **Kontext:** Die Backups lagen nur auf dem Mac (`~/poker-backups`). Fällt der Mac aus, sind DB und Backups gleichzeitig weg. Arthur sammelt alle Backups in einem gemeinsamen iCloud-Ordner.
+- **Entscheidung:** Standard für `BACKUP_DIR` ist `~/Library/Mobile Documents/com~apple~CloudDocs/Backups/Poker` (iCloud Drive → `Backups/Poker`). Aufbewahrung bleibt 7/4/6. Die Datenschutzerklärung nennt Apple (iCloud Drive) als Speicherort der Sicherungen und die verlängerte Höchstdauer von etwa 7 Monaten (6 Monate plus 30 Tage „Zuletzt gelöscht“).
+- **Konsequenzen:** Backups sind off-site. Ein anderer Ort geht weiter über `BACKUP_DIR` in `.env.prod`; dann muss die Datenschutzerklärung (Abschnitt 9 und 11) mitziehen.

@@ -11,7 +11,7 @@ import { DOMAINS, PROVIDER } from './impressum';
 export function DatenschutzContent() {
   return (
     <>
-      <p>Stand: 8. Oktober 2026</p>
+      <p>Stand: 20. Oktober 2026</p>
       <p>
         Diese Datenschutzerklärung gilt für die Web-App unter {DOMAINS.join(' und ')}. Beide Adressen führen zur selben
         Anwendung mit denselben Konten.
@@ -129,10 +129,13 @@ export function DatenschutzContent() {
       <h2>9. Backups</h2>
       <p>
         Die Datenbank wird täglich gesichert. Aufbewahrt werden 7 tägliche, 4 wöchentliche und 6 monatliche Sicherungen.
-        Sie liegen nur lokal auf dem Rechner des Verantwortlichen und werden nicht an Dritte oder Cloud-Dienste
-        übertragen. Gelöschte oder anonymisierte Daten können daher bis zu etwa 6 Monate in Sicherungen enthalten sein.
-        Sicherungen werden nur zur Wiederherstellung nach einem Fehler verwendet; wird eine Sicherung eingespielt,
-        werden zwischenzeitlich gelöschte Konten erneut gelöscht.
+        Sie liegen auf dem Rechner des Verantwortlichen und werden über dessen iCloud Drive (Apple Distribution
+        International Ltd., Hollyhill Industrial Estate, Hollyhill, Cork, Irland) auf Server von Apple synchronisiert,
+        damit sie auch bei einem Defekt des Rechners erhalten bleiben. Eine gelöschte Sicherung bleibt dort bis zu 30
+        Tage unter „Zuletzt gelöscht“. Gelöschte oder anonymisierte Daten können daher bis zu etwa 7 Monate in
+        Sicherungen enthalten sein. Rechtsgrundlage ist das berechtigte Interesse an einer verlässlichen
+        Wiederherstellung (Art. 6 Abs. 1 lit. f DSGVO). Sicherungen werden nur zur Wiederherstellung nach einem Fehler
+        verwendet; wird eine Sicherung eingespielt, werden zwischenzeitlich gelöschte Konten erneut gelöscht.
       </p>
 
       <h2>10. Konto löschen</h2>
@@ -146,8 +149,9 @@ export function DatenschutzContent() {
 
       <h2>11. Empfänger</h2>
       <p>
-        Daten werden nicht verkauft und nicht an Dritte weitergegeben. Empfänger ist nur Cloudflare als
-        Auftragsverarbeiter (Abschnitt 3); innerhalb der App sehen Mitspieler die in Abschnitt 7 genannten Angaben.
+        Daten werden nicht verkauft und nicht an Dritte weitergegeben. Empfänger sind nur Cloudflare als
+        Auftragsverarbeiter (Abschnitt 3) und Apple als Speicherort der Sicherungen (iCloud Drive, Abschnitt 9);
+        innerhalb der App sehen Mitspieler die in Abschnitt 7 genannten Angaben.
       </p>
 
       <h2>12. Deine Rechte</h2>
