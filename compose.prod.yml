@@ -93,7 +93,7 @@ services:
     restart: unless-stopped
 
   # Tägliches pg_dump (WP-021) in einen Host-Ordner außerhalb von Docker-Volumes. BACKUP_DIR setzen die
-  # npm-Skripte (scripts/lib/prod-env.sh, Standard ~/poker-backups). Aufbewahrung 7 täglich / 4 wöchentlich /
+  # npm-Skripte (scripts/lib/prod-env.sh, Standard iCloud Drive → Backups/Poker, D-035). Aufbewahrung 7 täglich / 4 wöchentlich /
   # 6 monatlich, Unterordner last/ daily/ weekly/ monthly/. Manuell: npm run prod:backup.
   backup:
     image: prodrigestivill/postgres-backup-local:16
@@ -111,7 +111,7 @@ services:
       BACKUP_KEEP_MONTHS: 6
       HEALTHCHECK_PORT: 8080
     volumes:
-      - ${BACKUP_DIR:?BACKUP_DIR fehlt – prod über npm run prod:* starten (setzt ~/poker-backups)}:/backups
+      - ${BACKUP_DIR:?BACKUP_DIR fehlt – prod über npm run prod:* starten (setzt den Backup-Ordner)}:/backups
     networks: [backend]
     depends_on:
       db:
