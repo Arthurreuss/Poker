@@ -1,10 +1,11 @@
 # Gemeinsame Helfer für die prod-Skripte (prod.sh, backup-now.sh, restore.sh, status.sh, test-restore.sh).
 # Wird per "." eingebunden (POSIX-sh-kompatibel, auch aus bash).
 #
-# prod läuft aus einem eigenen, dauerhaften Git-Worktree auf main (D-017), nicht aus dem Arbeitsordner (dev).
-# Die Skripte wechseln deshalb in den Prod-Worktree und nehmen compose.prod.yml und .env.prod von dort.
-#   POKER_PROD_DIR      Prod-Worktree (Standard: Ordner "poker-prod" neben dem Haupt-Checkout,
-#                       z. B. ~/code/Arthurreuss/poker-prod). Einrichten: npm run prod:setup
+# Die Skripte laufen auf dem prod-Host (Mac Studio) im Checkout von main (D-036); vom Entwicklungsrechner
+# aus startet sie scripts/prod-remote.sh per SSH und setzt POKER_PROD_DIR auf den Checkout.
+# Sie wechseln in diesen Ordner und nehmen compose.prod.yml und .env.prod von dort.
+#   POKER_PROD_DIR      Checkout von main (Standard: Ordner "poker-prod" neben dem Haupt-Checkout).
+#                       Einrichten: npm run prod:setup
 # Nur für scripts/test-restore.sh gedacht, damit der Test echte prod-Daten nie anfasst:
 #   PROD_PROJECT        Compose-Projekt          (Standard: poker-prod)
 #   PROD_ENV_FILE       Env-Datei                (Standard: .env.prod im Prod-Worktree)
@@ -12,7 +13,7 @@
 
 SCRIPTS_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-# Standardpfad des Prod-Worktrees: neben dem Haupt-Checkout (dem Ordner, der .git enthält),
+# Standardpfad: neben dem Haupt-Checkout (dem Ordner, der .git enthält),
 # auch wenn das Skript aus einem anderen Worktree aufgerufen wird.
 default_prod_dir() {
   _common="$(git -C "$SCRIPTS_DIR" rev-parse --path-format=absolute --git-common-dir)"
@@ -31,7 +32,7 @@ esac
 
 if [ "${PROD_DIR_OPTIONAL:-0}" != 1 ]; then
   if [ ! -d "$POKER_PROD_DIR" ]; then
-    echo "✗ Prod-Worktree fehlt: $POKER_PROD_DIR" >&2
+    echo "✗ prod-Checkout fehlt: $POKER_PROD_DIR" >&2
     echo "  Einmalig einrichten mit: npm run prod:setup   (Details: docs/OPERATIONS.md)" >&2
     exit 1
   fi

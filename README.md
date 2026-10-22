@@ -1,6 +1,6 @@
 # Poker
 
-Texas Hold'em für Freunde – **nur Spielgeld**, läuft per Docker auf dem eigenen Rechner.
+Texas Hold'em für Freunde – **nur Spielgeld**. Entwickelt wird auf dem MacBook, gehostet per Docker auf einem Mac Studio, öffentlich über einen Cloudflare-Tunnel.
 
 ## Setup
 Voraussetzung: Node 22 (`.nvmrc`, z. B. `nvm use`).
@@ -32,22 +32,31 @@ DATABASE_URL=postgres://poker:poker@localhost:4312/poker npm test
 ```
 Nach Änderungen an Abhängigkeiten `npm run dev:up` erneut ausführen (baut das Image neu).
 
-## Prod lokal starten
-prod läuft aus einem eigenen Git-Worktree auf `main` (`~/code/Arthurreuss/poker-prod`), der Arbeitsordner bleibt auf `dev`.
+## Prod (Mac Studio)
+prod läuft auf dem Mac Studio (`areuss-studio.local`) aus einem Checkout von `main` unter `~/poker` (D-036). Das MacBook ist nur Entwicklungsrechner: Alle Befehle unten laufen dort im Arbeitsordner und steuern den Studio per SSH.
 ```sh
-npm run prod:setup               # einmalig: Prod-Worktree anlegen, dann dort .env.prod anlegen (POSTGRES_PASSWORD setzen)
-npm run prod:up                  # Projekt poker-prod unter http://localhost:4320 (läuft parallel zu dev)
-npm run prod:smoke               # Health + WebSocket prüfen
-npm run prod:e2e                 # Browser-Test: zwei Test-Konten spielen eine Runde (WP-020)
+npm run prod:setup               # einmalig: main auf dem Studio klonen, dann dort .env.prod anlegen (npm run prod:ssh)
+npm run release                  # dev → main mergen, pushen, Studio holt main, baut neu, Smoke- und E2E-Test
 npm run prod:status              # Container, letztes Backup, Health
-npm run prod:down
+npm run prod:smoke               # Health + WebSocket prüfen (über eine SSH-Portweiterleitung)
+npm run prod:e2e                 # Browser-Test: zwei Test-Konten spielen eine Runde (WP-020)
+npm run prod:logs                # Container-Logs folgen
+npm run prod:compose -- ps       # beliebiger docker-compose-Befehl für poker-prod auf dem Studio
+npm run prod:tunnel:up / prod:down
 ```
 Release, Tunnel-Einrichtung, Backup/Restore, Betrieb nach Neustart und Fehlersuche: [docs/OPERATIONS.md](docs/OPERATIONS.md).
 
 | Branch | Umgebung |
 |---|---|
-| `dev` | lokal testen, http://localhost:4310 |
-| `main` | Release (`npm run release`), lokal http://localhost:4320, öffentlich über Cloudflare Tunnel unter poker.arthur-reuss.de |
+| `dev` | MacBook, http://localhost:4310 |
+| `main` | Release (`npm run release`), läuft auf dem Mac Studio, öffentlich über Cloudflare Tunnel unter poker.arthur-reuss.de und poker.deinemudda.win |
+
+## Admin-Sonderfunktionen am Tisch
+Admins (Flag nur per CLI, siehe unten) haben am Tisch zwei Extras. Die Mitspieler sehen davon nichts, jede Nutzung steht aber im Admin-Protokoll.
+- **Karten der anderen sehen** (D-027): Während einer laufenden Hand auf die verdeckten Karten eines Mitspielers tippen, dann drehen sie sich um. Nochmal tippen dreht sie zurück. Geht nur am eigenen Tisch und nur bei Spielern, die noch nicht gefoldet haben.
+- **Eigene Karten austauschen** (D-032): Während der Setzphase auf die eigenen Karten tippen, dann gibt es zwei neue aus dem Restdeck. Das geht beliebig oft, solange man nicht gefoldet hat. Karten von Mitspielern, vom Board oder verbrannte Karten kommen dabei nie in Frage. Die Hand-Historie zeigt danach die tatsächlich gespielten Karten.
+
+Beides verschafft einen großen Vorteil. Admin-Rechte deshalb nur an Vertrauenspersonen geben.
 
 ## Admin
 Kein Passwort-Reset per Mail (D-011) – Passwörter setzt ein Admin per CLI zurück. Die Skripte brauchen `DATABASE_URL` und laufen mit `tsx` (dev-Abhängigkeit). Benutzernamen sind case-insensitive.
@@ -68,11 +77,11 @@ npm run admin:make-admin -w @poker/server -- <benutzername> --revoke
 npm run admin:feedback -w @poker/server -- [--status new|read|done|all] [--limit N]
 ```
 
-In **prod** sind die Skripte mitgebündelt (kein `tsx` nötig) und laufen im Server-Container:
+In **prod** sind die Skripte mitgebündelt (kein `tsx` nötig) und laufen im Server-Container auf dem Studio (vom MacBook aus):
 ```sh
-docker compose -p poker-prod exec server node cli/reset-password.mjs <benutzername>
-docker compose -p poker-prod exec server node cli/make-admin.mjs <benutzername> [--revoke]
-docker compose -p poker-prod exec server node cli/feedback.mjs [--status new|read|done|all] [--limit N]
+npm run prod:compose -- exec server node cli/reset-password.mjs <benutzername>
+npm run prod:compose -- exec server node cli/make-admin.mjs <benutzername> [--revoke]
+npm run prod:compose -- exec server node cli/feedback.mjs [--status new|read|done|all] [--limit N]
 ```
 Feedback lässt sich auch im Browser unter `/admin/feedback` lesen und dort auf gelesen/erledigt setzen (Details: [docs/OPERATIONS.md](docs/OPERATIONS.md#feedback-lesen)).
 Im dev-Container geht es auch ohne `DATABASE_URL` (ist dort gesetzt): `docker compose -p poker-dev exec server npm run admin:reset-password -w @poker/server -- <benutzername>`. Exit-Code `1` bei unbekanntem User oder ungültigem Passwort, `2` bei falschem Aufruf.

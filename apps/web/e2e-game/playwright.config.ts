@@ -9,7 +9,8 @@ import { defineConfig, devices } from '@playwright/test';
 //   von dev). `npm run test:game -w @poker/web`
 // - E2E_BASE_URL=http://localhost:4310: direkt gegen den dev-Docker. `npm run test:e2e -w @poker/web`
 // - zusätzlich E2E_ORIGIN: lokaler Origin-Proxy (scripts/e2e-origin-proxy.mjs) auf E2E_PROXY_PORT (Standard 4318)
-//   vor E2E_BASE_URL, der die Origin durch E2E_ORIGIN ersetzt – für prod (localhost:4320), dessen WebSocket nur
+//   vor E2E_BASE_URL, der die Origin durch E2E_ORIGIN ersetzt – für prod (localhost:4320, SSH-Weiterleitung zum
+//   Mac Studio, D-036), dessen WebSocket nur
 //   PUBLIC_ORIGIN annimmt. `npm run prod:e2e`
 // Nicht Teil von `npm run check` (braucht Server und Datenbank). Test-User werden am Ende gelöscht.
 const env = process.env;

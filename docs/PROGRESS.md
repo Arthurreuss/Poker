@@ -46,6 +46,7 @@
 | M6 | [WP-039](work-packages/WP-039.md) | Showdown: langsameres Aufdecken, Gewinner mit Krone | review | WP-018 |
 | M6 | [WP-040](work-packages/WP-040.md) | Feier nach der Hand (Konfetti, Gewinnerhand, Münzen, Tisch-Sieger) | review | WP-039 |
 | M5 | [WP-041](work-packages/WP-041.md) | Backups in iCloud Drive | done | WP-021, WP-022 |
+| M5 | [WP-042](work-packages/WP-042.md) | Prod auf den Mac Studio umziehen | done | WP-021, WP-041 |
 <!-- END GENERATED -->
 
 ## Meilensteine
@@ -69,6 +70,7 @@ Parallel in Arbeit (max. 5): WP-011 (Game-Server/WebSocket), WP-014 (Web-Grundge
 ## Log
 Neueste Einträge oben. Pro Session 1–3 Zeilen.
 
+- 2026-10-22: WP-042 done – prod läuft auf dem Mac Studio (`areuss-studio.local`, D-036 ersetzt D-017), MacBook nur noch Entwicklung; `prod:*` und `release` steuern den Studio per SSH. Daten umgezogen und geprüft, README mit Admin-Sonderfunktionen.
 - 2026-10-20: WP-041 done – Backups jetzt in iCloud Drive → `Backups/Poker` (D-035, ersetzt den Backup-Ort aus D-025), Datenschutzerklärung Abschnitt 9/11 angepasst, released.
 - 2026-10-17: WP-036–WP-039 review (parallel in Worktrees): Blinds nach Anzahl Hände (D-033), Tisch-Hinweise (Timer-Ring mit Stufen, Schriftzug letzte Aktion, Name der eigenen Hand), Übersicht der Pokerhände, Showdown mit 1-s-Flip, Krone und längerer Pause (D-031 ergänzt).
 - 2026-10-17: WP-035 review – Admin zieht per Tipp neue eigene Karten aus dem Restdeck (D-032), protokolliert, für Mitspieler unsichtbar; Historie speichert die gespielten Karten. Docker-Aufräumen (Build-Cache, ungenutzte Images).

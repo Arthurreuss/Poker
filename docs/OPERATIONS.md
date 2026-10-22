@@ -1,19 +1,20 @@
 # Betrieb
 
-Wie dev und prod gestartet, gestoppt und released werden, wie der Cloudflare-Tunnel eingerichtet wird, Backup, Restore, Status, Logs, Betrieb nach Neustart und die Security-Checkliste. Aufbau der Umgebungen: [ARCHITECTURE.md](ARCHITECTURE.md); Begründungen: D-002, D-005, D-006, D-010, D-014, D-017, D-028 in [DECISIONS.md](DECISIONS.md).
+Wie dev und prod gestartet, gestoppt und released werden, wie der Cloudflare-Tunnel eingerichtet wird, Backup, Restore, Status, Logs, Betrieb nach Neustart und die Security-Checkliste. Aufbau der Umgebungen: [ARCHITECTURE.md](ARCHITECTURE.md); Begründungen: D-002, D-005, D-006, D-010, D-014, D-028, D-036 in [DECISIONS.md](DECISIONS.md).
 
 | | dev | prod |
 |---|---|---|
+| Rechner | MacBook (Entwicklung) | Mac Studio `areuss-studio.local` (nur Hosting, D-036) |
 | Branch | `dev` | `main` |
-| Ordner | Arbeitsordner `~/code/Arthurreuss/poker` | Prod-Worktree `~/code/Arthurreuss/poker-prod` (`POKER_PROD_DIR`) |
+| Ordner | Arbeitsordner `~/code/Arthurreuss/poker` | Checkout `~/poker` auf dem Studio (nur lesend, ändert sich nur durch `release`) |
 | Compose | `compose.dev.yml`, Projekt `poker-dev` | `compose.prod.yml`, Projekt `poker-prod` |
-| Konfiguration | `.env` (optional, Vorlage `.env.example`) | `.env.prod` im Prod-Worktree (Pflicht, Vorlage `.env.prod.example`) |
-| App | http://localhost:4310 | http://localhost:4320, öffentlich https://poker.arthur-reuss.de (Tunnel) |
-| Server direkt | http://localhost:4311 | http://localhost:4321 (nur Debugging) |
+| Konfiguration | `.env` (optional, Vorlage `.env.example`) | `.env.prod` im Checkout auf dem Studio (Pflicht, Vorlage `.env.prod.example`) |
+| App | http://localhost:4310 | auf dem Studio http://localhost:4320, öffentlich https://poker.arthur-reuss.de (Tunnel) |
+| Server direkt | http://localhost:4311 | auf dem Studio http://localhost:4321 (nur Debugging) |
 | Datenbank | `localhost:4312`, Volume `poker-dev-db` | nicht nach außen, Volume `poker-prod-db` |
 | Backups | – | täglich nach `BACKUP_DIR` (Standard iCloud Drive → `Backups/Poker`, D-035) |
 
-Beide Umgebungen laufen gleichzeitig, ohne sich zu stören (eigene Projekte, Netze, Volumes, Ports). Alle Befehle nur über die npm-Skripte – sie fassen ausschließlich `poker-dev` bzw. `poker-prod` an, nie andere Container (z. B. Jarvis).
+Alle Befehle nur über die npm-Skripte – sie fassen ausschließlich `poker-dev` bzw. `poker-prod` an, nie andere Container (auf dem Studio läuft auch Jarvis).
 
 ## dev
 ```sh
@@ -24,45 +25,50 @@ npm run dev:down   # stoppen, Volume poker-dev-db bleibt
 Details: [README.md](../README.md#entwicklung-starten).
 
 ## prod
-prod läuft aus einem **eigenen, dauerhaften Git-Worktree auf `main`** (D-017), nicht aus dem Arbeitsordner. Der Arbeitsordner (`~/code/Arthurreuss/poker`) bleibt immer auf `dev`; der Prod-Worktree liegt standardmäßig daneben in `~/code/Arthurreuss/poker-prod` (anderer Pfad: Umgebungsvariable `POKER_PROD_DIR`, absolut). Dort wird nie von Hand gearbeitet – er ändert sich nur durch `npm run release`.
+prod läuft auf dem **Mac Studio** (D-036) aus einem Git-Checkout von `main` unter `~/poker`. Alle `prod:*`-Befehle werden auf dem MacBook im Arbeitsordner aufgerufen und führen die prod-Skripte per SSH auf dem Studio aus (`scripts/prod-remote.sh`). Auf dem Studio wird nie von Hand gearbeitet; der Checkout ändert sich nur durch `npm run release` (`git merge --ff-only origin/main`).
 
-### Prod-Worktree einrichten (Arthur, einmalig)
+- Ziel per Umgebungsvariable änderbar: `POKER_PROD_HOST` (Standard `areuss-studio.local`), `POKER_PROD_REMOTE_DIR` (Standard `poker`, relativ zu `~`).
+- Der Studio braucht nur git, Docker Desktop und bash, kein Node. Smoke- und E2E-Test laufen auf dem MacBook über eine SSH-Portweiterleitung `127.0.0.1:4320` → Studio `127.0.0.1:4320` (die prod-Ports sind dort nur lokal gebunden). Port 4320 muss dafür auf dem MacBook frei sein (sonst `PROD_FORWARD_PORT=4329`).
+- SSH-Zugang per Schlüssel vom MacBook auf `arthurreuss@areuss-studio.local` ist Voraussetzung.
+
+### prod-Host einrichten (Arthur, einmalig)
 ```sh
-npm run prod:setup   # legt ~/code/Arthurreuss/poker-prod an (git worktree add … main), falls nicht vorhanden
+npm run prod:setup   # klont main per HTTPS nach ~/poker auf dem Studio (öffentliches Repo, kein Login nötig)
 ```
-Danach `.env.prod` **im Prod-Worktree** anlegen (gitignored, nie committen). Liegt schon eine `.env.prod` im Arbeitsordner, wird sie dorthin verschoben (`prod:setup` zeigt den genauen Befehl):
+Danach `.env.prod` im Checkout auf dem Studio anlegen (gitignored, nie committen, liegt nur dort):
 ```sh
-cp .env.prod.example ~/code/Arthurreuss/poker-prod/.env.prod
-# POSTGRES_PASSWORD setzen, z. B. Ausgabe von: openssl rand -hex 24; optional BACKUP_DIR (Standard iCloud Drive → Backups/Poker)
+npm run prod:ssh     # Shell im Checkout auf dem Studio
+cp .env.prod.example .env.prod && chmod 600 .env.prod
+# POSTGRES_PASSWORD setzen, z. B. Ausgabe von: openssl rand -hex 24; TUNNEL_TOKEN; optional BACKUP_DIR (Standard iCloud Drive → Backups/Poker)
 ```
-Solange `main` noch nicht released wurde, fehlt im Prod-Worktree `compose.prod.yml` – die prod-Befehle melden das; dann zuerst `npm run release`.
 
 ### Bedienung
-Alle `prod:*`-Befehle werden im Arbeitsordner aufgerufen, arbeiten aber mit `compose.prod.yml` und `.env.prod` aus dem Prod-Worktree (fehlt er, kommt ein Hinweis auf `npm run prod:setup`):
 ```sh
-npm run prod:up          # baut die Images aus dem Prod-Worktree (main) und startet db, server, web, backup, logrotate (ohne Tunnel); wartet auf healthy
-npm run prod:smoke       # Smoke-Test: /api/health und WebSocket (401 ohne Session, 403 fremde Origin) über http://localhost:4320
+npm run prod:up          # baut die Images auf dem Studio (main) und startet db, server, web, backup, logrotate (ohne Tunnel); wartet auf healthy
+npm run prod:tunnel:up   # wie prod:up, zusätzlich cloudflared (braucht TUNNEL_TOKEN)
+npm run prod:smoke       # Smoke-Test: /api/health und WebSocket (401 ohne Session, 403 fremde Origin), über die SSH-Weiterleitung
 npm run prod:e2e         # E2E-Smoke-Test im Browser: zwei Test-Konten spielen eine Runde, danach gelöscht (siehe Release)
 npm run prod:status      # Zustandsbericht (siehe Status)
 npm run prod:logs        # Container-Logs folgen (Request-Logs von server/web: siehe Logs)
-npm run prod:tunnel:up   # wie prod:up, zusätzlich cloudflared (braucht TUNNEL_TOKEN)
 npm run prod:down        # alles stoppen inkl. cloudflared, Volume poker-prod-db und Backups bleiben
 npm run prod:backup      # sofort ein Backup (siehe Backup)
-npm run prod:restore -- <dump.sql.gz> [--yes]   # Restore (siehe Restore)
+npm run prod:restore -- <dump.sql.gz> [--yes]   # Restore, Pfad auf dem Studio (siehe Restore)
+npm run prod:compose -- <args>                  # docker compose -p poker-prod <args> auf dem Studio, z. B. ps
+npm run prod:ssh         # Shell im Checkout auf dem Studio
 ```
 - Ohne `.env.prod` bricht `prod:up` mit Hinweis ab; `prod:tunnel:up` bricht ab, solange `TUNNEL_TOKEN` leer ist.
 - Container haben `restart: unless-stopped`: nach einem Neustart von Docker Desktop laufen sie wieder, nach `prod:down` nicht (siehe [Betrieb nach Neustart](#betrieb-nach-neustart)).
-- `POSTGRES_PASSWORD` wirkt nur beim **ersten** Start mit leerem Volume. Passwort später ändern = in Postgres ändern (`ALTER USER`) oder – nur ohne echte Daten – Volume löschen: `docker volume rm poker-prod-db`.
-- Der Smoke-Test schickt als `Origin` den Wert von `PUBLIC_ORIGIN` aus `.env.prod`; andere Ziele per `SMOKE_URL=… SMOKE_ORIGIN=… npm run prod:smoke`.
+- `POSTGRES_PASSWORD` wirkt nur beim **ersten** Start mit leerem Volume. Passwort später ändern = in Postgres ändern (`ALTER USER`) oder – nur ohne echte Daten – Volume löschen: `docker volume rm poker-prod-db` (auf dem Studio).
+- Der Smoke-Test schickt als `Origin` die erste `PUBLIC_ORIGIN` aus der `.env.prod` des Studios; andere Ziele per `SMOKE_URL=… SMOKE_ORIGIN=… npm run prod:smoke` (dann ohne Weiterleitung).
 - WebSocket ohne Session muss `401` liefern (seit WP-011 braucht `/ws` ein Session-Cookie), fremde Origin `403`. Den vollen Handshake (`hello` → `welcome`) prüft er zusätzlich mit einem Session-Cookie aus dem Browser: `SMOKE_COOKIE='poker_session=…' npm run prod:smoke`.
 
 ## Release
-`npm run release` (Skript `scripts/release.sh`) – der Arbeitsordner wird dabei **nicht** umgeschaltet:
-1. prüft: Arbeitsordner auf `dev` und sauber; Prod-Worktree vorhanden, auf `main`, ohne lokale Änderungen, mit `.env.prod`
+`npm run release` (Skript `scripts/release.sh`) auf dem MacBook – der Arbeitsordner wird dabei **nicht** umgeschaltet:
+1. prüft: Arbeitsordner auf `dev` und sauber; Checkout auf dem Studio erreichbar, auf `main`, ohne lokale Änderungen, mit `.env.prod`
 2. `npm run check` im Arbeitsordner
-3. merkt sich den bisherigen `main`-Stand (Ziel eines Rollbacks), dann Merge im Prod-Worktree: `git -C ~/code/Arthurreuss/poker-prod merge --no-ff dev` (Merge-Commit „Release: merge dev → main“; ein Merge löst den Pre-Commit-Hook nicht aus). Schlägt der Merge fehl, wird er abgebrochen und `main` bleibt unverändert.
+3. bringt das lokale `main` auf `origin/main` (nur Fast-Forward), merkt sich diesen Stand (Ziel eines Rollbacks), dann Merge in einem temporären Worktree: `merge --no-ff dev` (Merge-Commit „Release: merge dev → main“; ein Merge löst den Pre-Commit-Hook nicht aus). Schlägt der Merge fehl, wird er abgebrochen und `main` bleibt unverändert.
 4. `git push origin main dev`
-5. prod aus dem Prod-Worktree neu bauen und starten: `prod:tunnel:up`, wenn `TUNNEL_TOKEN` gesetzt ist, sonst `prod:up`
+5. auf dem Studio: `git merge --ff-only origin/main`, dann prod neu bauen und starten: `prod:tunnel:up`, wenn `TUNNEL_TOKEN` gesetzt ist, sonst `prod:up`
 6. Prüfung des neuen prod (`scripts/release-verify.sh`): erst `prod:smoke`, dann `prod:e2e`. Schlägt einer fehl, bricht der Release mit Exit-Code 1 ab und gibt die Rollback-Befehle aus (siehe unten).
 
 Vorher dev lokal per Docker getestet haben (D-005), am besten auch mit dem E2E-Test: `npm run test:e2e -w @poker/web` (gegen http://localhost:4310).
@@ -71,12 +77,12 @@ Vorher dev lokal per Docker getestet haben (D-005), am besten auch mit dem E2E-T
 Playwright-Test `apps/web/e2e-game/smoke.pw.ts`: zwei Spieler registrieren sich über `/register` (Namen `e2e_<Zeitstempel>…`), A erstellt über die Lobby einen **privaten** Tisch „E2E-Test …“ (2 Plätze, Stack 200, feste Blinds), B tritt über den Einladungslink bei, beide nehmen Platz, A startet, beide gehen All-in, bis bei beiden der Dialog „Runde beendet“ mit zwei Platzierungen und demselben Sieger steht. Danach werden beide Konten per `DELETE /api/me` gelöscht – auch wenn der Test scheitert. Dauer: wenige Sekunden; greift das Auth-Rate-Limit (10 pro Minute und IP), wartet der Test es ab.
 ```sh
 npm run test:e2e -w @poker/web                      # gegen dev-Docker (http://localhost:4310)
-npm run prod:e2e                                    # gegen prod (http://localhost:4320 über den Origin-Proxy)
+npm run prod:e2e                                    # gegen prod auf dem Studio (SSH-Weiterleitung + Origin-Proxy)
 E2E_BASE_URL=https://poker.arthur-reuss.de npm run prod:e2e   # gegen die echte Domain (über Cloudflare, ohne Proxy)
 npm run test:e2e -w @poker/web -- --repeat-each=10  # Stabilität prüfen
 ```
-- **Warum ein Proxy (D-028):** Der prod-WebSocket nimmt nur Origins aus `PUBLIC_ORIGIN` an. `prod:e2e` startet deshalb für die Dauer des Tests `scripts/e2e-origin-proxy.mjs` auf `localhost:4318`, der alles an `http://127.0.0.1:4320` weiterreicht und nur den `Origin`-Header durch die erste `PUBLIC_ORIGIN` ersetzt. prod braucht dafür keine Konfigurationsänderung. Andere Werte: `E2E_ORIGIN`, `E2E_PROXY_PORT`, `E2E_BASE_URL`.
-- Playwright läuft aus dem Arbeitsordner (der Prod-Worktree hat keine `node_modules`); Chromium einmalig: `npx playwright install chromium` in `apps/web`.
+- **Warum ein Proxy (D-028):** Der prod-WebSocket nimmt nur Origins aus `PUBLIC_ORIGIN` an. `prod:e2e` startet deshalb für die Dauer des Tests `scripts/e2e-origin-proxy.mjs` auf `localhost:4318`, der alles an `http://127.0.0.1:4320` (die SSH-Weiterleitung zum Studio) weiterreicht und nur den `Origin`-Header durch die erste `PUBLIC_ORIGIN` ersetzt. prod braucht dafür keine Konfigurationsänderung. Andere Werte: `E2E_ORIGIN`, `E2E_PROXY_PORT`, `E2E_BASE_URL`.
+- Playwright läuft auf dem MacBook aus dem Arbeitsordner; Chromium einmalig: `npx playwright install chromium` in `apps/web`.
 - **Spuren in prod:** zwei gelöschte (anonymisierte) Konten und eine private Runde, die nur ihre (gelöschten) Teilnehmer sehen dürften – nicht in Lobby, Rangliste, Profilen oder Rundenlisten (D-024, D-028). Fehlerbericht und Trace: `apps/web/node_modules/.cache/playwright-game-results/` (`npx playwright show-trace …/trace.zip`).
 
 ### Release abgebrochen – Rollback
@@ -84,11 +90,11 @@ Schlägt Smoke-Test oder E2E fehl, steht `main` schon auf dem neuen Stand (gepus
 1. Erst prüfen, ob der Fehler bleibt: `npm run prod:e2e` bzw. `npm run prod:smoke` (Fehlerbericht siehe oben).
 2. Zurückrollen – prod aus dem vorherigen Commit neu bauen:
    ```sh
-   git -C ~/code/Arthurreuss/poker-prod checkout --detach <vorher>
+   ssh areuss-studio.local 'cd ~/poker && git checkout --detach <vorher>'
    npm run prod:tunnel:up     # bzw. prod:up ohne Tunnel
    npm run prod:smoke
    ```
-3. Fehler auf dev beheben. Vor dem nächsten Release den Prod-Worktree zurück auf `main` setzen (`release` verlangt das): `git -C ~/code/Arthurreuss/poker-prod checkout main`, dann `npm run release`.
+3. Fehler auf dev beheben. Vor dem nächsten Release den Studio-Checkout zurück auf `main` setzen (`release` verlangt das): `ssh areuss-studio.local 'cd ~/poker && git checkout main'`, dann `npm run release`.
 4. Hat der neue Stand Datenbank-Migrationen ausgeführt, läuft der alte Server auf dem neueren Schema. Migrationen sind bisher nur additiv; im Zweifel das letzte Backup einspielen (`npm run prod:restore`, siehe Restore).
 
 ## Cloudflare-Tunnel einrichten (Arthur, einmalig)
@@ -97,7 +103,7 @@ Poker bekommt einen **eigenen** Tunnel mit eigenem `cloudflared`-Container im Pr
 1. https://one.dash.cloudflare.com → **Zero Trust** → **Networks** → **Tunnels** → **Create a tunnel**.
 2. Typ **Cloudflared** wählen, Name `poker`, speichern.
 3. Bei „Install and run a connector“ eine beliebige Umgebung (z. B. Docker) wählen und aus dem angezeigten Befehl **nur das Token** kopieren (die lange Zeichenkette nach `--token`). Den Befehl selbst **nicht** ausführen.
-4. Token in `.env.prod` im Prod-Worktree eintragen: `TUNNEL_TOKEN=<token>` (die Datei ist gitignored; Token nirgends sonst ablegen).
+4. Token in `.env.prod` auf dem Studio eintragen (`npm run prod:ssh`): `TUNNEL_TOKEN=<token>` (die Datei ist gitignored; Token nirgends sonst ablegen).
 5. Im Tunnel unter **Public Hostname** (bzw. „Published application routes“) → **Add**:
    - Subdomain `poker`, Domain `arthur-reuss.de`, Pfad leer
    - Service: Typ `HTTP`, URL `web:8080` (also `http://web:8080` – der Web-Container im Compose-Netz, nicht `localhost`)
@@ -132,17 +138,17 @@ Der Dienst `backup` (Image `prodrigestivill/postgres-backup-local:16`) in `compo
 
 - **Sofort sichern:** `npm run prod:backup` – gleicher Ablauf wie der tägliche Lauf (inkl. Rotation), gibt Datei und Größe aus. Sinnvoll vor riskanten Änderungen.
 - **Healthcheck:** der Dienst meldet über den eingebauten Scheduler-Endpunkt `healthy`; Fehler stehen in `docker logs poker-prod-backup-1`.
-- **Nur lokal (D-025):** Die Datenschutzerklärung sagt zu, dass Backups nur auf dem Mac liegen und nach 6 Monaten weg sind. Den Backup-Ordner deshalb **nicht** in Time Machine, iCloud oder andere Cloud-/Off-Site-Sicherungen aufnehmen (Time Machine: Systemeinstellungen → Allgemein → Time Machine → Optionen → Ordner ausschließen) – oder vorher Datenschutzerklärung und D-025 anpassen.
+- **Speicherort (D-035, D-036):** Die Backups schreibt der Studio in sein iCloud Drive (gleiche Apple-ID wie das MacBook, deshalb sind sie dort auch sichtbar). Nur der Studio schreibt hinein; auf dem MacBook läuft kein prod mehr. Die Datenschutzerklärung (Abschnitt 9 und 11) beschreibt das.
 
 ## Restore
 ```sh
 npm run prod:status                                   # welche Backups gibt es?
-B="$HOME/Library/Mobile Documents/com~apple~CloudDocs/Backups/Poker"
-ls "$B/daily" "$B/last"
-npm run prod:restore -- "$B/daily/poker-20261008.sql.gz"   # fragt nach: "restore" eintippen
+B="/Users/arthurreuss/Library/Mobile Documents/com~apple~CloudDocs/Backups/Poker"   # Pfad auf dem Studio
+ssh areuss-studio.local "ls '$B/daily' '$B/last'"
+npm run prod:restore -- "$B/daily/poker-20261008.sql.gz"   # läuft auf dem Studio, fragt nach: "restore" eintippen
 npm run prod:restore -- <dump> --yes                  # ohne Rückfrage
 ```
-Ablauf (`scripts/restore.sh`), prod muss laufen (`prod:up`):
+Ablauf (`scripts/restore.sh`, per SSH auf dem Studio; der Dump-Pfad gilt dort), prod muss laufen (`prod:up`):
 1. Dump prüfen (`gzip -t`), Sicherheitsabfrage (`restore` eintippen) bzw. `--yes`.
 2. Sicherungs-Dump des aktuellen Stands nach `BACKUP_DIR/pre-restore/` (falls die DB existiert) – so ist auch ein versehentlicher Restore umkehrbar.
 3. `server` stoppen (web bleibt an und liefert solange `502` für `/api`).
@@ -154,7 +160,7 @@ Schlägt Schritt 4 oder 5 fehl, bleibt der Server **bewusst gestoppt** (er würd
 
 Ist das Volume `poker-prod-db` verloren: `npm run prod:up` (legt eine leere DB an, der Server migriert sie), dann `npm run prod:restore -- <dump> --yes` – das ersetzt die leere DB durch den Backup-Stand.
 
-**Restore-Test:** `npm run prod:test-restore` (`scripts/test-restore.sh`) fährt eine isolierte Kopie der prod-Umgebung aus dem aktuellen Checkout hoch (Projekt `poker-restoretest`, eigenes Volume, keine Host-Ports, temporärer Backup-Ordner – echte prod-Daten bleiben unberührt), legt Testnutzer an, zieht ein Backup, ändert die Daten, stellt per `restore.sh` wieder her (einmal in die bestehende, einmal in eine gelöschte und neu angelegte DB), prüft die Daten und räumt danach alles weg. Laufzeit ca. 1–2 min (baut das Server-Image).
+**Restore-Test:** `npm run prod:test-restore` (`scripts/test-restore.sh`, läuft lokal auf dem MacBook) fährt eine isolierte Kopie der prod-Umgebung aus dem aktuellen Checkout hoch (Projekt `poker-restoretest`, eigenes Volume, keine Host-Ports, temporärer Backup-Ordner – echte prod-Daten bleiben unberührt), legt Testnutzer an, zieht ein Backup, ändert die Daten, stellt per `restore.sh` wieder her (einmal in die bestehende, einmal in eine gelöschte und neu angelegte DB), prüft die Daten und räumt danach alles weg. Laufzeit ca. 1–2 min (baut das Server-Image).
 
 ## Status
 `npm run prod:status` (`scripts/status.sh`) zeigt und prüft:
@@ -182,15 +188,17 @@ Speicherdauer nach D-025: Logs mit IP-Adressen höchstens **14 Tage** (so steht 
 - **Rotation:** Dienst `logrotate` (`alpine`, ohne Netz) führt `docker/logrotate/rotate.sh loop` aus: stündliche Prüfung; einmal pro Kalendertag (UTC) wird jede nicht leere `*.log` nach `<datei>.<JJJJMMTT>T<HHMMSS>Z` kopiert und geleert (copytruncate, die Dienste schreiben weiter), rotierte Dateien älter als 12 Tage werden gelöscht. Healthy, solange die letzte Rotation < 26 h her ist. Abgesichert durch `scripts/test/log-rotate.test.mjs` und `scripts/test/compose-prod.test.mjs`.
 - **Lesen:**
   ```sh
-  docker compose -p poker-prod exec logrotate tail -f /logs/server/server.log    # Server-Requests/Fehler live
-  docker compose -p poker-prod exec logrotate tail -f /logs/web/access.log       # nginx-Access-Log live
-  docker compose -p poker-prod exec logrotate ls -l /logs/server /logs/web       # rotierte Dateien
-  docker compose -p poker-prod exec logrotate grep -h 'Konto gelöscht' /logs/server/server.log /logs/server/server.log.*
+  npm run prod:compose -- exec logrotate tail -f /logs/server/server.log    # Server-Requests/Fehler live
+  npm run prod:compose -- exec logrotate tail -f /logs/web/access.log       # nginx-Access-Log live
+  npm run prod:compose -- exec logrotate ls -l /logs/server /logs/web       # rotierte Dateien
+  npm run prod:compose -- exec logrotate grep -h 'Konto gelöscht' /logs/server/server.log /logs/server/server.log.*
   ```
 - **Nicht** `cloudflared` auf `--loglevel debug` stellen (schreibt Request-Header inkl. Client-IP in die Container-Logs, die nur nach Größe rotieren) – zum Debuggen nur kurz und danach den Container neu erstellen (`npm run prod:tunnel:up`).
 - Lokal ohne `LOG_FILE`/`NGINX_ACCESS_LOG` (dev, Header-Test) loggen server und nginx wie gewohnt nach stdout.
 
 ## Betrieb nach Neustart
+**Stand Mac Studio (geprüft 22.10.2026):** automatische Anmeldung als `arthurreuss`, FileVault aus, Docker Desktop startet beim Anmelden (`AutoStart`), Ruhezustand aus, Neustart nach Stromausfall an. Die Schritte unten sind dort also erledigt; `caffeinate` ist nicht nötig.
+
 Ziel: Nach einem Neustart oder Stromausfall läuft poker-prod ohne Eingreifen wieder. Docker startet beim Hochfahren alle Container mit `restart: unless-stopped` neu (gilt für alle prod-Dienste, abgesichert durch `scripts/test/compose-prod.test.mjs`) – außer sie wurden vorher mit `prod:down` gestoppt. Dafür muss Docker Desktop laufen, und das setzt eine angemeldete Benutzersitzung voraus.
 
 Einmalig einzurichten (Arthur, macOS-Systemeinstellungen – nicht automatisiert):
@@ -214,9 +222,9 @@ Spieler schicken Feedback über den Knopf „Feedback“ in der App (Bug, Idee, 
 - **Im Browser (Dashboard, WP-029):** als Admin unter `/admin/feedback` (Menü „Admin“ → Bereich „Feedback“; die Übersicht `/admin` zeigt die Zahl neuer Einträge), z. B. https://poker.arthur-reuss.de/admin/feedback oder https://poker.deinemudda.win/admin/feedback. Filter Neu/Gelesen/Erledigt/Alle; den Status je Eintrag über die Auswahl „Status“ ändern. Admin-Flag setzen: README, Abschnitt „Admin“.
 - **Im Terminal (prod):** die CLI ist im Server-Image gebündelt:
   ```sh
-  docker compose -p poker-prod exec server node cli/feedback.mjs                 # die 20 neuesten, alle Status
-  docker compose -p poker-prod exec server node cli/feedback.mjs --status new    # nur neue
-  docker compose -p poker-prod exec server node cli/feedback.mjs --status done --limit 50
+  npm run prod:compose -- exec server node cli/feedback.mjs                 # die 20 neuesten, alle Status
+  npm run prod:compose -- exec server node cli/feedback.mjs --status new    # nur neue
+  npm run prod:compose -- exec server node cli/feedback.mjs --status done --limit 50
   ```
   dev: `DATABASE_URL=postgres://poker:poker@localhost:4312/poker npm run admin:feedback -w @poker/server -- --status new`.
 - Jeder Eintrag zeigt Nummer, Zeit, Status, Kategorie, Absender (bei gelöschtem Account „gelöschter Account“), den Text und den Kontext: Seite, Tisch, App-Version (Commit, auf dem der Spieler war), Ausrichtung und User-Agent.
@@ -226,7 +234,7 @@ Spieler schicken Feedback über den Knopf „Feedback“ in der App (Bug, Idee, 
 - **Automatisches Löschen (D-025, so in der Datenschutzerklärung):** Erledigtes Feedback wird **30 Tage nach dem Erledigen** gelöscht, jedes Feedback **spätestens 1 Jahr nach dem Absenden** – auch ungelesenes. Der Server prüft beim Start und danach täglich (`feedback/retention.ts`, Log „Feedback: abgelaufene Einträge gelöscht“). Wird ein erledigter Eintrag wieder auf Neu/Gelesen gesetzt, beginnt die 30-Tage-Frist beim nächsten „Erledigt“ neu. Was aufgehoben werden soll, vorher selbst notieren (z. B. als Issue).
 
 ## Admin anlegen und Admin-Aktionen
-Admin wird man nur per CLI (D-029): `admin:make-admin <benutzername>` (prod: `docker compose -p poker-prod exec server node cli/make-admin.mjs <benutzername>`, mit `--revoke` entziehen; Aufrufe: README, Abschnitt „Admin“). Danach im Browser neu laden – das Flag kommt aus `/api/me`. Admin-Rechte nur an Vertrauenspersonen (D-027: Admins können am Tisch verdeckte Karten sehen).
+Admin wird man nur per CLI (D-029): `admin:make-admin <benutzername>` (prod: `npm run prod:compose -- exec server node cli/make-admin.mjs <benutzername>`, mit `--revoke` entziehen; Aufrufe: README, Abschnitt „Admin“). Danach im Browser neu laden – das Flag kommt aus `/api/me`. Admin-Rechte nur an Vertrauenspersonen (D-027: Admins können am Tisch verdeckte Karten sehen).
 
 - **Dashboard** (WP-029): Menü „Admin“ bzw. `/admin`. Übersicht mit aktiven Tischen, Spielern online, Runden heute (Europe/Berlin) und in den letzten 7 Tagen, neuem Feedback und Server-Health (Datenbank, Laufzeit, Speicher). Das **letzte Backup** steht dort nicht – der Server sieht den Backup-Ordner nicht; dafür `npm run prod:status`.
 - **Aktionen** im Dashboard (jeweils mit Bestätigung) oder per API (Endpunkte: [ARCHITECTURE.md](ARCHITECTURE.md), „Auth“ → „Admin (WP-028)“): unter „Spieler“ sperren (optional mit Begründung)/entsperren, abmelden (alle Sessions beenden), Passwort zurücksetzen – das neue Zufallspasswort erscheint **genau einmal** im Dialog („Kopieren“, dann „Fertig“), danach ist es nirgends mehr abrufbar; unter „Tische“ Tisch schließen (laufende Runde wird ohne Punkte abgebrochen).
@@ -299,7 +307,7 @@ Für **jede** der beiden Zonen:
 - [ ] Datenschutzerklärung (`apps/web/src/legal/content/datenschutz.tsx`) beschreibt die aktuelle Datenverarbeitung, gilt für beide Domains, „Stand“ aktuell; keine Platzhalter (Test in `legal.test.tsx`).
 - [ ] Speicherdauern nach D-025 greifen: `npm run prod:status` zeigt `logrotate` healthy; in `/logs/*/` keine rotierten Dateien älter als 12 Tage (siehe [Logs](#logs)); Feedback-Löschjob ohne Fehler im Server-Log; Backup-Ordner nicht in Time Machine/Cloud.
 - [ ] Wird ein Backup eingespielt (`prod:restore`), Konten, die seit dem Backup gelöscht wurden, erneut löschen (die Datenschutzerklärung sagt das zu). **Vor** dem Restore die IDs aus der aktuellen DB holen (das Server-Log reicht nur 14 Tage zurück; notfalls aus dem Dump in `pre-restore/`):
-  `docker compose -p poker-prod exec db psql -U poker -d poker -tAc 'SELECT id FROM users WHERE deleted_at IS NOT NULL'`.
+  `npm run prod:compose -- exec db psql -U poker -d poker -tAc 'SELECT id FROM users WHERE deleted_at IS NOT NULL'`.
   Nach dem Restore die IDs, die im Backup noch nicht gelöscht sind, erneut anonymisieren, z. B. per `UPDATE users SET username = NULL, password_hash = NULL, is_admin = false, deleted_at = now() WHERE id = … AND deleted_at IS NULL` (der Trigger trennt dabei auch ihr Feedback) plus `DELETE FROM sessions WHERE user_id = …`. Abgelaufenes Feedback löscht der Server beim Start nach dem Restore selbst.
 
 ## Link-Vorschau

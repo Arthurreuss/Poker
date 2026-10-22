@@ -27,7 +27,7 @@ npm-Workspaces-Monorepo (D-004). Alle Workspaces sind TypeScript (ESM, `strict`)
 ### Web (`apps/web`)
 - `vite.config.ts` – Dev-Server-Einstellungen nur aus Umgebungsvariablen: `WEB_DEV_HOST`, `WEB_DEV_PORT`, `API_PROXY_TARGET` (Proxy für `/api` und `/ws` mit `ws: true`), `VITE_USE_POLLING`, optional `API_PROXY_ORIGIN` (überschreibt den `Origin`-Header für `/api` und `/ws` – nur für einen zweiten Dev-Server gegen einen Game-Server mit anderer `PUBLIC_ORIGIN`, z. B. den Playwright-Spieltest aus WP-018).
   Dazu das PWA-Plugin (siehe „Frontend“) und ein kleines Plugin, das `%THEME_COLOR%` in `index.html` durch `--color-bg` aus `tokens.css` ersetzt.
-  `define: __APP_VERSION__` = `APP_VERSION` (Docker-Build-Argument, `scripts/prod.sh` setzt den Commit des Prod-Worktrees) oder `git rev-parse --short HEAD`, sonst „unbekannt“ (Typ in `src/vite-env.d.ts`; `vitest.config.ts` setzt `test`).
+  `define: __APP_VERSION__` = `APP_VERSION` (Docker-Build-Argument, `scripts/prod.sh` setzt den Commit des prod-Checkouts) oder `git rev-parse --short HEAD`, sonst „unbekannt“ (Typ in `src/vite-env.d.ts`; `vitest.config.ts` setzt `test`).
 - `vitest.config.ts` – eigene Test-Konfiguration (jsdom, `src/test/setup.ts`), damit das PWA-Plugin in Tests nicht läuft.
 - `src/health.ts` – `fetchHealth()` mit relativer URL `/api/health` (eine Origin, D-014) und `appTitle(mode)` („Poker – dev“ außerhalb von prod); die Lobby zeigt den Health-Status.
 - Aufbau von `src/`, Routing, API-Client, Styling und PWA: Abschnitt „Frontend“.
@@ -45,14 +45,15 @@ Workspaces importieren sich gegenseitig über den Paketnamen; `@poker/engine` ex
 |---|---|
 | `setup` | aktiviert den Pre-Commit-Hook (`core.hooksPath`) |
 | `dev:up` / `dev:down` / `dev:logs` | Docker-Dev-Umgebung starten (mit Build) / stoppen / Logs folgen |
-| `prod:up` / `prod:down` / `prod:logs` | Prod-Umgebung ohne Tunnel starten (mit Build, wartet auf healthy) / stoppen / Logs folgen (`scripts/prod.sh`) |
+| `prod:up` / `prod:down` / `prod:logs` | Prod-Umgebung auf dem Mac Studio ohne Tunnel starten (mit Build, wartet auf healthy) / stoppen / Logs folgen (`scripts/prod-remote.sh` → per SSH `scripts/prod.sh`, D-036) |
 | `prod:tunnel:up` | Prod inkl. `cloudflared` (Profil `tunnel`) |
-| `prod:smoke` | Smoke-Test gegen prod (`scripts/smoke-prod.mjs`, über `scripts/prod.sh smoke`) |
-| `prod:setup` | Prod-Worktree auf `main` einmalig anlegen (`scripts/prod-worktree-setup.sh`, D-017) |
-| `prod:backup` / `prod:restore` | sofortiges Backup / Restore aus einem Dump (`scripts/backup-now.sh`, `scripts/restore.sh`) |
-| `prod:status` | Zustandsbericht: Container, letztes Backup, Speicherplatz, Health (`scripts/status.sh`) |
-| `prod:test-restore` | Restore-Test in isolierter prod-Kopie (`scripts/test-restore.sh`) |
-| `release` | dev → main im Prod-Worktree mergen, pushen, prod neu starten (`scripts/release.sh`) |
+| `prod:smoke` / `prod:e2e` | Smoke-Test (`scripts/smoke-prod.mjs`) bzw. Browser-E2E gegen prod, vom MacBook über eine SSH-Portweiterleitung (`scripts/prod-remote.sh`) |
+| `prod:compose` / `prod:ssh` | `docker compose -p poker-prod …` bzw. Shell im Checkout auf dem Studio |
+| `prod:setup` | Checkout von `main` auf dem Studio einmalig anlegen (`scripts/prod-host-setup.sh`, D-036) |
+| `prod:backup` / `prod:restore` | sofortiges Backup / Restore aus einem Dump (`scripts/backup-now.sh`, `scripts/restore.sh`, per SSH auf dem Studio) |
+| `prod:status` | Zustandsbericht: Container, letztes Backup, Speicherplatz, Health (`scripts/status.sh`, per SSH auf dem Studio) |
+| `prod:test-restore` | Restore-Test in isolierter prod-Kopie, lokal (`scripts/test-restore.sh`) |
+| `release` | dev → main in temporärem Worktree mergen, pushen, Studio holt main und startet prod neu (`scripts/release.sh`) |
 | `typecheck` | `tsc --noEmit` in allen Workspaces |
 | `lint` | ESLint über das ganze Repo |
 | `format` / `format:check` | Prettier schreiben bzw. prüfen |
@@ -509,7 +510,7 @@ Die Rangliste enthält nur aktive Accounts mit mindestens einer beendeten Runde 
 **Aktualität:** keine Push-Nachricht. Die Rangliste ist nach Rundenende aktuell, weil `finishRound` Platz und Punkte direkt beim Rundenende schreibt und die Seiten bei jedem Aufruf sowie bei `focus`/`visibilitychange` neu laden (`useResource` mit `refetchOnFocus`); wer vom Tisch zur Rangliste wechselt, öffnet sie neu. `/api/` wird weder von nginx (`no-store`) noch vom Service Worker gecacht.
 
 ## Prod-Umgebung
-`compose.prod.yml`, Compose-Projekt `poker-prod` (D-002, D-005, D-014), gebaut und betrieben aus dem eigenen Git-Worktree auf `main` (`~/code/Arthurreuss/poker-prod`, D-017); Werte aus dessen `.env.prod` (gitignored, Vorlage `.env.prod.example`). Bedienung, Release, Tunnel, Backup/Restore und Betrieb: [OPERATIONS.md](OPERATIONS.md).
+`compose.prod.yml`, Compose-Projekt `poker-prod` (D-002, D-005, D-014), gebaut und betrieben auf dem Mac Studio aus einem Checkout von `main` (`~/poker`, D-036); Werte aus dessen `.env.prod` (gitignored, Vorlage `.env.prod.example`). Bedienung, Release, Tunnel, Backup/Restore und Betrieb: [OPERATIONS.md](OPERATIONS.md).
 
 ```
 Internet ──https──▶ Cloudflare ──Tunnel──▶ cloudflared ──http──▶ web:8080 (nginx)
@@ -807,15 +808,17 @@ compose.prod.yml        Prod-Umgebung (poker-prod)
 .env.prod.example       Vorlage für .env.prod (prod, gitignored)
 scripts/
   docs.mjs              Doku-Check und -Sync
-  lib/prod-env.sh       gemeinsame Helfer der prod-Skripte (Prod-Worktree, .env.prod, BACKUP_DIR)
-  prod.sh               prod:up/down/logs/tunnel:up/smoke
-  prod-worktree-setup.sh  prod:setup (Prod-Worktree auf main anlegen)
+  lib/prod-env.sh       gemeinsame Helfer der prod-Skripte auf dem Studio (Checkout, .env.prod, BACKUP_DIR)
+  lib/prod-host.sh      SSH-Verbindung zum Studio (POKER_PROD_HOST, POKER_PROD_REMOTE_DIR)
+  prod-remote.sh        npm run prod:* – führt die prod-Skripte per SSH auf dem Studio aus; smoke/e2e lokal
+  prod.sh               up/down/logs/tunnel-up (läuft auf dem Studio)
+  prod-host-setup.sh    prod:setup (main auf dem Studio klonen)
   backup-now.sh         prod:backup
   restore.sh            prod:restore
   status.sh             prod:status
   test-restore.sh       Restore-Test (isolierte prod-Kopie)
   smoke-prod.mjs        Smoke-Test prod (Health + WebSocket)
-  release.sh            Release dev → main (im Prod-Worktree)
+  release.sh            Release dev → main, danach Neustart auf dem Studio
   test/                 Tests für die Skripte
 ops/launchd/            LaunchAgent-Vorlage (caffeinate), nicht automatisch installiert
 .githooks/pre-commit    blockiert Commits auf main, führt npm run check aus
