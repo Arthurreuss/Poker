@@ -1,6 +1,6 @@
 // Admin-CLI: listet das neueste Feedback (WP-024), neueste zuerst. Aufruf und Beispiele: README, „Admin“.
 //   npm run admin:feedback -w @poker/server -- [--status new|read|done|all] [--limit N]
-// In prod gebündelt: docker compose -p poker-prod exec server node cli/feedback.mjs [...]
+// In prod gebündelt: npm run prod:compose -- exec server node cli/feedback.mjs [...]
 import { createPgDatabase } from '../db';
 import { FEEDBACK_CLI_USAGE, formatFeedbackList, parseFeedbackCliArgs } from '../feedback/cli';
 import { listFeedback } from '../feedback/store';

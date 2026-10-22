@@ -123,7 +123,7 @@ Format: Kontext → Entscheidung → Konsequenzen. Status: `akzeptiert`, `offen`
 - **Konsequenzen:** Tisch- und Rundenkonfiguration (WP-008, WP-015) bieten kein Ante an. Die optionale Ante-Unterstützung der Engine bleibt ungenutzt und kann später entfernt werden.
 
 ## D-017: Prod läuft aus eigenem Worktree auf main
-- **Status:** akzeptiert
+- **Status:** ersetzt durch D-036
 - **Kontext:** Das Release-Skript hat main im Arbeitsordner ausgecheckt; dev (Bind-Mount) sah dabei kurz den main-Stand.
 - **Entscheidung:** main liegt dauerhaft in einem eigenen Git-Worktree (Standard `~/code/Arthurreuss/poker-prod`, `POKER_PROD_DIR`). Prod wird nur von dort gebaut und betrieben, `.env.prod` liegt dort. Der Arbeitsordner bleibt immer auf dev. Einrichtung einmalig per `npm run prod:setup`.
 - **Konsequenzen:** `release` mergt dev → main im Prod-Worktree, pusht und startet prod von dort. Umsetzung in WP-021.
@@ -285,3 +285,15 @@ Format: Kontext → Entscheidung → Konsequenzen. Status: `akzeptiert`, `offen`
 - **Kontext:** Die Backups lagen nur auf dem Mac (`~/poker-backups`). Fällt der Mac aus, sind DB und Backups gleichzeitig weg. Arthur sammelt alle Backups in einem gemeinsamen iCloud-Ordner.
 - **Entscheidung:** Standard für `BACKUP_DIR` ist `~/Library/Mobile Documents/com~apple~CloudDocs/Backups/Poker` (iCloud Drive → `Backups/Poker`). Aufbewahrung bleibt 7/4/6. Die Datenschutzerklärung nennt Apple (iCloud Drive) als Speicherort der Sicherungen und die verlängerte Höchstdauer von etwa 7 Monaten (6 Monate plus 30 Tage „Zuletzt gelöscht“).
 - **Konsequenzen:** Backups sind off-site. Ein anderer Ort geht weiter über `BACKUP_DIR` in `.env.prod`; dann muss die Datenschutzerklärung (Abschnitt 9 und 11) mitziehen.
+
+## D-036: Prod läuft auf dem Mac Studio (WP-042)
+- **Status:** akzeptiert (Arthur, 22.10.2026); ersetzt D-017
+- **Kontext:** prod lief auf dem MacBook, das auch Entwicklungsrechner ist (Prod-Worktree, D-017). Der Mac Studio läuft dauerhaft (kein Ruhezustand, Neustart nach Stromausfall) und hostet bereits Jarvis.
+- **Entscheidung:**
+  - prod läuft auf dem Mac Studio (`areuss-studio.local`, Benutzer `arthurreuss`) aus einem Git-Checkout von `main` unter `~/poker`. Geklont per HTTPS aus dem öffentlichen Repo, ohne Schreibrechte: Der Checkout ändert sich nur per `git merge --ff-only origin/main`. `.env.prod` liegt nur dort.
+  - Das MacBook ist nur Entwicklungsrechner. Alle `prod:*`-Befehle und `release` werden dort aufgerufen und führen die prod-Skripte per SSH auf dem Studio aus (`scripts/lib/prod-host.sh`, Host und Ordner per `POKER_PROD_HOST`/`POKER_PROD_REMOTE_DIR` änderbar).
+  - Der Studio braucht nur git, Docker und bash, kein Node. Smoke- und E2E-Test laufen vom MacBook über eine SSH-Portweiterleitung auf den Web-Port des Studios (127.0.0.1:4320, D-028 bleibt).
+  - `release` mergt dev → main in einem temporären Worktree auf dem MacBook, pusht beide Branches und aktualisiert dann den Studio.
+  - Backups bleiben in iCloud Drive (D-035), jetzt vom Studio aus (gleiche Apple-ID).
+- **Konsequenzen:** Kein Prod-Worktree mehr auf dem MacBook, Port 4320 ist dort frei (dient der Portweiterleitung). Ohne SSH-Zugang zum Studio kein Release. Die Datenschutzerklärung spricht weiter von einem privaten Rechner, sie bleibt unverändert.
+

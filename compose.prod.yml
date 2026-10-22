@@ -68,7 +68,7 @@ services:
       context: .
       dockerfile: docker/web.Dockerfile
       args:
-        # Commit des Prod-Worktrees, gesetzt von scripts/prod.sh (Feedback-Kontext, WP-024).
+        # Commit des prod-Checkouts, gesetzt von scripts/prod.sh (Feedback-Kontext, WP-024).
         APP_VERSION: ${APP_VERSION:-}
     image: poker-prod-web
     environment:
