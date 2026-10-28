@@ -3,6 +3,8 @@
 # Fährt eine isolierte Kopie der prod-Umgebung aus dem aktuellen Checkout hoch (Projekt poker-restoretest,
 # eigenes Volume, keine Host-Ports, temporärer Backup-Ordner – echte prod-Daten bleiben unberührt) und prüft:
 #   1. Testdaten einfügen → npm run prod:backup erzeugt einen gültigen Dump
+#   1a. Secrets-Backup (D-037): die verschlüsselte Kopie lässt sich nur mit der Passphrase öffnen und enthält
+#       .env.prod mit dem Inhalt der Env-Datei; ohne Passphrase warnt der Hook, das DB-Backup klappt trotzdem
 #   2. Daten nach dem Backup ändern → prod:restore (bestehende DB) stellt exakt den Backup-Stand her
 #   3. Datenbank komplett löschen → prod:restore (leere DB) stellt den Backup-Stand her
 # Danach wird alles wieder entfernt (Container, Volume, Image, temporäre Dateien) – auch bei Fehlern.
@@ -19,11 +21,13 @@ export PROD_COMPOSE_FILES="-f $ROOT/scripts/test/compose.restore-test.yml"
 export BACKUP_DIR="$TMP/backups"
 mkdir -p "$BACKUP_DIR"
 
+SECRETS_PASSPHRASE="$(openssl rand -hex 32)"
 cat >"$PROD_ENV_FILE" <<EOF
 POSTGRES_USER=poker
 POSTGRES_PASSWORD=$(openssl rand -hex 24)
 POSTGRES_DB=poker
 PUBLIC_ORIGIN=http://localhost
+SECRETS_BACKUP_PASSPHRASE=$SECRETS_PASSPHRASE
 EOF
 
 . "$ROOT/scripts/lib/prod-env.sh"
@@ -68,6 +72,28 @@ for sub in daily weekly monthly; do
   ls "$BACKUP_DIR/$sub/poker"-[0-9]*.sql.gz >/dev/null 2>&1 || fail "Rotation: $sub/ fehlt"
 done
 echo "  ✓ Rotation: daily/, weekly/, monthly/ vorhanden"
+
+step "Secrets-Backup entschlüsseln und prüfen"
+secrets="$(ls -t "$BACKUP_DIR/secrets/env-prod-"[0-9]*.tar.gz.gpg 2>/dev/null | head -n 1 || true)"
+[ -n "$secrets" ] || fail "kein Secrets-Backup in secrets/"
+# decrypt <passphrase> <befehl>: entschlüsselt im Backup-Container (gpg ist im Image) und gibt das tar.gz per Pipe
+# an <befehl> – kein Klartext auf der Platte, ausgegeben werden nur Eintragsnamen bzw. Prüfsummen.
+decrypt() {
+  compose exec -T -e PASS="$1" -e FILE="/backups/secrets/$(basename "$secrets")" backup bash -c '
+    set -o pipefail; GNUPGHOME="$(mktemp -d)"; export GNUPGHOME; trap "rm -rf \"$GNUPGHOME\"" EXIT
+    printf "%s" "$PASS" | gpg --batch --quiet --pinentry-mode loopback --passphrase-fd 0 -d "$FILE" | '"$2"
+}
+expect "Einträge im Archiv" ".env.prod" "$(decrypt "$SECRETS_PASSPHRASE" 'tar -tzf -' 2>/dev/null || true)"
+expect "SHA-256 von .env.prod" "$(openssl dgst -sha256 -r "$PROD_ENV_FILE" | cut -d' ' -f1)" \
+  "$(decrypt "$SECRETS_PASSPHRASE" 'tar -xzOf - .env.prod | sha256sum' 2>/dev/null | cut -d' ' -f1 || true)"
+if decrypt wrong-passphrase 'tar -tzf - >/dev/null' >/dev/null 2>&1; then
+  fail "Secrets-Backup lässt sich mit falscher Passphrase öffnen"
+fi
+echo "  ✓ falsche Passphrase abgewiesen"
+no_pass_out="$(compose exec -T -e SECRETS_BACKUP_PASSPHRASE= backup /backup.sh 2>&1)" ||
+  fail "Backup ohne Passphrase fehlgeschlagen: $no_pass_out"
+echo "$no_pass_out" | grep -q "SECRETS_BACKUP_PASSPHRASE fehlt" || fail "keine Warnung ohne Passphrase"
+echo "  ✓ ohne Passphrase: Warnung im Log, DB-Backup trotzdem erstellt"
 
 step "Daten nach dem Backup ändern, dann Restore in die bestehende DB"
 sql "INSERT INTO users (username, password_hash) VALUES ('after_backup', 'z')" >/dev/null

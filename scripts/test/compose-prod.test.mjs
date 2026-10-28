@@ -42,6 +42,15 @@ test('backup: Aufbewahrung 7/4/6, Host-Ordner aus BACKUP_DIR, Healthcheck', () =
   assert.match(backup, /healthcheck:/);
 });
 
+test('backup: Secrets-Hook und Env-Ordner read-only eingehängt, Passphrase aus .env.prod (D-037)', () => {
+  const backup = all.backup ?? '';
+  assert.match(backup, /^ {6}- \.\/docker\/backup\/secrets-hook\.sh:\/hooks\/10-secrets:ro$/m);
+  assert.match(backup, /^ {6}- \$\{PROD_ENV_DIR:\?[^}]*\}:\/prod-env:ro$/m);
+  assert.match(backup, /^ {6}PROD_ENV_NAME: \$\{PROD_ENV_NAME:\?[^}]*\}$/m);
+  assert.match(backup, /^ {6}SECRETS_BACKUP_PASSPHRASE: \$\{SECRETS_BACKUP_PASSPHRASE:-\}$/m);
+  assert.match(backup, /^ {6}SECRETS_KEEP_DAYS: \d+$/m);
+});
+
 test('Container-Logs aller Dienste rotieren nach Größe (Anker x-logging)', () => {
   const anchor = /^x-logging: &logging\n((?: {2}.*\n)+)/m.exec(compose)?.[1] ?? '';
   assert.match(anchor, /^ {2}driver: local$/m);

@@ -56,7 +56,7 @@ describe('Rechtstexte', () => {
     mockApi({ 'GET /api/me': unauthorized() });
     renderApp('/datenschutz');
     await heading('Datenschutzerklärung');
-    expect(screen.getByText('Stand: 20. Oktober 2026')).toBeInTheDocument();
+    expect(screen.getByText('Stand: 28. Oktober 2026')).toBeInTheDocument();
     expect(screen.getByText(/poker\.arthur-reuss\.de und poker\.deinemudda\.win/)).toBeInTheDocument();
     const text = document.body.textContent;
     expect(text).toMatch(/spätestens nach 14 Tagen automatisch gelöscht/);
@@ -64,9 +64,11 @@ describe('Rechtstexte', () => {
     expect(text).toMatch(/spätestens 1 Jahr nach dem Absenden/);
     expect(text).toMatch(/Admin-Protokoll werden 1 Jahr nach dem Anlegen automatisch\s+gelöscht/);
     expect(text).toMatch(/7 tägliche, 4 wöchentliche und 6 monatliche/);
-    expect(text).toMatch(/über dessen iCloud Drive/);
-    expect(text).toMatch(/bis zu etwa 7 Monate in\s+Sicherungen/);
-    expect(text).toMatch(/Apple als Speicherort der Sicherungen/);
+    // Sicherungen nur auf eigenen Rechnern (D-037), kein Cloud-Dienst, kein Apple als Empfänger.
+    expect(text).toMatch(/stündlich auf einen zweiten Rechner des\s+Verantwortlichen gespiegelt/);
+    expect(text).toMatch(/bis zu etwa 6 Monate in\s+Sicherungen/);
+    expect(text).toMatch(/Empfänger ist nur\s+Cloudflare/);
+    expect(text).not.toMatch(/iCloud|Apple/);
     expect(text).toMatch(/Data Privacy Framework/);
   });
 
