@@ -1,12 +1,12 @@
 # Verbindung zum prod-Host (D-036, D-038). Wird per "." eingebunden (bash), auf dem Entwicklungsrechner.
-# prod läuft auf dem Mac Studio unter dem Dienst-Nutzer wingmen aus einem Checkout von main (~wingmen/poker);
+# prod läuft auf dem Mac Studio unter dem Dienst-Nutzer fleet aus einem Checkout von main (~fleet/poker);
 # die prod-Skripte laufen dort per SSH.
-#   POKER_PROD_HOST        SSH-Ziel                        (Standard: wingmen@areuss-studio.local)
+#   POKER_PROD_HOST        SSH-Ziel                        (Standard: fleet@areuss-studio.local)
 #   POKER_PROD_REMOTE_DIR  Checkout auf dem Host, relativ zu ~ (Standard: poker)
 #   POKER_PROD_SSH         SSH-Befehl, für Tests ersetzbar  (Standard: ssh)
 #   POKER_PROD_REPO_URL    Quelle für prod:setup; Standard über den Host-Alias github-poker (Deploy-Key in ~/.ssh/config des Nutzers)
 
-POKER_PROD_HOST="${POKER_PROD_HOST:-wingmen@areuss-studio.local}"
+POKER_PROD_HOST="${POKER_PROD_HOST:-fleet@areuss-studio.local}"
 POKER_PROD_REMOTE_DIR="${POKER_PROD_REMOTE_DIR:-poker}"
 POKER_PROD_SSH="${POKER_PROD_SSH:-ssh}"
 POKER_PROD_REPO_URL="${POKER_PROD_REPO_URL:-git@github-poker:Arthurreuss/Poker.git}"

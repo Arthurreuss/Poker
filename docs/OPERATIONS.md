@@ -4,9 +4,9 @@ Wie dev und prod gestartet, gestoppt und released werden, wie der Cloudflare-Tun
 
 | | dev | prod |
 |---|---|---|
-| Rechner | MacBook (Entwicklung) | Mac Studio `areuss-studio.local`, Dienst-Nutzer `wingmen` (nur Hosting, D-036, D-038) |
+| Rechner | MacBook (Entwicklung) | Mac Studio `areuss-studio.local`, Dienst-Nutzer `fleet` (nur Hosting, D-036, D-038) |
 | Branch | `dev` | `main` |
-| Ordner | Arbeitsordner `~/code/Arthurreuss/poker` | Checkout `~wingmen/poker` auf dem Studio (nur lesend, ändert sich nur durch `release`) |
+| Ordner | Arbeitsordner `~/code/Arthurreuss/poker` | Checkout `~fleet/poker` auf dem Studio (nur lesend, ändert sich nur durch `release`) |
 | Compose | `compose.dev.yml`, Projekt `poker-dev` | `compose.prod.yml`, Projekt `poker-prod` |
 | Konfiguration | `.env` (optional, Vorlage `.env.example`) | `.env.prod` im Checkout auf dem Studio (Pflicht, Vorlage `.env.prod.example`) |
 | App | http://localhost:4310 | auf dem Studio http://localhost:4320, öffentlich https://poker.arthur-reuss.de (Tunnel) |
@@ -25,17 +25,17 @@ npm run dev:down   # stoppen, Volume poker-dev-db bleibt
 Details: [README.md](../README.md#entwicklung-starten).
 
 ## prod
-prod läuft auf dem **Mac Studio** (D-036) als Dienst-Nutzer `wingmen` (D-038) aus einem Git-Checkout von `main` unter `~wingmen/poker`. Alle `prod:*`-Befehle werden auf dem MacBook im Arbeitsordner aufgerufen und führen die prod-Skripte per SSH auf dem Studio aus (`scripts/prod-remote.sh`). Auf dem Studio wird nie von Hand gearbeitet; der Checkout ändert sich nur durch `npm run release` (`git merge --ff-only origin/main`).
+prod läuft auf dem **Mac Studio** (D-036) als Dienst-Nutzer `fleet` (D-038) aus einem Git-Checkout von `main` unter `~fleet/poker`. Alle `prod:*`-Befehle werden auf dem MacBook im Arbeitsordner aufgerufen und führen die prod-Skripte per SSH auf dem Studio aus (`scripts/prod-remote.sh`). Auf dem Studio wird nie von Hand gearbeitet; der Checkout ändert sich nur durch `npm run release` (`git merge --ff-only origin/main`).
 
-- Ziel per Umgebungsvariable änderbar: `POKER_PROD_HOST` (Standard `wingmen@areuss-studio.local`), `POKER_PROD_REMOTE_DIR` (Standard `poker`, relativ zu `~`).
+- Ziel per Umgebungsvariable änderbar: `POKER_PROD_HOST` (Standard `fleet@areuss-studio.local`), `POKER_PROD_REMOTE_DIR` (Standard `poker`, relativ zu `~`).
 - Der Studio braucht nur git, Docker (Colima, Docker-CLI von Homebrew) und bash, kein Node. Smoke- und E2E-Test laufen auf dem MacBook über eine SSH-Portweiterleitung `127.0.0.1:4320` → Studio `127.0.0.1:4320` (die prod-Ports sind dort nur lokal gebunden). Port 4320 muss dafür auf dem MacBook frei sein (sonst `PROD_FORWARD_PORT=4329`).
-- SSH-Zugang per Schlüssel vom MacBook auf `wingmen@areuss-studio.local` ist Voraussetzung (der Dienst-Nutzer hat keine Anmeldung am Bildschirm; der Admin `arthurreuss` dient nur für `sudo`, nicht für prod).
+- SSH-Zugang per Schlüssel vom MacBook auf `fleet@areuss-studio.local` ist Voraussetzung (der Dienst-Nutzer hat keine Anmeldung am Bildschirm; der Admin `arthurreuss` dient nur für `sudo`, nicht für prod).
 
 ### prod-Host einrichten (Arthur, einmalig)
 ```sh
-npm run prod:setup   # klont main nach ~wingmen/poker auf dem Studio (per SSH über den Host-Alias github-poker)
+npm run prod:setup   # klont main nach ~fleet/poker auf dem Studio (per SSH über den Host-Alias github-poker)
 ```
-Voraussetzung auf dem Studio: ein schreibgeschützter Deploy-Key für das Repo und in `~wingmen/.ssh/config` der Eintrag `Host github-poker` (HostName github.com, IdentityFile = Deploy-Key). Ein anderer Quell-Link geht über `POKER_PROD_REPO_URL`.
+Voraussetzung auf dem Studio: ein schreibgeschützter Deploy-Key für das Repo und in `~fleet/.ssh/config` der Eintrag `Host github-poker` (HostName github.com, IdentityFile = Deploy-Key). Ein anderer Quell-Link geht über `POKER_PROD_REPO_URL`.
 Danach `.env.prod` im Checkout auf dem Studio anlegen (gitignored, nie committen, liegt nur dort):
 ```sh
 npm run prod:ssh     # Shell im Checkout auf dem Studio
@@ -93,11 +93,11 @@ Schlägt Smoke-Test oder E2E fehl, steht `main` schon auf dem neuen Stand (gepus
 1. Erst prüfen, ob der Fehler bleibt: `npm run prod:e2e` bzw. `npm run prod:smoke` (Fehlerbericht siehe oben).
 2. Zurückrollen – prod aus dem vorherigen Commit neu bauen:
    ```sh
-   ssh wingmen@areuss-studio.local 'cd ~/poker && git checkout --detach <vorher>'
+   ssh fleet@areuss-studio.local 'cd ~/poker && git checkout --detach <vorher>'
    npm run prod:tunnel:up     # bzw. prod:up ohne Tunnel
    npm run prod:smoke
    ```
-3. Fehler auf dev beheben. Vor dem nächsten Release den Studio-Checkout zurück auf `main` setzen (`release` verlangt das): `ssh wingmen@areuss-studio.local 'cd ~/poker && git checkout main'`, dann `npm run release`.
+3. Fehler auf dev beheben. Vor dem nächsten Release den Studio-Checkout zurück auf `main` setzen (`release` verlangt das): `ssh fleet@areuss-studio.local 'cd ~/poker && git checkout main'`, dann `npm run release`.
 4. Hat der neue Stand Datenbank-Migrationen ausgeführt, läuft der alte Server auf dem neueren Schema. Migrationen sind bisher nur additiv; im Zweifel das letzte Backup einspielen (`npm run prod:restore`, siehe Restore).
 
 ## Cloudflare-Tunnel einrichten (Arthur, einmalig)
@@ -148,7 +148,7 @@ Der Dienst `backup` (Image `prodrigestivill/postgres-backup-local:16`) in `compo
 ```sh
 npm run prod:status                                   # welche Backups gibt es?
 B=/Users/Shared/fleet/backups/poker                    # Pfad auf dem Studio
-ssh wingmen@areuss-studio.local "ls '$B/daily' '$B/last'"
+ssh fleet@areuss-studio.local "ls '$B/daily' '$B/last'"
 npm run prod:restore -- "$B/daily/poker-20261008.sql.gz"   # läuft auf dem Studio, fragt nach: "restore" eintippen
 npm run prod:restore -- <dump> --yes                  # ohne Rückfrage
 ```
