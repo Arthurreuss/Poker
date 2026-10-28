@@ -1,6 +1,6 @@
 # Betrieb
 
-Wie dev und prod gestartet, gestoppt und released werden, wie der Cloudflare-Tunnel eingerichtet wird, Backup, Restore, Status, Logs, Betrieb nach Neustart und die Security-Checkliste. Aufbau der Umgebungen: [ARCHITECTURE.md](ARCHITECTURE.md); Begründungen: D-002, D-005, D-006, D-010, D-014, D-028, D-036 in [DECISIONS.md](DECISIONS.md).
+Wie dev und prod gestartet, gestoppt und released werden, wie der Cloudflare-Tunnel eingerichtet wird, Backup, Restore, Status, Logs, Betrieb nach Neustart und die Security-Checkliste. Aufbau der Umgebungen: [ARCHITECTURE.md](ARCHITECTURE.md); Begründungen: D-002, D-005, D-006, D-010, D-014, D-028, D-036, D-037 in [DECISIONS.md](DECISIONS.md).
 
 | | dev | prod |
 |---|---|---|
@@ -12,7 +12,7 @@ Wie dev und prod gestartet, gestoppt und released werden, wie der Cloudflare-Tun
 | App | http://localhost:4310 | auf dem Studio http://localhost:4320, öffentlich https://poker.arthur-reuss.de (Tunnel) |
 | Server direkt | http://localhost:4311 | auf dem Studio http://localhost:4321 (nur Debugging) |
 | Datenbank | `localhost:4312`, Volume `poker-dev-db` | nicht nach außen, Volume `poker-prod-db` |
-| Backups | – | täglich nach `BACKUP_DIR` (Standard iCloud Drive → `Backups/Poker`, D-035) |
+| Backups | – | täglich nach `BACKUP_DIR` (Standard `/Users/Shared/fleet/backups/poker`, D-037), dazu `.env.prod` verschlüsselt |
 
 Alle Befehle nur über die npm-Skripte – sie fassen ausschließlich `poker-dev` bzw. `poker-prod` an, nie andere Container (auf dem Studio läuft auch Jarvis).
 
@@ -39,7 +39,9 @@ Danach `.env.prod` im Checkout auf dem Studio anlegen (gitignored, nie committen
 ```sh
 npm run prod:ssh     # Shell im Checkout auf dem Studio
 cp .env.prod.example .env.prod && chmod 600 .env.prod
-# POSTGRES_PASSWORD setzen, z. B. Ausgabe von: openssl rand -hex 24; TUNNEL_TOKEN; optional BACKUP_DIR (Standard iCloud Drive → Backups/Poker)
+# POSTGRES_PASSWORD setzen, z. B. Ausgabe von: openssl rand -hex 24; TUNNEL_TOKEN;
+# SECRETS_BACKUP_PASSPHRASE (openssl rand -hex 32, zusätzlich in den Passwort-Manager);
+# optional BACKUP_DIR (Standard /Users/Shared/fleet/backups/poker)
 ```
 
 ### Bedienung
@@ -126,7 +128,7 @@ Tunnel stoppen: `npm run prod:down` (stoppt die ganze prod-Umgebung). Token erne
 ## Backup
 Der Dienst `backup` (Image `prodrigestivill/postgres-backup-local:16`) in `compose.prod.yml` sichert die prod-DB automatisch per `pg_dump` (Plain-SQL, gzip) in einen **Host-Ordner außerhalb von Docker-Volumes** – auch ein gelöschtes Volume `poker-prod-db` lässt sich so wiederherstellen.
 
-- **Ordner:** `BACKUP_DIR` in `.env.prod`, leer = iCloud Drive → `Backups/Poker` (`~/Library/Mobile Documents/com~apple~CloudDocs/Backups/Poker`, D-035; damit off-site). Ein anderer Ort muss in der Datenschutzerklärung (Abschnitt 9 und 11) nachgezogen werden. Absoluter Pfad oder mit `~/` beginnend; die npm-Skripte lösen `~` auf und legen den Ordner an (Compose selbst kann `~` nicht expandieren – deshalb prod immer über die npm-Skripte starten). Externe Platte: z. B. `/Volumes/Backup/poker-backups` (muss beim Start eingehängt sein).
+- **Ordner:** `BACKUP_DIR` in `.env.prod`, leer = `/Users/Shared/fleet/backups/poker` (D-037), der gemeinsame Backup-Ordner der Server. Ein anderer Ort muss in der Datenschutzerklärung (Abschnitt 9 und 11) nachgezogen werden. Absoluter Pfad oder mit `~/` beginnend; die npm-Skripte lösen `~` auf und legen den Ordner an (Compose selbst kann `~` nicht expandieren – deshalb prod immer über die npm-Skripte starten). Externe Platte: z. B. `/Volumes/Backup/poker-backups` (muss beim Start eingehängt sein).
 - **Zeitplan:** `BACKUP_SCHEDULE` (Standard `@daily` = 00:00 in `BACKUP_TZ`, Standard `Europe/Berlin`). Schläft der Mac zu dieser Zeit, fällt das Backup des Tages aus – deshalb Mac wach halten (siehe [Betrieb nach Neustart](#betrieb-nach-neustart)); `prod:status` meldet Backups, die älter als 26 h sind.
 - **Aufbewahrung:** 7 tägliche, 4 wöchentliche, 6 monatliche Stände. Unterordner:
 
@@ -138,12 +140,13 @@ Der Dienst `backup` (Image `prodrigestivill/postgres-backup-local:16`) in `compo
 
 - **Sofort sichern:** `npm run prod:backup` – gleicher Ablauf wie der tägliche Lauf (inkl. Rotation), gibt Datei und Größe aus. Sinnvoll vor riskanten Änderungen.
 - **Healthcheck:** der Dienst meldet über den eingebauten Scheduler-Endpunkt `healthy`; Fehler stehen in `docker logs poker-prod-backup-1`.
-- **Speicherort (D-035, D-036):** Die Backups schreibt der Studio in sein iCloud Drive (gleiche Apple-ID wie das MacBook, deshalb sind sie dort auch sichtbar). Nur der Studio schreibt hinein; auf dem MacBook läuft kein prod mehr. Die Datenschutzerklärung (Abschnitt 9 und 11) beschreibt das.
+- **Speicherort (D-037):** Unter `/Users/Shared/fleet/backups/<projekt>` legen alle Projekte des Studios ihre Sicherungen ab. Ein root-Dienst des Servers (Wingmen, `com.wingmen.backup-mirror`) spiegelt den Ordner stündlich per rsync auf den Partner-Server (mac-2, dort `/Users/Shared/fleet/mirror/<server>/`, Löschungen der Aufbewahrung werden mitgespiegelt); eine externe SSD kommt als dritte Kopie dazu. Kein iCloud Drive: Die Server laufen ohne Anmeldung unter einem Dienst-Nutzer ohne Apple-ID, und macOS verbietet Hintergrunddiensten den Zugriff auf iCloud Drive. Die Datenschutzerklärung (Abschnitt 9 und 11) beschreibt das; die SSD muss dieselbe Höchstdauer einhalten (sonst Datenschutzerklärung anpassen).
+- **Secrets (D-037):** Nach jedem Lauf (täglich und bei `prod:backup`) legt der Hook `docker/backup/secrets-hook.sh` eine verschlüsselte Kopie von `.env.prod` (`POSTGRES_PASSWORD`, `TUNNEL_TOKEN` …) nach `secrets/env-prod-JJJJMMTT.tar.gz.gpg` (gpg, AES256 symmetrisch, ein Stand pro Tag, 30 Tage aufbewahrt). Passphrase: `SECRETS_BACKUP_PASSPHRASE` in `.env.prod` – **zusätzlich im Passwort-Manager ablegen**, sonst geht sie mit der Datei verloren. Fehlt sie, warnt der Hook laut im Log (`docker logs poker-prod-backup-1`), das DB-Backup läuft trotzdem; `prod:status` meldet einen Fehler. Passphrase nachträglich setzen: in `.env.prod` eintragen, dann `npm run prod:up` (erstellt den Dienst `backup` neu) und `npm run prod:backup`.
 
 ## Restore
 ```sh
 npm run prod:status                                   # welche Backups gibt es?
-B="/Users/arthurreuss/Library/Mobile Documents/com~apple~CloudDocs/Backups/Poker"   # Pfad auf dem Studio
+B=/Users/Shared/fleet/backups/poker                    # Pfad auf dem Studio
 ssh areuss-studio.local "ls '$B/daily' '$B/last'"
 npm run prod:restore -- "$B/daily/poker-20261008.sql.gz"   # läuft auf dem Studio, fragt nach: "restore" eintippen
 npm run prod:restore -- <dump> --yes                  # ohne Rückfrage
@@ -160,12 +163,20 @@ Schlägt Schritt 4 oder 5 fehl, bleibt der Server **bewusst gestoppt** (er würd
 
 Ist das Volume `poker-prod-db` verloren: `npm run prod:up` (legt eine leere DB an, der Server migriert sie), dann `npm run prod:restore -- <dump> --yes` – das ersetzt die leere DB durch den Backup-Stand.
 
-**Restore-Test:** `npm run prod:test-restore` (`scripts/test-restore.sh`, läuft lokal auf dem MacBook) fährt eine isolierte Kopie der prod-Umgebung aus dem aktuellen Checkout hoch (Projekt `poker-restoretest`, eigenes Volume, keine Host-Ports, temporärer Backup-Ordner – echte prod-Daten bleiben unberührt), legt Testnutzer an, zieht ein Backup, ändert die Daten, stellt per `restore.sh` wieder her (einmal in die bestehende, einmal in eine gelöschte und neu angelegte DB), prüft die Daten und räumt danach alles weg. Laufzeit ca. 1–2 min (baut das Server-Image).
+**`.env.prod` wiederherstellen** (z. B. neuer prod-Host, D-037) – Passphrase aus dem Passwort-Manager, auf dem Studio im Checkout:
+```sh
+f=/Users/Shared/fleet/backups/poker/secrets/env-prod-JJJJMMTT.tar.gz.gpg   # neuester Stand; auf mac-2 unter /Users/Shared/fleet/mirror/<server>/poker/secrets/
+GNUPGHOME="$(mktemp -d)" gpg --pinentry-mode loopback -d "$f" | tar -xzf - .env.prod && chmod 600 .env.prod
+```
+Ohne gpg auf dem Rechner geht es im Backup-Image: `docker run --rm -i --entrypoint bash prodrigestivill/postgres-backup-local:16 -c 'GNUPGHOME=$(mktemp -d) gpg --pinentry-mode loopback -d' < "$f" | tar -xzf - .env.prod` (fragt die Passphrase im Terminal ab).
+
+**Restore-Test:** `npm run prod:test-restore` (`scripts/test-restore.sh`, läuft lokal auf dem MacBook) fährt eine isolierte Kopie der prod-Umgebung aus dem aktuellen Checkout hoch (Projekt `poker-restoretest`, eigenes Volume, keine Host-Ports, temporärer Backup-Ordner – echte prod-Daten bleiben unberührt), legt Testnutzer an, zieht ein Backup, prüft die verschlüsselte Kopie der Env-Datei (entschlüsselt sie im Backup-Container: nur `.env.prod` drin, Inhalt identisch, falsche Passphrase abgewiesen; ohne Passphrase nur Warnung, DB-Backup trotzdem), ändert die Daten, stellt per `restore.sh` wieder her (einmal in die bestehende, einmal in eine gelöschte und neu angelegte DB), prüft die Daten und räumt danach alles weg. Laufzeit ca. 1–2 min (baut das Server-Image).
 
 ## Status
 `npm run prod:status` (`scripts/status.sh`) zeigt und prüft:
 - Container `db`, `server`, `web`, `backup`, `logrotate` (und `cloudflared`, wenn `TUNNEL_TOKEN` gesetzt ist): läuft + healthy
 - letztes Backup: Zeitpunkt, Größe, Alter (Fehler ab 26 h, anpassbar per `MAX_BACKUP_AGE_HOURS`), Anzahl Dateien, Größe des Ordners
+- Secrets-Backup (D-037): Fehler, wenn `SECRETS_BACKUP_PASSPHRASE` fehlt oder die neueste Datei in `secrets/` älter als 26 h ist
 - freier Speicher auf dem Laufwerk des Backup-Ordners (Fehler unter 1 GB)
 - `GET /api/health` lokal über `http://localhost:4320` und – mit Tunnel – über `PUBLIC_ORIGIN`
 

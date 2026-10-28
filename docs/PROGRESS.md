@@ -47,6 +47,7 @@
 | M6 | [WP-040](work-packages/WP-040.md) | Feier nach der Hand (Konfetti, Gewinnerhand, Münzen, Tisch-Sieger) | review | WP-039 |
 | M5 | [WP-041](work-packages/WP-041.md) | Backups in iCloud Drive | done | WP-021, WP-022 |
 | M5 | [WP-042](work-packages/WP-042.md) | Prod auf den Mac Studio umziehen | done | WP-021, WP-041 |
+| M5 | [WP-043](work-packages/WP-043.md) | Backups im Server-Ordner, Secrets verschlüsselt sichern | in-progress | WP-021, WP-042 |
 <!-- END GENERATED -->
 
 ## Meilensteine

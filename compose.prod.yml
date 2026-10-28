@@ -93,8 +93,10 @@ services:
     restart: unless-stopped
 
   # Tägliches pg_dump (WP-021) in einen Host-Ordner außerhalb von Docker-Volumes. BACKUP_DIR setzen die
-  # npm-Skripte (scripts/lib/prod-env.sh, Standard iCloud Drive → Backups/Poker, D-035). Aufbewahrung 7 täglich / 4 wöchentlich /
-  # 6 monatlich, Unterordner last/ daily/ weekly/ monthly/. Manuell: npm run prod:backup.
+  # npm-Skripte (scripts/lib/prod-env.sh, Standard /Users/Shared/fleet/backups/poker, D-037). Aufbewahrung 7 täglich /
+  # 4 wöchentlich / 6 monatlich, Unterordner last/ daily/ weekly/ monthly/. Manuell: npm run prod:backup.
+  # Nach jedem Lauf legt der Hook docker/backup/secrets-hook.sh eine verschlüsselte Kopie von .env.prod nach secrets/
+  # (D-037); dafür ist der Ordner der Env-Datei read-only eingehängt (PROD_ENV_DIR/PROD_ENV_NAME aus prod-env.sh).
   backup:
     image: prodrigestivill/postgres-backup-local:16
     environment:
@@ -110,8 +112,15 @@ services:
       BACKUP_KEEP_WEEKS: 4
       BACKUP_KEEP_MONTHS: 6
       HEALTHCHECK_PORT: 8080
+      # Secrets-Backup (D-037). Ohne Passphrase warnt der Hook nur, das DB-Backup läuft weiter.
+      SECRETS_BACKUP_PASSPHRASE: ${SECRETS_BACKUP_PASSPHRASE:-}
+      PROD_ENV_NAME: ${PROD_ENV_NAME:?PROD_ENV_NAME fehlt – prod über npm run prod:* starten}
+      SECRETS_KEEP_DAYS: 30
     volumes:
       - ${BACKUP_DIR:?BACKUP_DIR fehlt – prod über npm run prod:* starten (setzt den Backup-Ordner)}:/backups
+      - ./docker/backup/secrets-hook.sh:/hooks/10-secrets:ro
+      # Ordner statt Datei: ein Datei-Mount hielte nach dem Bearbeiten von .env.prod die alte Fassung fest.
+      - ${PROD_ENV_DIR:?PROD_ENV_DIR fehlt – prod über npm run prod:* starten}:/prod-env:ro
     networks: [backend]
     depends_on:
       db:
