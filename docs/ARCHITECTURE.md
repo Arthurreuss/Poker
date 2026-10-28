@@ -510,7 +510,7 @@ Die Rangliste enthält nur aktive Accounts mit mindestens einer beendeten Runde 
 **Aktualität:** keine Push-Nachricht. Die Rangliste ist nach Rundenende aktuell, weil `finishRound` Platz und Punkte direkt beim Rundenende schreibt und die Seiten bei jedem Aufruf sowie bei `focus`/`visibilitychange` neu laden (`useResource` mit `refetchOnFocus`); wer vom Tisch zur Rangliste wechselt, öffnet sie neu. `/api/` wird weder von nginx (`no-store`) noch vom Service Worker gecacht.
 
 ## Prod-Umgebung
-`compose.prod.yml`, Compose-Projekt `poker-prod` (D-002, D-005, D-014), gebaut und betrieben auf dem Mac Studio aus einem Checkout von `main` (`~/poker`, D-036); Werte aus dessen `.env.prod` (gitignored, Vorlage `.env.prod.example`). Bedienung, Release, Tunnel, Backup/Restore und Betrieb: [OPERATIONS.md](OPERATIONS.md).
+`compose.prod.yml`, Compose-Projekt `poker-prod` (D-002, D-005, D-014), gebaut und betrieben auf dem Mac Studio aus einem Checkout von `main` (`~wingmen/poker`, Dienst-Nutzer `wingmen`, Docker über Colima, D-036, D-038); Werte aus dessen `.env.prod` (gitignored, Vorlage `.env.prod.example`). Bedienung, Release, Tunnel, Backup/Restore und Betrieb: [OPERATIONS.md](OPERATIONS.md).
 
 ```
 Internet ──https──▶ Cloudflare ──Tunnel──▶ cloudflared ──http──▶ web:8080 (nginx)
@@ -529,7 +529,7 @@ Host 127.0.0.1:4321 (Debug) ─────────────────�
 | `backup` | `prodrigestivill/postgres-backup-local:16` | go-cron + `pg_dump`, Hook `secrets-hook.sh`, Health-Port 8080 | – (Bind-Mounts `BACKUP_DIR` → `/backups`, Env-Ordner → `/prod-env:ro`) | Scheduler-Endpunkt (`curl :8080`) | `db` healthy |
 | `logrotate` | `alpine:3.24.2` | `sh /rotate.sh loop` (`docker/logrotate/rotate.sh`, Bind-Mount), kein Netz | – (Volumes `server-logs`, `web-logs`) | letzte Rotation < 26 h | – |
 
-- Alle Dienste `restart: unless-stopped` (geprüft von `scripts/test/compose-prod.test.mjs`), damit poker-prod nach einem Neustart von Docker Desktop ohne Eingreifen wieder läuft. DB-Daten im Named Volume `poker-prod-db`.
+- Alle Dienste `restart: unless-stopped` (geprüft von `scripts/test/compose-prod.test.mjs`), damit poker-prod nach einem Neustart (Colima startet als LaunchDaemon) ohne Eingreifen wieder läuft. DB-Daten im Named Volume `poker-prod-db`.
 - **Logs (WP-022, D-025 – höchstens 14 Tage für Logs mit IP-Adressen):** Docker rotiert Container-Logs nur nach Größe. Deshalb schreiben `server` (`LOG_FILE=/var/log/poker/server.log`, pino-Datei-Ziel) und `web` (`NGINX_ACCESS_LOG=/var/log/poker/access.log`, eigenes Format `poker` mit `$client_ip`, ohne Healthchecks von `127.0.0.1`) ihre Request-Logs in die Volumes `server-logs`/`web-logs` (Name mit Projekt-Präfix, der Restore-Test bekommt eigene). `logrotate` rotiert sie einmal pro Kalendertag (copytruncate, die Dienste öffnen mit `O_APPEND`) und löscht rotierte Dateien nach 12 Tagen; die älteste Zeile ist damit höchstens ~13 Tage alt. Alle Dienste nutzen den Log-Treiber `local` mit 3 × 10 MB (Anker `x-logging`); dort landen nur noch Meldungen ohne Client-IP (Start, nginx-Fehlerlog mit der internen cloudflared-Adresse, Postgres, Backup, cloudflared auf Level `info`). Ohne die Variablen (dev, lokale Tests) loggen server und nginx nach stdout. Bedienung: [OPERATIONS.md](OPERATIONS.md#logs).
   Gewählt statt „IP-Adressen nicht loggen + nur Größen-Rotation“: Größen-Rotation garantiert bei wenig Verkehr keine Höchstdauer, die IP wird für die Missbrauchsabwehr gebraucht, und die Datenschutzerklärung nennt eine feste Frist.
 - **Backup:** `backup` dumpt täglich (`BACKUP_SCHEDULE`, Standard `@daily`, Zeitzone `BACKUP_TZ`) per `pg_dump -Z6` (Plain-SQL, gzip) über das Netz `backend` in einen Host-Ordner außerhalb von Docker (`BACKUP_DIR`, Standard `/Users/Shared/fleet/backups/poker` (D-037), aufgelöst in `scripts/lib/prod-env.sh`; der Server spiegelt den Ordner stündlich auf den Partner-Server); Aufbewahrung 7 täglich / 4 wöchentlich / 6 monatlich (`last/`, `daily/`, `weekly/`, `monthly/`). Nach jedem Lauf legt der Hook `docker/backup/secrets-hook.sh` (eingehängt als `/hooks/10-secrets`) eine mit `SECRETS_BACKUP_PASSPHRASE` verschlüsselte Kopie von `.env.prod` nach `secrets/` (gpg AES256, 30 Tage); dafür ist der Ordner der Env-Datei read-only unter `/prod-env` eingehängt (`PROD_ENV_DIR`/`PROD_ENV_NAME` aus `prod-env.sh`). Restore per `scripts/restore.sh`: Server stoppen → DB neu anlegen → Dump in einer Transaktion einspielen → Server starten. Netz `backend` ist `internal` (kein Zugang nach außen), die DB hat keinen Host-Port.
@@ -820,7 +820,6 @@ scripts/
   smoke-prod.mjs        Smoke-Test prod (Health + WebSocket)
   release.sh            Release dev → main, danach Neustart auf dem Studio
   test/                 Tests für die Skripte
-ops/launchd/            LaunchAgent-Vorlage (caffeinate), nicht automatisch installiert
 .githooks/pre-commit    blockiert Commits auf main, führt npm run check aus
 package.json            Workspaces und npm-Skripte
 tsconfig.base.json      gemeinsame TypeScript-Einstellungen

@@ -1,15 +1,18 @@
-# Verbindung zum prod-Host (D-036). Wird per "." eingebunden (bash), auf dem Entwicklungsrechner.
-# prod läuft auf dem Mac Studio aus einem Checkout von main; die prod-Skripte laufen dort per SSH.
-#   POKER_PROD_HOST        SSH-Ziel                        (Standard: areuss-studio.local)
+# Verbindung zum prod-Host (D-036, D-038). Wird per "." eingebunden (bash), auf dem Entwicklungsrechner.
+# prod läuft auf dem Mac Studio unter dem Dienst-Nutzer wingmen aus einem Checkout von main (~wingmen/poker);
+# die prod-Skripte laufen dort per SSH.
+#   POKER_PROD_HOST        SSH-Ziel                        (Standard: wingmen@areuss-studio.local)
 #   POKER_PROD_REMOTE_DIR  Checkout auf dem Host, relativ zu ~ (Standard: poker)
 #   POKER_PROD_SSH         SSH-Befehl, für Tests ersetzbar  (Standard: ssh)
+#   POKER_PROD_REPO_URL    Quelle für prod:setup; Standard über den Host-Alias github-poker (Deploy-Key in ~/.ssh/config des Nutzers)
 
-POKER_PROD_HOST="${POKER_PROD_HOST:-areuss-studio.local}"
+POKER_PROD_HOST="${POKER_PROD_HOST:-wingmen@areuss-studio.local}"
 POKER_PROD_REMOTE_DIR="${POKER_PROD_REMOTE_DIR:-poker}"
 POKER_PROD_SSH="${POKER_PROD_SSH:-ssh}"
-POKER_PROD_REPO_URL="${POKER_PROD_REPO_URL:-https://github.com/Arthurreuss/Poker.git}"
+POKER_PROD_REPO_URL="${POKER_PROD_REPO_URL:-git@github-poker:Arthurreuss/Poker.git}"
 
-# Docker Desktop und Homebrew liegen nicht im PATH einer SSH-Sitzung ohne Login-Shell.
+# Docker (Colima) und git kommen von Homebrew (/opt/homebrew/bin), das nicht im PATH einer SSH-Sitzung
+# ohne Login-Shell liegt. /usr/local/bin bleibt harmlos im PATH (Intel-Homebrew, alte Installationen).
 PROD_REMOTE_PATH='export PATH="/usr/local/bin:/opt/homebrew/bin:$PATH"'
 
 # Führt einen Befehl (als ein String) auf dem Host aus, im Checkout. Mit -t bei interaktivem Terminal

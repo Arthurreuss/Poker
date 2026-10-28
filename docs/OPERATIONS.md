@@ -4,9 +4,9 @@ Wie dev und prod gestartet, gestoppt und released werden, wie der Cloudflare-Tun
 
 | | dev | prod |
 |---|---|---|
-| Rechner | MacBook (Entwicklung) | Mac Studio `areuss-studio.local` (nur Hosting, D-036) |
+| Rechner | MacBook (Entwicklung) | Mac Studio `areuss-studio.local`, Dienst-Nutzer `wingmen` (nur Hosting, D-036, D-038) |
 | Branch | `dev` | `main` |
-| Ordner | Arbeitsordner `~/code/Arthurreuss/poker` | Checkout `~/poker` auf dem Studio (nur lesend, ändert sich nur durch `release`) |
+| Ordner | Arbeitsordner `~/code/Arthurreuss/poker` | Checkout `~wingmen/poker` auf dem Studio (nur lesend, ändert sich nur durch `release`) |
 | Compose | `compose.dev.yml`, Projekt `poker-dev` | `compose.prod.yml`, Projekt `poker-prod` |
 | Konfiguration | `.env` (optional, Vorlage `.env.example`) | `.env.prod` im Checkout auf dem Studio (Pflicht, Vorlage `.env.prod.example`) |
 | App | http://localhost:4310 | auf dem Studio http://localhost:4320, öffentlich https://poker.arthur-reuss.de (Tunnel) |
@@ -25,16 +25,17 @@ npm run dev:down   # stoppen, Volume poker-dev-db bleibt
 Details: [README.md](../README.md#entwicklung-starten).
 
 ## prod
-prod läuft auf dem **Mac Studio** (D-036) aus einem Git-Checkout von `main` unter `~/poker`. Alle `prod:*`-Befehle werden auf dem MacBook im Arbeitsordner aufgerufen und führen die prod-Skripte per SSH auf dem Studio aus (`scripts/prod-remote.sh`). Auf dem Studio wird nie von Hand gearbeitet; der Checkout ändert sich nur durch `npm run release` (`git merge --ff-only origin/main`).
+prod läuft auf dem **Mac Studio** (D-036) als Dienst-Nutzer `wingmen` (D-038) aus einem Git-Checkout von `main` unter `~wingmen/poker`. Alle `prod:*`-Befehle werden auf dem MacBook im Arbeitsordner aufgerufen und führen die prod-Skripte per SSH auf dem Studio aus (`scripts/prod-remote.sh`). Auf dem Studio wird nie von Hand gearbeitet; der Checkout ändert sich nur durch `npm run release` (`git merge --ff-only origin/main`).
 
-- Ziel per Umgebungsvariable änderbar: `POKER_PROD_HOST` (Standard `areuss-studio.local`), `POKER_PROD_REMOTE_DIR` (Standard `poker`, relativ zu `~`).
-- Der Studio braucht nur git, Docker Desktop und bash, kein Node. Smoke- und E2E-Test laufen auf dem MacBook über eine SSH-Portweiterleitung `127.0.0.1:4320` → Studio `127.0.0.1:4320` (die prod-Ports sind dort nur lokal gebunden). Port 4320 muss dafür auf dem MacBook frei sein (sonst `PROD_FORWARD_PORT=4329`).
-- SSH-Zugang per Schlüssel vom MacBook auf `arthurreuss@areuss-studio.local` ist Voraussetzung.
+- Ziel per Umgebungsvariable änderbar: `POKER_PROD_HOST` (Standard `wingmen@areuss-studio.local`), `POKER_PROD_REMOTE_DIR` (Standard `poker`, relativ zu `~`).
+- Der Studio braucht nur git, Docker (Colima, Docker-CLI von Homebrew) und bash, kein Node. Smoke- und E2E-Test laufen auf dem MacBook über eine SSH-Portweiterleitung `127.0.0.1:4320` → Studio `127.0.0.1:4320` (die prod-Ports sind dort nur lokal gebunden). Port 4320 muss dafür auf dem MacBook frei sein (sonst `PROD_FORWARD_PORT=4329`).
+- SSH-Zugang per Schlüssel vom MacBook auf `wingmen@areuss-studio.local` ist Voraussetzung (der Dienst-Nutzer hat keine Anmeldung am Bildschirm; der Admin `arthurreuss` dient nur für `sudo`, nicht für prod).
 
 ### prod-Host einrichten (Arthur, einmalig)
 ```sh
-npm run prod:setup   # klont main per HTTPS nach ~/poker auf dem Studio (öffentliches Repo, kein Login nötig)
+npm run prod:setup   # klont main nach ~wingmen/poker auf dem Studio (per SSH über den Host-Alias github-poker)
 ```
+Voraussetzung auf dem Studio: ein schreibgeschützter Deploy-Key für das Repo und in `~wingmen/.ssh/config` der Eintrag `Host github-poker` (HostName github.com, IdentityFile = Deploy-Key). Ein anderer Quell-Link geht über `POKER_PROD_REPO_URL`.
 Danach `.env.prod` im Checkout auf dem Studio anlegen (gitignored, nie committen, liegt nur dort):
 ```sh
 npm run prod:ssh     # Shell im Checkout auf dem Studio
@@ -59,7 +60,7 @@ npm run prod:compose -- <args>                  # docker compose -p poker-prod <
 npm run prod:ssh         # Shell im Checkout auf dem Studio
 ```
 - Ohne `.env.prod` bricht `prod:up` mit Hinweis ab; `prod:tunnel:up` bricht ab, solange `TUNNEL_TOKEN` leer ist.
-- Container haben `restart: unless-stopped`: nach einem Neustart von Docker Desktop laufen sie wieder, nach `prod:down` nicht (siehe [Betrieb nach Neustart](#betrieb-nach-neustart)).
+- Container haben `restart: unless-stopped`: nach einem Neustart von Colima (also auch des Rechners) laufen sie wieder, nach `prod:down` nicht (siehe [Betrieb nach Neustart](#betrieb-nach-neustart)).
 - `POSTGRES_PASSWORD` wirkt nur beim **ersten** Start mit leerem Volume. Passwort später ändern = in Postgres ändern (`ALTER USER`) oder – nur ohne echte Daten – Volume löschen: `docker volume rm poker-prod-db` (auf dem Studio).
 - Der Smoke-Test schickt als `Origin` die erste `PUBLIC_ORIGIN` aus der `.env.prod` des Studios; andere Ziele per `SMOKE_URL=… SMOKE_ORIGIN=… npm run prod:smoke` (dann ohne Weiterleitung).
 - WebSocket ohne Session muss `401` liefern (seit WP-011 braucht `/ws` ein Session-Cookie), fremde Origin `403`. Den vollen Handshake (`hello` → `welcome`) prüft er zusätzlich mit einem Session-Cookie aus dem Browser: `SMOKE_COOKIE='poker_session=…' npm run prod:smoke`.
@@ -92,11 +93,11 @@ Schlägt Smoke-Test oder E2E fehl, steht `main` schon auf dem neuen Stand (gepus
 1. Erst prüfen, ob der Fehler bleibt: `npm run prod:e2e` bzw. `npm run prod:smoke` (Fehlerbericht siehe oben).
 2. Zurückrollen – prod aus dem vorherigen Commit neu bauen:
    ```sh
-   ssh areuss-studio.local 'cd ~/poker && git checkout --detach <vorher>'
+   ssh wingmen@areuss-studio.local 'cd ~/poker && git checkout --detach <vorher>'
    npm run prod:tunnel:up     # bzw. prod:up ohne Tunnel
    npm run prod:smoke
    ```
-3. Fehler auf dev beheben. Vor dem nächsten Release den Studio-Checkout zurück auf `main` setzen (`release` verlangt das): `ssh areuss-studio.local 'cd ~/poker && git checkout main'`, dann `npm run release`.
+3. Fehler auf dev beheben. Vor dem nächsten Release den Studio-Checkout zurück auf `main` setzen (`release` verlangt das): `ssh wingmen@areuss-studio.local 'cd ~/poker && git checkout main'`, dann `npm run release`.
 4. Hat der neue Stand Datenbank-Migrationen ausgeführt, läuft der alte Server auf dem neueren Schema. Migrationen sind bisher nur additiv; im Zweifel das letzte Backup einspielen (`npm run prod:restore`, siehe Restore).
 
 ## Cloudflare-Tunnel einrichten (Arthur, einmalig)
@@ -147,7 +148,7 @@ Der Dienst `backup` (Image `prodrigestivill/postgres-backup-local:16`) in `compo
 ```sh
 npm run prod:status                                   # welche Backups gibt es?
 B=/Users/Shared/fleet/backups/poker                    # Pfad auf dem Studio
-ssh areuss-studio.local "ls '$B/daily' '$B/last'"
+ssh wingmen@areuss-studio.local "ls '$B/daily' '$B/last'"
 npm run prod:restore -- "$B/daily/poker-20261008.sql.gz"   # läuft auf dem Studio, fragt nach: "restore" eintippen
 npm run prod:restore -- <dump> --yes                  # ohne Rückfrage
 ```
@@ -208,24 +209,15 @@ Speicherdauer nach D-025: Logs mit IP-Adressen höchstens **14 Tage** (so steht 
 - Lokal ohne `LOG_FILE`/`NGINX_ACCESS_LOG` (dev, Header-Test) loggen server und nginx wie gewohnt nach stdout.
 
 ## Betrieb nach Neustart
-**Stand Mac Studio (geprüft 22.10.2026):** automatische Anmeldung als `arthurreuss`, FileVault aus, Docker Desktop startet beim Anmelden (`AutoStart`), Ruhezustand aus, Neustart nach Stromausfall an. Die Schritte unten sind dort also erledigt; `caffeinate` ist nicht nötig.
+**Stand Mac Studio (28.10.2026, D-038):** prod läuft als versteckter Dienst-Nutzer `wingmen` ohne Anmeldung. FileVault ist an, Docker läuft über Colima als LaunchDaemon `com.wingmen.colima` (Nutzer `wingmen`), Ruhezustand aus, Neustart nach Stromausfall an. Der Admin `arthurreuss` dient nur für `sudo`. Die Einrichtung des Hosts (Nutzer, Colima, LaunchDaemons) gehört zum Server-Verbund (Wingmen), nicht zu Poker.
 
-Ziel: Nach einem Neustart oder Stromausfall läuft poker-prod ohne Eingreifen wieder. Docker startet beim Hochfahren alle Container mit `restart: unless-stopped` neu (gilt für alle prod-Dienste, abgesichert durch `scripts/test/compose-prod.test.mjs`) – außer sie wurden vorher mit `prod:down` gestoppt. Dafür muss Docker Desktop laufen, und das setzt eine angemeldete Benutzersitzung voraus.
+Ziel: Nach einem Neustart oder Stromausfall läuft poker-prod ohne Eingreifen wieder. Beim Hochfahren startet der LaunchDaemon Colima, und die Docker-Engine darin startet alle Container mit `restart: unless-stopped` neu (gilt für alle prod-Dienste, abgesichert durch `scripts/test/compose-prod.test.mjs`) – außer sie wurden vorher mit `prod:down` gestoppt. Es ist keine Benutzersitzung und keine Anmeldung nötig.
 
-Einmalig einzurichten (Arthur, macOS-Systemeinstellungen – nicht automatisiert):
-1. **Docker Desktop beim Anmelden starten:** Docker Desktop → Settings → General → „Start Docker Desktop when you sign in to your computer“ aktivieren. Ist die Option gesperrt („operation is not permitted when registering app service“), Docker stattdessen als klassisches Anmeldeobjekt eintragen (so auf Arthurs Mac eingerichtet):
-   `osascript -e 'tell application "System Events" to make login item at end with properties {path:"/Applications/Docker.app", hidden:true}'`
-   Prüfen: `osascript -e 'tell application "System Events" to get the path of every login item'` bzw. Systemeinstellungen → Allgemein → Anmeldeobjekte → „Beim Anmelden öffnen“.
-2. **Automatische Anmeldung:** Systemeinstellungen → Benutzer:innen & Gruppen → „Automatisch anmelden als“ → eigener Benutzer. Hinweis: Mit aktivem **FileVault** bietet macOS das nicht an – nach einem Neustart muss dann einmal das Passwort eingegeben werden, erst danach starten Docker und poker-prod. Ob FileVault aus bleiben soll, ist Arthurs Abwägung (Sicherheit vs. unbeaufsichtigter Neustart).
-3. **Energie:** Systemeinstellungen → Energie (Mac mini/iMac) bzw. Batterie → Optionen (MacBook):
-   - „Automatischen Ruhezustand verhindern, wenn der Bildschirm aus ist“ (bei Netzbetrieb) **an**
-   - „Nach Stromausfall automatisch starten“ **an** (nur bei Desktop-Macs vorhanden)
-   - „Für Netzwerkzugriff aufwachen“ an (schadet nicht)
-   - Der Bildschirm darf ausgehen; nur der Ruhezustand des Systems stoppt Docker.
-4. **Alternativ/zusätzlich wach halten mit `caffeinate`:** im Terminal `caffeinate -s -i` (läuft, bis das Fenster geschlossen wird). Dauerhaft als LaunchAgent: Vorlage [`ops/launchd/de.arthur-reuss.poker.caffeinate.plist.example`](../ops/launchd/de.arthur-reuss.poker.caffeinate.plist.example) – Installation und Entfernen stehen in der Datei (ohne `sudo`, nur für den eigenen Benutzer).
-5. Prod einmal mit `npm run prod:up` bzw. `prod:tunnel:up` starten (nicht mit `prod:down` beenden).
+Einmalig zu beachten (Arthur):
+1. **Energie:** Systemeinstellungen → Energie: „Automatischen Ruhezustand verhindern, wenn der Bildschirm aus ist“ (Netzbetrieb) **an**, „Nach Stromausfall automatisch starten“ **an**. Der Bildschirm darf ausgehen; nur der Ruhezustand des Systems stoppt Docker.
+2. Prod einmal mit `npm run prod:up` bzw. `prod:tunnel:up` starten (nicht mit `prod:down` beenden).
 
-**Prüfen (Arthur):** Mac neu starten, (ggf. anmelden,) ca. 2 min warten, dann `npm run prod:status` – alle Container `running, healthy`, Health ok. Wer ganz sicher gehen will, testet auch „Stromkabel ziehen“ (Desktop-Mac).
+**Prüfen (Arthur):** Mac neu starten (ohne Anmeldung), ca. 2 min warten, dann `npm run prod:status` – alle Container `running, healthy`, Health ok. Wer ganz sicher gehen will, testet auch „Stromkabel ziehen“ (Desktop-Mac).
 
 ## Feedback lesen
 Spieler schicken Feedback über den Knopf „Feedback“ in der App (Bug, Idee, Sonstiges; WP-024). Es landet in der Tabelle `feedback` (Aufbau: [ARCHITECTURE.md](ARCHITECTURE.md), „Datenmodell“ → „Feedback“).

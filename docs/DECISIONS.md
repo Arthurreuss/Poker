@@ -287,7 +287,7 @@ Format: Kontext → Entscheidung → Konsequenzen. Status: `akzeptiert`, `offen`
 - **Konsequenzen:** Backups sind off-site. Ein anderer Ort geht weiter über `BACKUP_DIR` in `.env.prod`; dann muss die Datenschutzerklärung (Abschnitt 9 und 11) mitziehen.
 
 ## D-036: Prod läuft auf dem Mac Studio (WP-042)
-- **Status:** akzeptiert (Arthur, 22.10.2026); ersetzt D-017
+- **Status:** akzeptiert (Arthur, 22.10.2026); ersetzt D-017; Host-Nutzer, Checkout-Ort, Klon und Docker-Laufzeit ersetzt durch D-038
 - **Kontext:** prod lief auf dem MacBook, das auch Entwicklungsrechner ist (Prod-Worktree, D-017). Der Mac Studio läuft dauerhaft (kein Ruhezustand, Neustart nach Stromausfall) und hostet bereits Jarvis.
 - **Entscheidung:**
   - prod läuft auf dem Mac Studio (`areuss-studio.local`, Benutzer `arthurreuss`) aus einem Git-Checkout von `main` unter `~/poker`. Geklont per HTTPS aus dem öffentlichen Repo, ohne Schreibrechte: Der Checkout ändert sich nur per `git merge --ff-only origin/main`. `.env.prod` liegt nur dort.
@@ -307,3 +307,15 @@ Format: Kontext → Entscheidung → Konsequenzen. Status: `akzeptiert`, `offen`
   - Eingebaut als Hook des vorhandenen Images (`prodrigestivill/postgres-backup-local` führt `/hooks/*` per `run-parts` mit `post-backup` aus, gpg ist enthalten): `docker/backup/secrets-hook.sh` wird als `/hooks/10-secrets` eingehängt (der mitgelieferte `00-webhook` bleibt). Gewählt statt eines eigenen Dienstes (zweiter Zeitplan, zweiter Healthcheck, eigene Zeitzone) und statt `backup-now.sh` plus Host-Cron (der Host hat bisher keinen eigenen Zeitplan, und gpg müsste auf dem Studio installiert sein): so läuft die Sicherung der Secrets genau mit jedem DB-Backup – täglich wie bei `prod:backup` und im Restore-Test – ohne neue Teile.
   - Der Ordner der Env-Datei wird read-only nach `/prod-env` eingehängt, ihr Name kommt als `PROD_ENV_NAME` (beides setzt `scripts/lib/prod-env.sh`). Ordner statt Datei: Ein Datei-Bind-Mount hält nach dem Bearbeiten von `.env.prod` (neue Inode) die alte Fassung fest, und fehlt die Datei, legt Docker an ihrer Stelle einen Ordner an. Der Dienst `backup` sieht damit den prod-Checkout lesend; er kennt das DB-Passwort ohnehin.
 - **Konsequenzen:** Nach dem Setzen oder Ändern der Passphrase `npm run prod:up` (erstellt `backup` neu) und `npm run prod:backup`. `.env.prod` lässt sich von jedem Spiegel mit der Passphrase wiederherstellen (OPERATIONS.md, „Restore“). Die externe SSD muss dieselbe Höchstdauer einhalten; behält sie Stände länger, muss die Datenschutzerklärung (Abschnitt 9) vorher angepasst werden. Ein anderer `BACKUP_DIR` geht weiter, dann Datenschutzerklärung (Abschnitt 9 und 11) nachziehen.
+
+## D-038: Prod läuft als Dienst-Nutzer wingmen unter Colima (WP-044)
+- **Status:** akzeptiert (Arthur, 28.10.2026); ersetzt in D-036 den Host-Nutzer `arthurreuss`, den Checkout unter dessen `~/poker`, den HTTPS-Klon und Docker Desktop
+- **Kontext:** Die Server (Mac Studio = prod, mac-2 = Ersatz) sollen nach einem Neustart ohne Anmeldung laufen. Docker Desktop setzt eine angemeldete Benutzersitzung voraus (Autologin, damit FileVault aus), und prod lag im Home des Admins. Der Server-Verbund (Wingmen) betreibt seine Dienste deshalb unter einem versteckten Dienst-Nutzer ohne Anmeldung.
+- **Entscheidung:**
+  - prod läuft auf dem Mac Studio (`areuss-studio.local`) unter dem versteckten Dienst-Nutzer `wingmen` ohne Anmeldung; FileVault ist an, Dienste laufen als LaunchDaemons. Der Admin `arthurreuss` dient nur für `sudo`.
+  - Docker Desktop ist entfernt. Docker läuft über Colima als LaunchDaemon `com.wingmen.colima` (Nutzer `wingmen`), das Docker-CLI kommt von Homebrew (`/opt/homebrew/bin`). Container mit `restart: unless-stopped` starten beim Hochfahren mit Colima wieder, ohne Anmeldung.
+  - Der Checkout von `main` liegt unter `~wingmen/poker`, geklont per SSH mit einem schreibgeschützten Deploy-Key (Host-Alias `github-poker` in `~wingmen/.ssh/config`); `.env.prod` dort mit Rechten 600. Der Checkout ändert sich weiter nur per `git merge --ff-only origin/main`.
+  - `POKER_PROD_HOST` hat den Standard `wingmen@areuss-studio.local` (`scripts/lib/prod-host.sh`); `POKER_PROD_REPO_URL` den Standard `git@github-poker:Arthurreuss/Poker.git`. Alles andere aus D-036 (MacBook nur Entwicklung, Befehle per SSH, Portweiterleitung, `release`) bleibt.
+  - Backups bleiben in `/Users/Shared/fleet/backups/poker` (D-037), jetzt im Besitz von `wingmen`.
+  - Die LaunchAgent-Vorlage für `caffeinate` (`ops/launchd`) entfällt: Es gibt keine Benutzersitzung mehr, der Ruhezustand ist systemweit aus.
+- **Konsequenzen:** SSH-Zugang vom MacBook muss für `wingmen@areuss-studio.local` per Schlüssel eingerichtet sein. Neustart und Stromausfall brauchen kein Eingreifen. Mit einem anderen Nutzer oder Host geht es weiter über `POKER_PROD_HOST`. Ein neuer prod-Host braucht Colima, Homebrew-git und den Deploy-Key (OPERATIONS.md, „prod-Host einrichten“).

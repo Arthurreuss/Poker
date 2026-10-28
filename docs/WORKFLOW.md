@@ -72,12 +72,12 @@ Unabhängige WPs werden von Teil-Sessions (Subagents) parallel bearbeitet:
 - Rückfragen und Entscheidungen gehen immer an Arthur. Teil-Sessions treffen keine Entscheidungen, die D-Einträge ändern würden, sondern melden sie zurück.
 
 ## Branches und Umgebungen
-Details und Begründung: D-005 (Branches), D-006 (Ports) und D-036 (prod auf dem Mac Studio) in [DECISIONS.md](DECISIONS.md); Bedienung: [OPERATIONS.md](OPERATIONS.md).
+Details und Begründung: D-005 (Branches), D-006 (Ports) und D-036 (prod auf dem Mac Studio) und D-038 (Dienst-Nutzer wingmen, Colima) in [DECISIONS.md](DECISIONS.md); Bedienung: [OPERATIONS.md](OPERATIONS.md).
 
 | Branch | Zweck | Läuft wo |
 |---|---|---|
 | `dev` | Arbeitsbranch, hier wird committet; der Arbeitsordner `~/code/Arthurreuss/poker` auf dem MacBook bleibt immer auf dev | MacBook: http://localhost:4310 |
-| `main` | Release, nur per Merge von dev; auf dem Mac Studio (`areuss-studio.local`) ausgecheckt unter `~/poker` | Mac Studio: localhost:4320, öffentlich https://poker.arthur-reuss.de (Cloudflare Tunnel) |
+| `main` | Release, nur per Merge von dev; auf dem Mac Studio (`areuss-studio.local`) ausgecheckt unter `~wingmen/poker` (Dienst-Nutzer `wingmen`, D-038) | Mac Studio: localhost:4320, öffentlich https://poker.arthur-reuss.de (Cloudflare Tunnel) |
 
 - Gearbeitet wird auf `dev` (bei größeren WPs optional auf `wp/WP-XXX` abzweigen und zurück nach dev mergen).
 - Release: `npm run check` grün auf dev, lokal per Docker getestet, dann `npm run release` auf dem MacBook – mergt `dev → main` per `--no-ff` in einem temporären Worktree (der Arbeitsordner wird nicht umgeschaltet), pusht beide Branches, aktualisiert den Checkout auf dem Studio und startet prod dort neu. Einmalige Einrichtung des Studios: `npm run prod:setup`.

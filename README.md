@@ -33,9 +33,9 @@ DATABASE_URL=postgres://poker:poker@localhost:4312/poker npm test
 Nach Änderungen an Abhängigkeiten `npm run dev:up` erneut ausführen (baut das Image neu).
 
 ## Prod (Mac Studio)
-prod läuft auf dem Mac Studio (`areuss-studio.local`) aus einem Checkout von `main` unter `~/poker` (D-036). Das MacBook ist nur Entwicklungsrechner: Alle Befehle unten laufen dort im Arbeitsordner und steuern den Studio per SSH.
+prod läuft auf dem Mac Studio (`areuss-studio.local`) als Dienst-Nutzer `wingmen` aus einem Checkout von `main` unter `~wingmen/poker` (D-036, D-038). Das MacBook ist nur Entwicklungsrechner: Alle Befehle unten laufen dort im Arbeitsordner und steuern den Studio per SSH.
 ```sh
-npm run prod:setup               # einmalig: main auf dem Studio klonen, dann dort .env.prod anlegen (npm run prod:ssh)
+npm run prod:setup               # einmalig: main auf dem Studio (als wingmen) klonen, dann dort .env.prod anlegen (npm run prod:ssh)
 npm run release                  # dev → main mergen, pushen, Studio holt main, baut neu, Smoke- und E2E-Test
 npm run prod:status              # Container, letztes Backup, Health
 npm run prod:smoke               # Health + WebSocket prüfen (über eine SSH-Portweiterleitung)
