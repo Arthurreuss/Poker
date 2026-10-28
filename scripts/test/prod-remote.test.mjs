@@ -53,11 +53,11 @@ test('up, tunnel-up, down, logs rufen scripts/prod.sh auf dem Studio auf', () =>
   }
 });
 
-test('restore reicht Argumente gequotet weiter (Leerzeichen im iCloud-Pfad)', () => {
-  const dump = '/Users/x/Library/Mobile Documents/com~apple~CloudDocs/Backups/Poker/last/poker-latest.sql.gz';
+test('restore reicht Argumente gequotet weiter (Leerzeichen im Pfad)', () => {
+  const dump = '/Volumes/Backup Disk/poker/last/poker-latest.sql.gz';
   const res = run(['restore', dump, '--yes']);
   assert.equal(res.status, 0, res.stderr);
-  assert.match(res.ssh.at(-1), /bash scripts\/restore\.sh \/Users\/x\/Library\/Mobile\\ Documents\/.+ --yes$/);
+  assert.match(res.ssh.at(-1), /bash scripts\/restore\.sh \/Volumes\/Backup\\ Disk\/poker\/.+ --yes$/);
 });
 
 test('compose ruft docker compose -p poker-prod mit den Argumenten auf', () => {

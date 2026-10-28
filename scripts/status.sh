@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Kurzer Zustandsbericht der prod-Umgebung (WP-021). Aufruf: npm run prod:status
-# Zeigt Container-Status/Health, letztes Backup (Zeitpunkt, Größe, Alter), Speicherplatz des Backup-Ordners
-# und den Health-Endpoint (lokal und – falls erreichbar – öffentlich). Exit-Code 1, wenn etwas nicht stimmt.
+# Zeigt Container-Status/Health, letztes Backup (Zeitpunkt, Größe, Alter), das verschlüsselte Secrets-Backup (D-037),
+# Speicherplatz des Backup-Ordners und den Health-Endpoint (lokal und – falls erreichbar – öffentlich). Exit-Code 1, wenn etwas nicht stimmt.
 # Doku: docs/OPERATIONS.md, Abschnitt "Status".
 set -euo pipefail
 . "$(dirname "$0")/lib/prod-env.sh"
@@ -15,9 +15,6 @@ bad() {
   problems=$((problems + 1))
 }
 warn() { echo "  ! $*"; }
-
-# Änderungszeit einer Datei in Sekunden seit Epoch (macOS/BSD und GNU).
-mtime() { stat -f %m "$1" 2>/dev/null || stat -c %Y "$1"; }
 
 require_env_file
 
@@ -56,6 +53,19 @@ else
   if [ "$age_hours" -ge "$MAX_BACKUP_AGE_HOURS" ]; then bad "$info – älter als $MAX_BACKUP_AGE_HOURS h"; else ok "$info"; fi
   count="$(find "$BACKUP_DIR" -name "$POSTGRES_DB_VALUE-[0-9]*.sql.gz" -type f | wc -l | tr -d ' ')"
   ok "Dateien: $count, Ordner gesamt $(du -sh "$BACKUP_DIR" | cut -f1 | tr -d ' ')"
+fi
+# Verschlüsselte Kopie von .env.prod (D-037): fehlt die Passphrase, sichert der Hook die Secrets nicht.
+if [ -z "$(env_value SECRETS_BACKUP_PASSPHRASE)" ]; then
+  bad "Secrets: SECRETS_BACKUP_PASSPHRASE fehlt in $ENV_FILE – .env.prod wird nicht gesichert"
+else
+  secrets="$(ls -t "$BACKUP_DIR/secrets/env-prod-"[0-9]*.tar.gz.gpg 2>/dev/null | head -n 1 || true)"
+  if [ -z "$secrets" ]; then
+    bad "Secrets: noch keine verschlüsselte Kopie von .env.prod (sofort: npm run prod:backup)"
+  else
+    age_hours=$((($(date +%s) - $(mtime "$secrets")) / 3600))
+    info="Secrets: $(basename "$secrets") (vor ${age_hours} h)"
+    if [ "$age_hours" -ge "$MAX_BACKUP_AGE_HOURS" ]; then bad "$info – älter als $MAX_BACKUP_AGE_HOURS h"; else ok "$info"; fi
+  fi
 fi
 if [ -d "$BACKUP_DIR" ]; then
   # df -P: stabile Spalten auf macOS und Linux (Kilobyte-Blöcke).

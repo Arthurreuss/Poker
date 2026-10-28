@@ -70,8 +70,9 @@ env_value_or() {
 
 # Backup-Ordner auf dem Host (außerhalb von Docker-Volumes). Compose kann "~" nicht expandieren,
 # deshalb wird der Pfad hier aufgelöst und als Umgebungsvariable an Compose übergeben
-# (Shell-Variablen haben Vorrang vor --env-file). Standard: iCloud Drive → Backups/Poker (D-035).
-BACKUP_DIR_DEFAULT="$HOME/Library/Mobile Documents/com~apple~CloudDocs/Backups/Poker"
+# (Shell-Variablen haben Vorrang vor --env-file). Standard: gemeinsamer Backup-Ordner der Server, den ein
+# root-Dienst stündlich auf den Partner-Server spiegelt (D-037).
+BACKUP_DIR_DEFAULT="/Users/Shared/fleet/backups/poker"
 resolve_backup_dir() {
   _dir="${BACKUP_DIR:-$(env_value BACKUP_DIR)}"
   [ -n "$_dir" ] || _dir="$BACKUP_DIR_DEFAULT"
@@ -90,7 +91,23 @@ resolve_backup_dir() {
   export BACKUP_DIR
 }
 
+# Ordner und Name der Env-Datei für den Secrets-Hook des Dienstes backup (D-037): Compose hängt den Ordner
+# read-only ein (ein Datei-Mount sähe nach dem Bearbeiten von .env.prod weiter die alte Fassung).
+resolve_env_location() {
+  case "$ENV_FILE" in
+    /*) _env_path="$ENV_FILE" ;;
+    *) _env_path="$(pwd)/$ENV_FILE" ;;
+  esac
+  PROD_ENV_DIR="$(dirname "$_env_path")"
+  PROD_ENV_NAME="$(basename "$_env_path")"
+  export PROD_ENV_DIR PROD_ENV_NAME
+}
+
+# Änderungszeit einer Datei in Sekunden seit Epoch (macOS/BSD und GNU).
+mtime() { stat -f %m "$1" 2>/dev/null || stat -c %Y "$1"; }
+
 POSTGRES_USER_VALUE="$(env_value_or POSTGRES_USER poker)"
 POSTGRES_DB_VALUE="$(env_value_or POSTGRES_DB poker)"
 WEB_PORT_VALUE="$(env_value_or WEB_PORT 4320)"
 resolve_backup_dir
+resolve_env_location
