@@ -19,6 +19,8 @@
     "prod:down": "bash scripts/prod-remote.sh down",
     "prod:logs": "bash scripts/prod-remote.sh logs",
     "prod:tunnel:up": "bash scripts/prod-remote.sh tunnel-up",
+    "prod:deploy": "bash scripts/fleet-deploy.sh deploy",
+    "prod:rollback": "bash scripts/fleet-deploy.sh rollback",
     "prod:smoke": "bash scripts/prod-remote.sh smoke",
     "prod:e2e": "bash scripts/prod-remote.sh e2e",
     "prod:setup": "bash scripts/prod-host-setup.sh",

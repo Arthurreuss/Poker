@@ -48,6 +48,8 @@
 | M5 | [WP-041](work-packages/WP-041.md) | Backups in iCloud Drive | done | WP-021, WP-022 |
 | M5 | [WP-042](work-packages/WP-042.md) | Prod auf den Mac Studio umziehen | done | WP-021, WP-041 |
 | M5 | [WP-043](work-packages/WP-043.md) | Backups im Server-Ordner, Secrets verschlüsselt sichern | done | WP-021, WP-042 |
+| M5 | [WP-044](work-packages/WP-044.md) | Prod läuft als Dienst-Nutzer fleet unter Colima | done | WP-042, WP-043 |
+| M5 | [WP-045](work-packages/WP-045.md) | Deploy und Rollback über die Warteschlange des Server-Verbunds | done | WP-044 |
 <!-- END GENERATED -->
 
 ## Meilensteine
@@ -71,6 +73,8 @@ Parallel in Arbeit (max. 5): WP-011 (Game-Server/WebSocket), WP-014 (Web-Grundge
 ## Log
 Neueste Einträge oben. Pro Session 1–3 Zeilen.
 
+- 2026-10-29: WP-045 done – Deploy und Rollback laufen als Nomad-Job `deploy-poker` des Server-Verbunds (D-039, fleet #13, #19): `scripts/deploy_job.sh`, `npm run prod:deploy` / `prod:rollback`, `release.sh` deployt über den Job. Tische bleiben im Server-Container, poker-prod läuft dauerhaft in der Prod-VM `prod-vm` mit (Arthur).
+- 2026-10-28: WP-044 done – prod läuft auf dem Studio als Dienst-Nutzer `fleet` ohne Anmeldung, Docker über Colima statt Docker Desktop (D-038, ersetzt Teile von D-036); Standardhost der `prod:*`-Skripte `fleet@areuss-studio.local`, Doku angepasst. Server bereits umgezogen; Skript-Änderung kommt mit dem nächsten Release auf den Studio.
 - 2026-10-28: WP-043 done – Backups standardmäßig in `/Users/Shared/fleet/backups/poker` (gemeinsamer Server-Ordner, stündlich auf den Partner-Server gespiegelt; D-037 ersetzt D-035), `.env.prod` wird nach jedem Backup verschlüsselt mitgesichert (Hook im Dienst `backup`), Datenschutzerklärung ohne Apple/iCloud. Noch nicht released; beim Release `SECRETS_BACKUP_PASSPHRASE` auf dem Studio setzen.
 - 2026-10-22: WP-042 done – prod läuft auf dem Mac Studio (`areuss-studio.local`, D-036 ersetzt D-017), MacBook nur noch Entwicklung; `prod:*` und `release` steuern den Studio per SSH. Daten umgezogen und geprüft, README mit Admin-Sonderfunktionen.
 - 2026-10-20: WP-041 done – Backups jetzt in iCloud Drive → `Backups/Poker` (D-035, ersetzt den Backup-Ort aus D-025), Datenschutzerklärung Abschnitt 9/11 angepasst, released.
