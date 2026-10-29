@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Deploy und Rollback von prod als Lauf der Warteschlange (D-039, fleet README Abschnitt 2a). Aufrufer ist der
+# Deploy und Rollback von prod als Lauf der Warteschlange (D-039, fleet README „Deploys“). Aufrufer ist der
 # Nomad-Job deploy-poker des Verbunds auf dem Studio, nicht ein Mensch: Er hat den Checkout (~fleet/poker) schon
 # geholt, beim Deploy auf origin/main vorgespult und geprüft, dass <ref> auf main liegt; DOCKER_HOST zeigt auf die
 # Prod-VM. Von hier aus: npm run prod:deploy / prod:rollback (scripts/fleet-deploy.sh).
