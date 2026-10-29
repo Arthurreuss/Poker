@@ -49,6 +49,8 @@ cp .env.prod.example .env.prod && chmod 600 .env.prod
 ```sh
 npm run prod:up          # baut die Images auf dem Studio (main) und startet db, server, web, backup, logrotate (ohne Tunnel); wartet auf healthy
 npm run prod:tunnel:up   # wie prod:up, zusätzlich cloudflared (braucht TUNNEL_TOKEN)
+npm run prod:deploy [-- <commit>]  # Deploy über die Warteschlange des Server-Verbunds (siehe Deploy-Job), ohne Commit: main
+npm run prod:rollback -- <commit>  # Rollback über die Warteschlange: prod aus einem früheren main-Stand bauen
 npm run prod:smoke       # Smoke-Test: /api/health und WebSocket (401 ohne Session, 403 fremde Origin), über die SSH-Weiterleitung
 npm run prod:e2e         # E2E-Smoke-Test im Browser: zwei Test-Konten spielen eine Runde, danach gelöscht (siehe Release)
 npm run prod:status      # Zustandsbericht (siehe Status)
@@ -67,11 +69,11 @@ npm run prod:ssh         # Shell im Checkout auf dem Studio
 
 ## Release
 `npm run release` (Skript `scripts/release.sh`) auf dem MacBook – der Arbeitsordner wird dabei **nicht** umgeschaltet:
-1. prüft: Arbeitsordner auf `dev` und sauber; Checkout auf dem Studio erreichbar, auf `main`, ohne lokale Änderungen, mit `.env.prod`
+1. prüft: Arbeitsordner auf `dev` und sauber; Checkout auf dem Studio erreichbar, ohne lokale Änderungen, mit `.env.prod` (auf `main` muss er nicht stehen, nach einem Rollback ist er detached)
 2. `npm run check` im Arbeitsordner
 3. bringt das lokale `main` auf `origin/main` (nur Fast-Forward), merkt sich diesen Stand (Ziel eines Rollbacks), dann Merge in einem temporären Worktree: `merge --no-ff dev` (Merge-Commit „Release: merge dev → main“; ein Merge löst den Pre-Commit-Hook nicht aus). Schlägt der Merge fehl, wird er abgebrochen und `main` bleibt unverändert.
 4. `git push origin main dev`
-5. auf dem Studio: `git merge --ff-only origin/main`, dann prod neu bauen und starten: `prod:tunnel:up`, wenn `TUNNEL_TOKEN` gesetzt ist, sonst `prod:up`
+5. Deploy über die Warteschlange (`npm run prod:deploy -- <neuer main>`, siehe Deploy-Job): der Job spult den Checkout auf dem Studio auf `origin/main` vor und baut prod neu – mit Tunnel, wenn `TUNNEL_TOKEN` gesetzt ist. Scheitert er, bricht der Release ab und nennt den Rollback.
 6. Prüfung des neuen prod (`scripts/release-verify.sh`): erst `prod:smoke`, dann `prod:e2e`. Schlägt einer fehl, bricht der Release mit Exit-Code 1 ab und gibt die Rollback-Befehle aus (siehe unten).
 
 Vorher dev lokal per Docker getestet haben (D-005), am besten auch mit dem E2E-Test: `npm run test:e2e -w @poker/web` (gegen http://localhost:4310).
@@ -91,14 +93,21 @@ npm run test:e2e -w @poker/web -- --repeat-each=10  # Stabilität prüfen
 ### Release abgebrochen – Rollback
 Schlägt Smoke-Test oder E2E fehl, steht `main` schon auf dem neuen Stand (gepusht) und prod läuft damit. Das Skript nennt den vorherigen Stand `<vorher>` und die Befehle:
 1. Erst prüfen, ob der Fehler bleibt: `npm run prod:e2e` bzw. `npm run prod:smoke` (Fehlerbericht siehe oben).
-2. Zurückrollen – prod aus dem vorherigen Commit neu bauen:
+2. Zurückrollen – prod aus dem vorherigen Commit neu bauen, über den Deploy-Job:
    ```sh
-   ssh fleet@areuss-studio.local 'cd ~/poker && git checkout --detach <vorher>'
-   npm run prod:tunnel:up     # bzw. prod:up ohne Tunnel
+   npm run prod:rollback -- <vorher>
    npm run prod:smoke
    ```
-3. Fehler auf dev beheben. Vor dem nächsten Release den Studio-Checkout zurück auf `main` setzen (`release` verlangt das): `ssh fleet@areuss-studio.local 'cd ~/poker && git checkout main'`, dann `npm run release`.
+3. Fehler auf dev beheben, dann `npm run release`; der Deploy-Job setzt den Studio-Checkout dabei von selbst zurück auf `main`.
 4. Hat der neue Stand Datenbank-Migrationen ausgeführt, läuft der alte Server auf dem neueren Schema. Migrationen sind bisher nur additiv; im Zweifel das letzte Backup einspielen (`npm run prod:restore`, siehe Restore).
+
+### Deploy-Job (WP-045, D-039)
+Deploy und Rollback laufen als Lauf der Warteschlange des Server-Verbunds (Nomad-Job `deploy-poker`, fleet-Repo, README Abschnitt 2a), nicht per ssh: Log und Ergebnis stehen in der Nomad-UI (`http://100.116.114.9:4646`, nur Tailnet) und in Grafana (Warteschlange, Tabelle „Deploys“), zwei Läufe zugleich gibt es nicht.
+- `npm run prod:deploy [-- <commit>]` und `npm run prod:rollback -- <commit>` (`scripts/fleet-deploy.sh`) starten den Lauf mit `fleet.py deploy poker …` aus dem fleet-Checkout (`~/code/Arthurreuss/fleet`, anders: `POKER_FLEET_DIR`) und zeigen sein Log; Strg-C lässt ihn weiterlaufen. Braucht Tailscale und `uv`.
+- Der Job läuft auf dem Studio als `fleet`: Checkout sauber? `git fetch`, beim Deploy Vorspulen auf `origin/main`; der Commit muss auf `main` liegen. Dann `scripts/deploy_job.sh deploy|rollback [<commit>]`: setzt den Checkout (detached) auf den Commit, wenn er nicht `HEAD` ist, und startet `prod.sh tunnel-up` (mit `TUNNEL_TOKEN`) bzw. `up` mit dem Docker der Prod-VM.
+- Exit: 0 gut, 1 Start fehlgeschlagen (`npm run prod:status`, `prod:logs`), 2 Aufruf ungültig (Commit unbekannt oder nicht auf `main`), 75 nicht gestartet, nichts verändert (schon ein Lauf offen, `.env.prod` fehlt, Checkout hat Änderungen, Nomad nicht erreichbar).
+- Ein Rollback baut nur Images und Container aus dem alten Stand; die Datenbank bleibt (siehe „Release abgebrochen“, Punkt 4). Restore bleibt `npm run prod:restore`.
+- Ohne Warteschlange (Nomad weg): `ssh fleet@areuss-studio.local 'cd ~/poker && git fetch -q origin main && git checkout --detach <commit>'`, dann `npm run prod:tunnel:up` (bzw. `prod:up`) – der nächste Deploy setzt den Checkout zurück auf `main`.
 
 ## Cloudflare-Tunnel einrichten (Arthur, einmalig)
 Poker bekommt einen **eigenen** Tunnel mit eigenem `cloudflared`-Container im Projekt `poker-prod` (D-014). Der Jarvis-Tunnel und sein Container bleiben unberührt – nichts davon anfassen oder umkonfigurieren.

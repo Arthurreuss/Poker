@@ -1,5 +1,5 @@
 // Release-Prüfung nach dem prod-Neustart (WP-020): Smoke-Test, dann E2E; schlägt einer fehl, bricht der Release
-// mit Rollback-Hinweis für den Studio ab (D-036). Trocken getestet – Smoke/E2E sind durch Stub-Befehle ersetzt, prod bleibt unberührt.
+// mit Rollback-Hinweis über den Deploy-Job ab (D-039). Trocken getestet – Smoke/E2E sind durch Stub-Befehle ersetzt, prod bleibt unberührt.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
@@ -12,11 +12,11 @@ const script = fileURLToPath(new URL('../release-verify.sh', import.meta.url));
 const release = readFileSync(new URL('../release.sh', import.meta.url), 'utf8');
 
 /** Führt release-verify.sh mit Stub-Befehlen aus; `ran` sagt, welche Schritte gelaufen sind. */
-function verify({ smoke, e2e, upScript = 'prod:tunnel:up' }) {
+function verify({ smoke, e2e }) {
   const dir = mkdtempSync(join(tmpdir(), 'release-verify-'));
   try {
     const mark = (name, ok) => `touch "${join(dir, name)}" && ${ok ? 'true' : 'false'}`;
-    const res = spawnSync('bash', [script, 'abc1234', upScript, 'def5678'], {
+    const res = spawnSync('bash', [script, 'abc1234', 'def5678'], {
       encoding: 'utf8',
       env: {
         ...process.env,
@@ -50,30 +50,29 @@ test('E2E rot: Release bricht ab und nennt den Rollback', () => {
   assert.equal(res.status, 1);
   assert.match(res.stderr, /Release abgebrochen: E2E-Test fehlgeschlagen/);
   assert.match(res.stderr, /main \(def5678\) ist gemergt/);
-  assert.match(res.stderr, /ssh studio\.test 'cd ~\/poker && git checkout --detach abc1234'/);
-  assert.match(res.stderr, /npm run prod:tunnel:up/);
-  assert.match(res.stderr, /ssh studio\.test 'cd ~\/poker && git checkout main'/);
+  assert.match(res.stderr, /npm run prod:rollback -- abc1234\n/);
+  assert.doesNotMatch(res.stderr, /ssh /, 'Rollback über den Deploy-Job, nicht per ssh');
   assert.match(res.stderr, /npm run prod:e2e/);
 });
 
-test('Smoke rot: E2E läuft gar nicht erst, Rollback-Hinweis mit prod:up', () => {
-  const res = verify({ smoke: false, e2e: true, upScript: 'prod:up' });
+test('Smoke rot: E2E läuft gar nicht erst, Rollback-Hinweis', () => {
+  const res = verify({ smoke: false, e2e: true });
   assert.equal(res.status, 1);
   assert.deepEqual(res.ran, ['smoke']);
   assert.match(res.stderr, /Release abgebrochen: Smoke-Test fehlgeschlagen/);
-  assert.match(res.stderr, /npm run prod:up\n/);
+  assert.match(res.stderr, /npm run prod:rollback -- abc1234\n/);
 });
 
-test('release.sh merkt sich main vor dem Merge, pusht vor dem Pull auf dem Studio und prüft danach', () => {
+test('release.sh merkt sich main vor dem Merge, deployt nach dem Push über den Deploy-Job und prüft danach', () => {
   const prev = release.indexOf('PREV_MAIN="$(git rev-parse --short main)"');
   const merge = release.indexOf('merge --no-ff');
   const push = release.indexOf('git push origin main dev');
-  const pull = release.indexOf('git merge -q --ff-only origin/main');
-  const up = release.indexOf('prod_remote_script prod.sh "$UP_ACTION"');
-  const check = release.indexOf('bash scripts/release-verify.sh "$PREV_MAIN" "$UP_SCRIPT" "$NEW_MAIN"');
+  const deploy = release.indexOf('bash scripts/fleet-deploy.sh deploy "$NEW_MAIN"');
+  const check = release.indexOf('bash scripts/release-verify.sh "$PREV_MAIN" "$NEW_MAIN"');
   assert.ok(prev > 0 && merge > prev, 'PREV_MAIN vor dem Merge');
-  assert.ok(push > merge && pull > push, 'Studio holt main erst nach dem Push');
-  assert.ok(up > pull && check > up, 'Prüfung nach dem prod-Start');
+  assert.ok(push > merge && deploy > push, 'Deploy erst nach dem Push (der Job holt main von origin)');
+  assert.ok(check > deploy, 'Prüfung nach dem Deploy');
+  assert.ok(!release.includes('prod_remote_script prod.sh'), 'prod startet nicht mehr per ssh');
   assert.match(release, /^set -euo pipefail$/m, 'Fehler der Prüfung bricht den Release ab');
   assert.ok(!release.slice(check).includes('prod:smoke'), 'Smoke-Test nur noch über release-verify.sh');
 });

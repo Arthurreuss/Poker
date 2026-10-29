@@ -49,6 +49,7 @@
 | M5 | [WP-042](work-packages/WP-042.md) | Prod auf den Mac Studio umziehen | done | WP-021, WP-041 |
 | M5 | [WP-043](work-packages/WP-043.md) | Backups im Server-Ordner, Secrets verschlüsselt sichern | done | WP-021, WP-042 |
 | M5 | [WP-044](work-packages/WP-044.md) | Prod läuft als Dienst-Nutzer fleet unter Colima | done | WP-042, WP-043 |
+| M5 | [WP-045](work-packages/WP-045.md) | Deploy und Rollback über die Warteschlange des Server-Verbunds | review | WP-044 |
 <!-- END GENERATED -->
 
 ## Meilensteine

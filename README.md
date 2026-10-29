@@ -36,7 +36,8 @@ Nach Änderungen an Abhängigkeiten `npm run dev:up` erneut ausführen (baut das
 prod läuft auf dem Mac Studio (`areuss-studio.local`) als Dienst-Nutzer `fleet` aus einem Checkout von `main` unter `~fleet/poker` (D-036, D-038). Das MacBook ist nur Entwicklungsrechner: Alle Befehle unten laufen dort im Arbeitsordner und steuern den Studio per SSH.
 ```sh
 npm run prod:setup               # einmalig: main auf dem Studio (als fleet) klonen, dann dort .env.prod anlegen (npm run prod:ssh)
-npm run release                  # dev → main mergen, pushen, Studio holt main, baut neu, Smoke- und E2E-Test
+npm run release                  # dev → main mergen, pushen, Deploy über die Warteschlange (D-039), Smoke- und E2E-Test
+npm run prod:rollback -- <commit> # prod aus einem früheren main-Stand bauen (Deploy-Job)
 npm run prod:status              # Container, letztes Backup, Health
 npm run prod:smoke               # Health + WebSocket prüfen (über eine SSH-Portweiterleitung)
 npm run prod:e2e                 # Browser-Test: zwei Test-Konten spielen eine Runde (WP-020)
