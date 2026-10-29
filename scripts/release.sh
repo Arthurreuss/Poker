@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Release dev → main (D-005) und Neustart von prod auf dem Mac Studio (D-036). Aufruf: npm run release
-# Der Arbeitsordner bleibt auf dev; gemergt wird in einem temporären Worktree, danach holt der Studio main per
-# git pull (nur Fast-Forward) und baut prod neu. Ablauf: docs/OPERATIONS.md, Abschnitt "Release".
+# Der Arbeitsordner bleibt auf dev; gemergt wird in einem temporären Worktree, danach baut der Deploy-Job des
+# Server-Verbunds (D-039) prod auf dem Studio aus dem neuen main. Ablauf: docs/OPERATIONS.md, Abschnitt "Release".
 set -euo pipefail
 cd "$(dirname "$0")/.."
 . scripts/lib/prod-host.sh
@@ -15,14 +15,14 @@ fail() {
 [ "$(git symbolic-ref --short HEAD 2>/dev/null)" = dev ] || fail "Release nur von dev aus (git checkout dev)."
 [ -z "$(git status --porcelain)" ] || fail "Arbeitsverzeichnis nicht sauber – erst committen oder stashen."
 
-# 2. prod-Checkout auf dem Studio: erreichbar, auf main, ohne lokale Änderungen (.env.prod ist gitignored).
+# 2. prod-Checkout auf dem Studio: erreichbar, ohne lokale Änderungen (.env.prod ist gitignored). Auf main muss er
+#    nicht stehen: Nach einem Rollback ist er detached, der Deploy-Job setzt ihn zurück auf main.
 echo "→ prod-Host $POKER_PROD_HOST prüfen"
-remote_state="$(prod_remote "git symbolic-ref --short HEAD 2>/dev/null; git status --porcelain | wc -l | tr -d ' '; test -f .env.prod && echo env" 2>/dev/null)" ||
+remote_state="$(prod_remote "git status --porcelain | wc -l | tr -d ' '; test -f .env.prod && echo env" 2>/dev/null)" ||
   fail "prod-Checkout auf $POKER_PROD_HOST nicht erreichbar (~/$POKER_PROD_REMOTE_DIR) – einmalig: npm run prod:setup"
-[ "$(echo "$remote_state" | sed -n 1p)" = main ] || fail "~/$POKER_PROD_REMOTE_DIR auf $POKER_PROD_HOST ist nicht auf main."
-[ "$(echo "$remote_state" | sed -n 2p)" = 0 ] ||
+[ "$(echo "$remote_state" | sed -n 1p)" = 0 ] ||
   fail "~/$POKER_PROD_REMOTE_DIR auf $POKER_PROD_HOST hat lokale Änderungen – dort wird nie gearbeitet; prüfen und verwerfen."
-[ "$(echo "$remote_state" | sed -n 3p)" = env ] || fail ".env.prod fehlt auf $POKER_PROD_HOST (siehe docs/OPERATIONS.md)."
+[ "$(echo "$remote_state" | sed -n 2p)" = env ] || fail ".env.prod fehlt auf $POKER_PROD_HOST (siehe docs/OPERATIONS.md)."
 
 echo "→ npm run check"
 npm run check
@@ -47,20 +47,13 @@ NEW_MAIN="$(git rev-parse --short main)"
 echo "→ push main und dev"
 git push origin main dev
 
-# 4. Studio holt main und baut prod neu (mit Tunnel, wenn TUNNEL_TOKEN gesetzt ist).
-echo "→ $POKER_PROD_HOST: git pull (main $NEW_MAIN)"
-prod_remote "git fetch -q origin main && git merge -q --ff-only origin/main"
-if [ -n "$(prod_remote_env_value TUNNEL_TOKEN)" ]; then
-  UP_SCRIPT=prod:tunnel:up
-  UP_ACTION=tunnel-up
-else
-  UP_SCRIPT=prod:up
-  UP_ACTION=up
-fi
-echo "→ $UP_SCRIPT auf $POKER_PROD_HOST (baut aus main)"
-prod_remote_script prod.sh "$UP_ACTION"
+# 4. Deploy über die Warteschlange (D-039): Der Job deploy-poker spult den Checkout auf dem Studio auf main vor und
+#    baut prod aus $NEW_MAIN neu (scripts/deploy_job.sh, mit Tunnel, wenn TUNNEL_TOKEN gesetzt ist).
+echo "→ Deploy $NEW_MAIN auf $POKER_PROD_HOST (Nomad-Job deploy-poker)"
+bash scripts/fleet-deploy.sh deploy "$NEW_MAIN" ||
+  fail "Deploy fehlgeschlagen (Log oben, Nomad-UI: Job deploy-poker). main ($NEW_MAIN) ist gepusht; prod prüfen: npm run prod:status – zurück: npm run prod:rollback -- $PREV_MAIN"
 
 # 5. Smoke-Test und E2E gegen das neue prod (WP-020); bei Fehler Abbruch mit Rollback-Hinweis.
-bash scripts/release-verify.sh "$PREV_MAIN" "$UP_SCRIPT" "$NEW_MAIN"
+bash scripts/release-verify.sh "$PREV_MAIN" "$NEW_MAIN"
 
 echo "✓ Release fertig. Arbeitsordner weiter auf dev, prod läuft auf $POKER_PROD_HOST ($NEW_MAIN)."
