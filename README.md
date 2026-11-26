@@ -40,7 +40,7 @@ npm run release                  # dev → main mergen, pushen, Deploy über die
 npm run prod:rollback -- <commit> # prod aus einem früheren main-Stand bauen (Deploy-Job)
 npm run prod:status              # Container, letztes Backup, Health
 npm run prod:smoke               # Health + WebSocket prüfen (über eine SSH-Portweiterleitung)
-npm run prod:e2e                 # Browser-Test: zwei Test-Konten spielen eine Runde (WP-020)
+npm run prod:e2e                 # Browser-Test: zwei Test-Konten spielen eine Runde
 npm run prod:logs                # Container-Logs folgen
 npm run prod:compose -- ps       # beliebiger docker-compose-Befehl für poker-prod auf dem Studio
 npm run prod:tunnel:up / prod:down
@@ -87,4 +87,4 @@ npm run prod:compose -- exec server node cli/feedback.mjs [--status new|read|don
 Feedback lässt sich auch im Browser unter `/admin/feedback` lesen und dort auf gelesen/erledigt setzen (Details: [docs/OPERATIONS.md](docs/OPERATIONS.md#feedback-lesen)).
 Im dev-Container geht es auch ohne `DATABASE_URL` (ist dort gesetzt): `docker compose -p poker-dev exec server npm run admin:reset-password -w @poker/server -- <benutzername>`. Exit-Code `1` bei unbekanntem User oder ungültigem Passwort, `2` bei falschem Aufruf.
 
-Arbeitsweise, Stand und Entscheidungen: [CLAUDE.md](CLAUDE.md) → [docs/WORKFLOW.md](docs/WORKFLOW.md), [docs/PROGRESS.md](docs/PROGRESS.md), [docs/DECISIONS.md](docs/DECISIONS.md).
+Arbeitsweise: [CLAUDE.md](CLAUDE.md) → [.agents/project.md](.agents/project.md) (Anbindung an fleet); Entscheidungen: [docs/DECISIONS.md](docs/DECISIONS.md); Arbeitsstand: GitHub-Issues.

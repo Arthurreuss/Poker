@@ -1,0 +1,56 @@
+# Was der Verbund vom Projekt weiß. Der Merge-Zug von fleet liest [zug] aus dem Checkout des
+# Ziel-Branches (fleet-Repo docs/merge-zug.md „Projekt“, „Haken“, „Ergebnisdatei“). Einreihen:
+#   uv run --python 3.12 --no-project <fleet>/fleet.py zug enqueue --ticket <nr>
+
+[zug]
+projekt = "poker"                  # Eintrag in zug.toml von fleet
+# Prüfbefehle im Checkout des geprüften Stands (Python 3.12 steht im Zug vorn im PATH):
+# Exit 0 grün, 75 Warteschlange nicht nutzbar, sonst rot; scripts/pruefung.py schreibt die
+# Ergebnisdatei nach FLEET_PRUEFUNG_ERGEBNIS. Prüft das Projekt nur Geändertes, gehört das in
+# `pruefen_geaendert` ({basis} wird origin/<Ziel>); bis dahin prüft es immer alles. Anfangs ist nur
+# die Stufe `static` eingerichtet; jede weitere kommt hierher, sobald scripts/ci_job.sh sie prüft
+# (.agents/rules/testing.md „Stufen“).
+pruefen_voll = ["python3", "scripts/pruefung.py", "static"]
+pruefen_geaendert = ["python3", "scripts/pruefung.py", "static"]
+pruefen_stufen = ["python3", "scripts/pruefung.py", "{stufen}"]   # rote Stufen, Suche nach dem Schuldigen
+voll_wenn = ["scripts/.*", "fleet\\.toml", "\\.github/workflows/.*"]   # Pfade, bei denen voll geprüft wird
+ticket = "Refs #{ticket}"              # trägt ein Commit `Closes #<nr>`, steht `Closes #<nr>` im PR
+# Haken nach dem Rebase (fleet-Repo docs/merge-zug.md „Haken“): vergibt die ADR-Nummern und erzeugt
+# den ADR-Index neu. Eigene Haken kommen dazu.
+nach_rebase = [["python3", "{repo}/scripts/adr.py", "nach-rebase"]]
+
+[zug.umgebung]                         # für jeden Prüflauf des Zugs (scripts/pruefung.py)
+PRUEFUNG_QUELLE = "merge-zug"          # Priorität des Zugs in Nomad
+PRUEFUNG_BRANCH = "{branches}"
+PRUEFUNG_LOGS = "{logs}"
+
+# Auflöser: Dateien, die der Zug im Rebase selbst zusammensetzt und neu berechnet
+# (fleet-Repo docs/merge-zug.md „Auflöser“), z. B. Zähler und erzeugte Indizes.
+[[zug.aufloeser]]                      # ADR-Index: Fassung des Ziels, der Haken erzeugt ihn neu
+dateien = ["docs/DECISIONS.md"]
+nehmen = "ziel"
+
+# Weitere bei Bedarf:
+# [[zug.aufloeser]]
+# dateien = ["<pfad oder muster>"]
+# nehmen = "beide"                     # beide | ziel | branch
+# befehl = ["python3", "{repo}/scripts/<rechnet neu>.py", "{datei}"]
+
+[agenten]                              # liest der Orchestrierer (.claude/skills/orchestrierer/)
+bau_agenten = 3                        # Bau-Agenten zugleich
+vorrat_min = 5                         # weniger bereite Tickets: Orchestrierer weckt den Planer („Vorrat“)
+ziel_branches = ["dev", "main"]        # Ziel-Branches der Befehlssperre (sonst main, master)
+# Startbefehl der Sitzungen aus scripts/start.sh (Vorgaben im Kopf des Skripts):
+start_profil = "~/.claude-poker"   # CLAUDE_CONFIG_DIR, legt `fleet.py projekt anlegen` an
+autocompact_fenster = 300000           # trägt `projekt anlegen` als autoCompactWindow ins Profil ein
+# start_argumente = ["--dangerously-skip-permissions"]   # Vorgabe: ohne Rückfragen; [] fragt nach
+
+# Befehlssperre (.claude/hooks/befehlssperre.toml), bei Bedarf: Regeln aus fleet abschalten, nur mit
+# Begründung (scripts/check_gespiegelt.py zeigt sie an), und eigene Regeln mit denselben Feldern.
+# [agenten.befehlssperre_aus]
+# <name> = "<warum das Projekt sie nicht braucht>"
+# [[agenten.befehlssperre]]
+# name = "<name>"
+# muster = '<regulärer Ausdruck auf den Teilbefehl>'
+# grund = "<warum gesperrt>"
+# weg = "<was stattdessen erlaubt ist>"

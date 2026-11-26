@@ -37,7 +37,7 @@ Workspaces importieren sich gegenseitig über den Paketnamen; `@poker/engine` ex
 ## Tooling
 - **TypeScript:** `tsconfig.base.json` (strict, ES2023, `moduleResolution: Bundler`, `noEmit`), je Workspace eine `tsconfig.json`, die sie erweitert. Typecheck per `tsc --noEmit` pro Workspace.
 - **Lint:** ESLint Flat Config (`eslint.config.js`) mit `typescript-eslint` (`strictTypeChecked`), Warnungen gelten als Fehler.
-- **Format:** Prettier (`.prettierrc.json`); Markdown ist ausgenommen, weil `PROGRESS.md` eine generierte Tabelle enthält.
+- **Format:** Prettier (`.prettierrc.json`); Markdown ist ausgenommen (die aus fleet gespiegelten Dateien dürfen nicht umformatiert werden).
 - **Tests:** Vitest; `vitest.config.ts` im Root fasst alle Workspaces als Projekte zusammen. Die Doku-Check-Tests in `scripts/test/` laufen mit `node --test`.
 
 ## npm-Skripte (Root)
@@ -58,7 +58,7 @@ Workspaces importieren sich gegenseitig über den Paketnamen; `@poker/engine` ex
 | `lint` | ESLint über das ganze Repo |
 | `format` / `format:check` | Prettier schreiben bzw. prüfen |
 | `test` | Doku-Check-Tests (`node --test`) + Vitest aller Workspaces |
-| `docs:check` / `docs:sync` | Doku-Konsistenz prüfen bzw. PROGRESS-Tabelle generieren |
+| `docs:check` | Doku-Konsistenz prüfen (D-Nummern fortlaufend, relative Links) |
 | `check` | `docs:check` + `format:check` + `typecheck` + `lint` + `test` (läuft im Pre-Commit-Hook) |
 
 In einem Workspace gehen auch `npm run typecheck` und `npm test` einzeln (oder vom Root aus mit `-w @poker/engine`).
@@ -783,14 +783,16 @@ dev: Browser → `http://localhost:4310` (Vite im `web`-Container). Anfragen an 
 
 ## Verzeichnisstruktur
 ```
-CLAUDE.md               Einstieg, harte Regeln
+CLAUDE.md               Einstieg: verweist auf .agents/project.md
+.agents/                Arbeitsweise der Agenten (fleet/ gespiegelt aus fleet, rules/ eigen)
+.claude/                Rollen und Befehlssperre (gespiegelt aus fleet), settings.json
+fleet.toml              Merge-Zug und Agenten im fleet-Verbund
 docs/
-  WORKFLOW.md           Arbeitsweise
-  PROGRESS.md           Stand (Tabelle generiert)
-  DECISIONS.md          Entscheidungen
+  DECISIONS.md          Entscheidungen D-001… und ADR-Index
+  adr/                  ADRs (ab der Anbindung an fleet)
+  PRODUCT.md            Vision und Nutzerpfade
   ARCHITECTURE.md       diese Datei
   OPERATIONS.md         Betrieb: Start/Stopp, Release, Tunnel, Backup/Restore, Status, Logs, Neustart
-  work-packages/        ein WP pro Datei
 packages/
   engine/               @poker/engine – Poker-Logik (src/, Tests als *.test.ts daneben)
 apps/
@@ -807,7 +809,10 @@ compose.prod.yml        Prod-Umgebung (poker-prod)
 .env.example            alle Umgebungsvariablen mit Defaults (dev)
 .env.prod.example       Vorlage für .env.prod (prod, gitignored)
 scripts/
-  docs.mjs              Doku-Check und -Sync
+  docs.mjs              Doku-Check (D-Nummern, Links)
+  ci_job.sh, pruefung.py  Prüfstufen für Commit-Hook und Merge-Zug (static: Wächter)
+  check_*.py, adr.py    Wächter der fleet-Vorlage (Drift, Struktur nach struktur.toml, Gespiegeltes, ADRs)
+  start.sh              Planer und Orchestrierer im Profil ~/.claude-poker öffnen
   lib/prod-env.sh       gemeinsame Helfer der prod-Skripte auf dem Studio (Checkout, .env.prod, BACKUP_DIR)
   lib/prod-host.sh      SSH-Verbindung zum Studio (POKER_PROD_HOST, POKER_PROD_REMOTE_DIR)
   prod-remote.sh        npm run prod:* – führt die prod-Skripte per SSH auf dem Studio aus; smoke/e2e lokal
@@ -820,7 +825,7 @@ scripts/
   smoke-prod.mjs        Smoke-Test prod (Health + WebSocket)
   release.sh            Release dev → main, danach Neustart auf dem Studio
   test/                 Tests für die Skripte
-.githooks/pre-commit    blockiert Commits auf main, führt npm run check aus
+.githooks/pre-commit    blockiert Commits auf main, prüft die Stufe static und npm run check
 package.json            Workspaces und npm-Skripte
 tsconfig.base.json      gemeinsame TypeScript-Einstellungen
 eslint.config.js        ESLint (Flat Config)

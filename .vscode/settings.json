@@ -1,5 +1,5 @@
 {
-  // Parallele WP-Sessions arbeiten in .claude/worktrees/ (je eine volle Projektkopie mit node_modules).
+  // Parallele Sitzungen der Agenten arbeiten in .claude/worktrees/ (je eine volle Projektkopie mit node_modules).
   // VS Code soll sie weder beobachten, durchsuchen noch als eigene Git-Repos öffnen.
   "files.watcherExclude": {
     "**/.claude/worktrees/**": true,
