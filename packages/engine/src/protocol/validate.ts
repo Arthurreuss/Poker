@@ -203,6 +203,7 @@ const MESSAGE_TYPES: ReadonlySet<string> = new Set<ClientMessageType>([
   'table.create',
   'table.join',
   'table.leave',
+  'table.unwatch',
   'table.sit',
   'table.stand',
   'table.start',
@@ -233,6 +234,7 @@ function message(o: Obj, type: ClientMessageType): ClientMessage {
       return { type, inviteCode: code };
     }
     case 'table.leave':
+    case 'table.unwatch':
     case 'table.stand':
     case 'table.start':
     case 'table.rematch':

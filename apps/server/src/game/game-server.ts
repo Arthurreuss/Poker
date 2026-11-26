@@ -51,8 +51,8 @@ export const DEFAULT_DISCONNECT_GRACE_MS = 3000;
 export const DEFAULT_ORPHAN_TIMEOUT_MS = 10 * 60_000;
 
 /**
- * Offene oder beendete Tische ohne Beobachter bleiben so lange im Speicher, damit ein Reload, der
- * Wechsel Lobby → Tisch (neue WebSocket-Verbindung) oder das Teilen des Einladungslinks den Tisch nicht schließt.
+ * Offene oder beendete Tische ohne Beobachter bleiben so lange im Speicher, damit ein Reload, ein
+ * Verbindungsabbruch, `table.unwatch` (Tischseite verlassen) oder das Teilen des Einladungslinks den Tisch nicht schließt.
  * Ein explizites `table.leave` des letzten Beobachters räumt einen leeren offenen bzw. beendeten Tisch sofort auf.
  */
 export const DEFAULT_IDLE_TABLE_TIMEOUT_MS = 10 * 60_000;
@@ -346,6 +346,9 @@ export class GameServer {
         this.send(client, { type: 'table.left', tableId: msg.tableId });
         return OK;
       }
+      case 'table.unwatch':
+        if (client.tables.has(msg.tableId)) this.unwatch(client, msg.tableId, false);
+        return OK;
       case 'table.sit':
         return this.withTable(client, msg.tableId, (t) => t.sit(client.user, msg.seat, client.avatar));
       case 'table.stand':

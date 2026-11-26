@@ -31,6 +31,30 @@ describe('GameConnection – Handshake', () => {
     expect(connection.send({ type: 'lobby.subscribe' })).toBe(true);
   });
 
+  it('zählt Beobachter je Tisch: join je Beobachter, table.unwatch erst nach dem letzten, leave für alle', () => {
+    const { connection, last, connect } = setup();
+    connection.start();
+    connect();
+    connection.watchTable(7);
+    connection.watchTable(7);
+    connection.unwatchTable(7);
+    expect(last().types()).toEqual(['hello', 'table.join', 'table.join']);
+    connection.unwatchTable(7);
+    connection.unwatchTable(7);
+    expect(last().types()).toEqual(['hello', 'table.join', 'table.join', 'table.unwatch']);
+    expect(last().sent.at(-1)).toEqual({ type: 'table.unwatch', tableId: 7 });
+
+    connection.watchTable(8);
+    connection.watchTable(8);
+    connection.unwatchTable(8, true);
+    expect(last().sent.at(-1)).toEqual({ type: 'table.leave', tableId: 8 });
+    connection.unwatchTable(8);
+    last().serverClose(1006);
+    vi.advanceTimersByTime(DEFAULT_BACKOFF.initialMs);
+    connect();
+    expect(last().types()).toEqual(['hello']);
+  });
+
   it('meldet Nachrichten an alle Abonnenten', () => {
     const { connection, last, connect } = setup();
     const seen: string[] = [];

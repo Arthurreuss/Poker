@@ -24,6 +24,7 @@ describe('parseClientMessage', () => {
     [{ type: 'table.join', tableId: 3 }],
     [{ type: 'table.join', inviteCode: 'abc_DEF-123' }],
     [{ type: 'table.leave', tableId: 3 }],
+    [{ type: 'table.unwatch', tableId: 3 }],
     [{ type: 'table.sit', tableId: 3, seat: 8 }],
     [{ type: 'table.stand', tableId: 3 }],
     [{ type: 'table.start', tableId: 3 }],

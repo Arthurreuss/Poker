@@ -1,5 +1,6 @@
 // WebSocket-Verbindung zum Game-Server: `hello`, Wiederverbinden mit exponentiellem Backoff,
 // Abbruch-Erkennung (Heartbeat auf Anwendungsebene) und erneutes Beitreten zu beobachteten Tischen.
+// Die App hat genau eine davon (`ConnectionProvider`, ADR XXXX); Lobby, Tisch und Zug-Hinweis teilen sie.
 // Framework-unabhängig und mit injizierbarem Socket testbar. Beschreibung: ARCHITECTURE.md,
 // „Frontend: Spielablauf und Verbindung“.
 import {
@@ -139,7 +140,8 @@ export class GameConnection {
   private retryTimer: ReturnType<typeof setTimeout> | null = null;
   private idleTimer: ReturnType<typeof setTimeout> | null = null;
   private probeTimer: ReturnType<typeof setTimeout> | null = null;
-  private readonly tables = new Set<number>();
+  /** Beobachtete Tische mit der Zahl ihrer Beobachter in der App (Tischseite, Zug-Hinweis, Lobby). */
+  private readonly tables = new Map<number, number>();
   private readonly messageListeners = new Set<Listener<ServerMessage>>();
   private readonly statusListeners = new Set<Listener<ConnectionStatus>>();
   private readonly backoff: BackoffOptions;
@@ -220,17 +222,35 @@ export class GameConnection {
     return true;
   }
 
-  /** Tisch beobachten – auch über Abbrüche hinweg (nach dem Wiederverbinden erneut `table.join`). */
+  /**
+   * Tisch beobachten – auch über Abbrüche hinweg (nach dem Wiederverbinden erneut `table.join`).
+   * Mehrere Teile der App dürfen denselben Tisch beobachten; jeder gibt ihn mit `unwatchTable` frei.
+   * Jeder neue Beobachter schickt `table.join`, damit er sofort den aktuellen Zustand bekommt (der Server
+   * antwortet einem schon beobachtenden Client nur mit `table.state`).
+   */
   watchTable(tableId: number): void {
-    if (this.tables.has(tableId)) return;
-    this.tables.add(tableId);
+    this.tables.set(tableId, (this.tables.get(tableId) ?? 0) + 1);
     this.send({ type: 'table.join', tableId });
   }
 
-  /** Nicht mehr automatisch beitreten; `leave` schickt zusätzlich `table.leave`. */
+  /**
+   * Einen Beobachter freigeben. Geht der letzte, schickt sie `table.unwatch` (der Server behandelt das
+   * wie einen Abbruch für diesen Tisch). `leave` verlässt den Tisch für die ganze App (`table.leave`).
+   */
   unwatchTable(tableId: number, leave = false): void {
+    const count = this.tables.get(tableId);
+    if (leave) {
+      this.tables.delete(tableId);
+      this.send({ type: 'table.leave', tableId });
+      return;
+    }
+    if (count === undefined) return;
+    if (count > 1) {
+      this.tables.set(tableId, count - 1);
+      return;
+    }
     this.tables.delete(tableId);
-    if (leave) this.send({ type: 'table.leave', tableId });
+    this.send({ type: 'table.unwatch', tableId });
   }
 
   onMessage(listener: Listener<ServerMessage>): () => void {
@@ -299,7 +319,7 @@ export class GameConnection {
         this.failures = 0;
         this.setStatus({ kind: 'open' });
         // Zustand neu anfordern: Beitritt liefert sofort die gefilterte Sicht (inkl. eigener Karten).
-        for (const tableId of this.tables) this.send({ type: 'table.join', tableId });
+        for (const tableId of this.tables.keys()) this.send({ type: 'table.join', tableId });
       }
     }
     if (message.type === 'error' && message.code === 'UNSUPPORTED_VERSION') {
