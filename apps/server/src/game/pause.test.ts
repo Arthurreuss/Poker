@@ -1,4 +1,4 @@
-// Pause nach der Hand inkl. Showdown (WP-039) und All-in-Runout (WP-031).
+// Pause nach der Hand inkl. Showdown und All-in-Runout.
 import { describe, expect, it } from 'vitest';
 import type { HandEvent, ShowdownSummary } from '@poker/engine';
 import { handPauseFor, runoutStreets } from './pause';

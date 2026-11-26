@@ -1,4 +1,4 @@
-// Tisch-Ereignisse → Sounds und Vibration (WP-031). `soundsFor` ist rein und unit-getestet;
+// Tisch-Ereignisse → Sounds und Vibration. `soundsFor` ist rein und unit-getestet;
 // `useTableSounds` spielt sie über die `SoundEngine` ab.
 import { useEffect, useRef } from 'react';
 import { useSoundPreference } from '../settings/sound';

@@ -1,5 +1,5 @@
-// Admin-Dashboard /admin/* (WP-029, nur Admins: RequireAdmin in App.tsx, echte Prüfung im Server-Guard D-029).
-// Unterseiten: Übersicht (Index), Spieler, Tische, Feedback (WP-024), Protokoll. Bausteine: src/admin/.
+// Admin-Dashboard /admin/* (nur Admins: RequireAdmin in App.tsx, echte Prüfung im Server-Guard D-029).
+// Unterseiten: Übersicht (Index), Spieler, Tische, Feedback, Protokoll. Bausteine: src/admin/.
 import { NavLink, Route, Routes } from 'react-router';
 import { AuditPanel } from '../admin/AuditPanel';
 import dashboard from '../admin/Dashboard.module.css';

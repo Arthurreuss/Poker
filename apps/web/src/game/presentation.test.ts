@@ -23,7 +23,7 @@ describe('planReveal', () => {
     expect(planReveal(seen, hand(3, 'betting'))).toEqual([{ atMs: 0, reveal: { board: 3, result: true } }]);
   });
 
-  it('Showdown nach dem River (WP-039): erst Karten umdrehen, Ergebnis nach SHOWDOWN_FLIP_MS', () => {
+  it('Showdown nach dem River: erst Karten umdrehen, Ergebnis nach SHOWDOWN_FLIP_MS', () => {
     const seen = { handNumber: 1, reveal: { board: 5, result: false } };
     expect(planReveal(seen, hand(5, 'complete'))).toEqual([
       { atMs: 0, reveal: { board: 5, result: false } },

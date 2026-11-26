@@ -1,4 +1,4 @@
-// Avatar-Darstellung (WP-032).
+// Avatar-Darstellung.
 import { AVATAR_IDS } from '@poker/engine/protocol';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';

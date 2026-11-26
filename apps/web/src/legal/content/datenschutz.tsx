@@ -1,4 +1,4 @@
-// Datenschutzerklärung (WP-022), von Arthur abgenommen; Speicherdauern nach D-025. Verantwortlicher: Angaben aus
+// Datenschutzerklärung, von Arthur abgenommen; Speicherdauern nach D-025. Verantwortlicher: Angaben aus
 // impressum.tsx (PROVIDER), Domains aus DOMAINS (D-023). Beschreibt die tatsächliche Datenverarbeitung der App.
 // Ändert sich die Datenverarbeitung (neue Daten, neue Dienste, andere Speicherdauer), muss dieser Text im selben
 // Commit angepasst werden – inkl. „Stand“. Keine Platzhalter (Test in legal.test.tsx).

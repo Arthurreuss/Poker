@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-// Showdown-Flip (WP-039): Karten der Mitspieler drehen sich in ca. 1 s um – Rückseite (Geist) dreht weg, die
+// Showdown-Flip: Karten der Mitspieler drehen sich in ca. 1 s um – Rückseite (Geist) dreht weg, die
 // offene Karte dreht sich danach auf; ohne Animationen bzw. mit „Bewegung reduzieren“ sofort offen.
 import { render } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -77,7 +77,7 @@ function showdown(enabled: boolean) {
 
 const flips = () => calls.filter((c) => JSON.stringify(c.frames).includes('"rotate":"y'));
 
-describe('Showdown-Flip (TableFx, WP-039)', () => {
+describe('Showdown-Flip (TableFx)', () => {
   it('dreht jede aufgedeckte Karte in ca. 1 s um: Rückseite weg, dann Vorderseite auf', () => {
     const { container } = showdown(true);
     const backs = flips().filter((c) => c.el.classList.contains('fx-flip-back'));

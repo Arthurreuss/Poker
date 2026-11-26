@@ -1,4 +1,4 @@
-// Konto löschen (WP-022, DSGVO): Der Account wird anonymisiert statt hart gelöscht, damit die Hand-Historie
+// Konto löschen (DSGVO): Der Account wird anonymisiert statt hart gelöscht, damit die Hand-Historie
 // der anderen Spieler vollständig bleibt (alle Verweise auf `users` sind ON DELETE RESTRICT).
 // Ablauf und Begründung: docs/ARCHITECTURE.md, „Datenmodell“ → „Löschverhalten“ und „Auth“ → „Konto löschen“.
 import type { Queryable } from '../db';
@@ -15,15 +15,15 @@ export function displayNameSql(usernameColumn: string): string {
 }
 
 /**
- * Tabellen anderer Arbeitspakete mit `user_id`-Verweis, deren Zeilen beim Löschen vom Account gelöst werden
+ * Tabellen anderer Bereiche mit `user_id`-Verweis, deren Zeilen beim Löschen vom Account gelöst werden
  * (`user_id → NULL`), aber erhalten bleiben. Fehlt eine Tabelle (Migration noch nicht da), wird sie übersprungen.
- * `feedback`: WP-024 (Feedback bleibt, ohne Bezug zum Account).
+ * `feedback`: Feedback bleibt, ohne Bezug zum Account.
  */
 export const DETACHED_USER_TABLES = ['feedback'] as const;
 
 /**
  * Anonymisiert einen aktiven Account in **einer** SQL-Anweisung (atomar): `username`, `password_hash`, `avatar` → `NULL`,
- * `is_admin` → `false`, `banned_at` → `NULL` (WP-028), `deleted_at` setzen; alle Sessions löschen; Zeilen in {@link DETACHED_USER_TABLES}
+ * `is_admin` → `false`, `banned_at` → `NULL`, `deleted_at` setzen; alle Sessions löschen; Zeilen in {@link DETACHED_USER_TABLES}
  * vom Account lösen. Runden, Hände und Aktionen behalten die `user_id` (Anzeige: {@link DELETED_USER_NAME}).
  * Liefert `false`, wenn es keinen aktiven Account mit dieser ID gibt.
  */

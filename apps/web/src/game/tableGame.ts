@@ -1,4 +1,4 @@
-// Zustand eines Tisches im Client (WP-018): letzter `table.state`, Rundenergebnis, Fehler und
+// Zustand eines Tisches im Client: letzter `table.state`, Rundenergebnis, Fehler und
 // Verbindungsstatus – als kleiner Store ohne React (Hook: `useTableGame`). Der Server ist autoritativ
 // (D-003): der Store hält nur, was der Server schickt, und sendet Wünsche; er rechnet nichts selbst aus.
 import type { Action } from '@poker/engine';
@@ -42,21 +42,21 @@ export interface TableGameSnapshot {
   readonly error: GameError | null;
   /** Server kennt den Tisch nicht (mehr) bzw. er ist privat. */
   readonly notFound: boolean;
-  /** Server hat den Tisch geschlossen (`table.closed`: verwaiste Runde abgebrochen, D-022, oder Admin, WP-028). */
+  /** Server hat den Tisch geschlossen (`table.closed`: verwaiste Runde abgebrochen, D-022, oder Admin). */
   readonly closed: TableClosedMessage['reason'] | null;
   /** Eine Aktion für diesen Stand (`handNumber/actionSeq`) ist unterwegs. */
   readonly pendingAction: boolean;
   /** Gewählte Vorab-Aktion (gilt für Hand und Straße der Wahl, verfällt bei Änderungen). */
   readonly preAction: PreAction | null;
-  /** Admin-Flag der Session laut `welcome` (WP-033). */
+  /** Admin-Flag der Session laut `welcome`. */
   readonly isAdmin: boolean;
-  /** Vom Admin aufgedeckte Karten der laufenden Hand (WP-033, D-027); nur im Client dieses Admins. */
+  /** Vom Admin aufgedeckte Karten der laufenden Hand (D-027); nur im Client dieses Admins. */
   readonly reveal: AdminRevealState;
-  /** Gerade eingeblendete Emoji-Reaktionen, höchstens eine je Sitz (WP-032). */
+  /** Gerade eingeblendete Emoji-Reaktionen, höchstens eine je Sitz. */
   readonly reactions: readonly ReactionBubble[];
 }
 
-/** Emoji-Reaktion über einem Sitz (WP-032), solange sie eingeblendet ist. */
+/** Emoji-Reaktion über einem Sitz, solange sie eingeblendet ist. */
 export interface ReactionBubble {
   /** Laufende Nummer (React-Key: dieselbe Reaktion erneut startet die Animation neu). */
   readonly id: number;
@@ -70,7 +70,7 @@ export const REACTION_DISPLAY_MS = 3000;
 
 /** `requestId`-Präfix von `admin.revealCards`, damit Fehler darauf nicht die Aktionsleiste freigeben. */
 const REVEAL_REQUEST = 'reveal:';
-/** `requestId`-Präfix von `admin.redrawCards` (WP-035), aus demselben Grund. */
+/** `requestId`-Präfix von `admin.redrawCards`, aus demselben Grund. */
 const REDRAW_REQUEST = 'redraw:';
 
 type Listener = () => void;
@@ -202,7 +202,7 @@ export class TableGameStore {
     return this.send({ type: 'table.rematch', tableId: this.tableId });
   }
 
-  /** Emoji-Reaktion senden (WP-032); der Server begrenzt auf eine pro `REACTION_COOLDOWN_MS`. */
+  /** Emoji-Reaktion senden; der Server begrenzt auf eine pro `REACTION_COOLDOWN_MS`. */
   react(reaction: ReactionId): boolean {
     return this.send({ type: 'table.react', tableId: this.tableId, reaction });
   }
@@ -226,7 +226,7 @@ export class TableGameStore {
   }
 
   /**
-   * Admin tippt auf verdeckte Karten eines Mitspielers (WP-033): umdrehen bzw. zurückdrehen. Nur das erste Umdrehen
+   * Admin tippt auf verdeckte Karten eines Mitspielers: umdrehen bzw. zurückdrehen. Nur das erste Umdrehen
    * eines Platzes pro Hand fragt beim Server an (und wird dort protokolliert); Zurückdrehen bleibt im Client.
    */
   toggleReveal(seat: number): void {
@@ -245,7 +245,7 @@ export class TableGameStore {
   }
 
   /**
-   * Admin tippt auf die eigenen Karten (WP-035, D-032): zwei neue Karten ziehen. Die neue Sicht kommt als
+   * Admin tippt auf die eigenen Karten (D-032): zwei neue Karten ziehen. Die neue Sicht kommt als
    * `table.state`; der Server lehnt außerhalb einer laufenden Hand oder nach dem Fold ab.
    */
   redrawCards(): void {

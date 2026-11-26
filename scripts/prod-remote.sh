@@ -62,7 +62,7 @@ case "$action" in
     fi
     ;;
   e2e)
-    # E2E-Smoke-Test im Browser (WP-020, D-028) über den lokalen Origin-Proxy; ein https-Ziel
+    # E2E-Smoke-Test im Browser (D-028) über den lokalen Origin-Proxy; ein https-Ziel
     # (E2E_BASE_URL=https://poker.arthur-reuss.de) braucht weder Proxy noch Weiterleitung.
     case "${E2E_BASE_URL:-}" in
       https://*) npm run test:e2e -w @poker/web ;;

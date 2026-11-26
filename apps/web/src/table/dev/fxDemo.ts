@@ -1,5 +1,5 @@
 /**
- * Ablauf einer Hand für die Testseite (WP-031, `table-dev.html?fx=1`): zeigt alle Tisch-Animationen
+ * Ablauf einer Hand für die Testseite (`table-dev.html?fx=1`): zeigt alle Tisch-Animationen
  * nacheinander – Austeilen, Einsätze, Fold, Check, Einsätze → Pot, Board, Showdown, Pot → Gewinner.
  */
 import type { Card, HoleCardsView, PlayerSeatView, SeatView, TableView } from '../types';

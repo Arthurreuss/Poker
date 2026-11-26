@@ -1,4 +1,4 @@
-// Integration Game-Server + Postgres (WP-011): echte Sessions im Cookie, Tische/Runden in der Test-DB.
+// Integration Game-Server + Postgres: echte Sessions im Cookie, Tische/Runden in der Test-DB.
 // Nur mit TEST_DATABASE_URL (sonst übersprungen): `npm run test:db -w @poker/server`.
 import type { AddressInfo } from 'node:net';
 import type { FastifyInstance } from 'fastify';
@@ -141,7 +141,7 @@ describe.skipIf(testDatabaseUrl === undefined)('Game-Server mit Postgres', () =>
 
     for (const cl of [a, b, c]) expect(findHoleCardLeaks(cl, hands)).toEqual([]);
 
-    // Hand-Historie (WP-013) ist in buildApp standardmäßig aktiv: jede Hand beendet und mit Aktionen gespeichert.
+    // Hand-Historie ist in buildApp standardmäßig aktiv: jede Hand beendet und mit Aktionen gespeichert.
     const { rows: stored } = await s.pool.query<{ hand_number: number; finished: boolean; actions: number }>(
       `SELECT h.hand_number, h.finished_at IS NOT NULL AND h.result IS NOT NULL AS finished,
               (SELECT count(*)::int FROM hand_actions a WHERE a.hand_id = h.id) AS actions
@@ -187,7 +187,7 @@ describe.skipIf(testDatabaseUrl === undefined)('Game-Server mit Postgres', () =>
       tableId,
       us.map((u, seat) => ({ userId: u.id, seat })),
     );
-    // Platz 3 geteilt: (4 − 3 + 4 − 4) / 2 → je 0 Punkte (D-012, WP-008).
+    // Platz 3 geteilt: (4 − 3 + 4 − 4) / 2 → je 0 Punkte (D-012).
     const placements = [1, 2, 3, 3];
     const points = [4, 2, 0, 0];
     await repo.finishRound(

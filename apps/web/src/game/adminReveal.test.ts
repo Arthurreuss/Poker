@@ -12,7 +12,7 @@ const cardsMsg = (handNumber: number, seat: number): AdminCardsMessage => ({
   cards: ['As', 'Kd'],
 });
 
-describe('adminReveal (WP-033)', () => {
+describe('adminReveal', () => {
   it('erstes Umdrehen fragt an, Antwort deckt auf; zurück und wieder ohne Anfrage', () => {
     const game = startGame();
     let state = syncReveal(EMPTY_REVEAL, serverView(game, 1));

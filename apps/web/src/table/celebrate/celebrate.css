@@ -1,5 +1,5 @@
 /*
- * WP-040: Feier nach der Hand und Sieger des Tisches. Farben über die Aliase aus table.css (in der Tischfläche)
+ * Feier nach der Hand und Sieger des Tisches. Farben über die Aliase aus table.css (in der Tischfläche)
  * bzw. die globalen Tokens (Sieger-Ebene liegt über der ganzen Seite). Bewegung nur mit Animationen.
  */
 .cel-layer {

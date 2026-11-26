@@ -1,4 +1,4 @@
-// Integrationstests „Konto löschen“ (WP-022) gegen die Test-DB (nur mit TEST_DATABASE_URL, sonst übersprungen):
+// Integrationstests „Konto löschen“ gegen die Test-DB (nur mit TEST_DATABASE_URL, sonst übersprungen):
 // DELETE /api/me mit Passwort-Bestätigung, Anonymisierung, Sessions, WebSocket, Hand-Historie anderer Spieler.
 import type { AddressInfo } from 'node:net';
 import type { FastifyInstance, LightMyRequestResponse } from 'fastify';

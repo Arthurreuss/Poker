@@ -1,4 +1,4 @@
-// Welches Layout die Tischansicht zeigt (D-009, WP-017): Präferenz aus den Einstellungen plus
+// Welches Layout die Tischansicht zeigt (D-009): Präferenz aus den Einstellungen plus
 // tatsächliche Ausrichtung des Viewports (Media-Query), live aktualisiert.
 import { useSyncExternalStore } from 'react';
 import type { OrientationPreference } from '../settings/orientation';

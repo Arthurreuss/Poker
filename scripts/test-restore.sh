@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Restore-Test (WP-021). Aufruf: npm run prod:test-restore
+# Restore-Test. Aufruf: npm run prod:test-restore
 # Fährt eine isolierte Kopie der prod-Umgebung aus dem aktuellen Checkout hoch (Projekt poker-restoretest,
 # eigenes Volume, keine Host-Ports, temporärer Backup-Ordner – echte prod-Daten bleiben unberührt) und prüft:
 #   1. Testdaten einfügen → npm run prod:backup erzeugt einen gültigen Dump

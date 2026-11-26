@@ -1,4 +1,4 @@
-// Prüfung der Feedback-Eingaben ohne I/O (WP-024). Grenzen wie in migrations/0004_feedback.sql.
+// Prüfung der Feedback-Eingaben ohne I/O. Grenzen wie in migrations/0004_feedback.sql.
 
 export const FEEDBACK_CATEGORIES = ['bug', 'idea', 'other'] as const;
 export const FEEDBACK_STATUSES = ['new', 'read', 'done'] as const;

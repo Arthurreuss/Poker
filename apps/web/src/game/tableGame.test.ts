@@ -273,7 +273,7 @@ describe('TableGameStore – Rundenende', () => {
   });
 });
 
-describe('TableGameStore – Reaktionen (WP-032)', () => {
+describe('TableGameStore – Reaktionen', () => {
   it('react sendet table.react', () => {
     const { store, last } = setup(1);
     expect(store.react('wow')).toBe(true);

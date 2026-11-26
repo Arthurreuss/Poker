@@ -1,4 +1,4 @@
-// /admin/feedback (WP-024): Feedback-Liste für Admins, Filter nach Status, Status ändern.
+// /admin/feedback: Feedback-Liste für Admins, Filter nach Status, Status ändern.
 import { useEffect, useState } from 'react';
 import {
   ApiError,

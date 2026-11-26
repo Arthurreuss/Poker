@@ -1,5 +1,5 @@
 /**
- * Lottie-Animationen der Feiern (WP-040), als JSON im Bundle (CSP: nur eigene Origin, D-014) und erst bei Bedarf
+ * Lottie-Animationen der Feiern, als JSON im Bundle (CSP: nur eigene Origin, D-014) und erst bei Bedarf
  * geladen (eigene Chunks). Quelle und Lizenz: `../ASSETS.md`.
  */
 export type ClipLoader = () => Promise<{ default: unknown }>;

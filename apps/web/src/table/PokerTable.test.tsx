@@ -117,7 +117,7 @@ describe('PokerTable – Status', () => {
     expect(within(seatEl(7)).getByRole('progressbar').getAttribute('aria-valuenow')).toBe('45');
   });
 
-  it('zeigt keinen Timer-Ring ohne Restzeit vom Server (WP-018)', () => {
+  it('zeigt keinen Timer-Ring ohne Restzeit vom Server', () => {
     const view: TableView = { ...mock('six-flop') };
     delete (view as { timeRemaining?: number }).timeRemaining;
     render(<PokerTable view={view} />);
@@ -125,7 +125,7 @@ describe('PokerTable – Status', () => {
     expect(screen.queryByTestId('timer')).toBeNull();
   });
 
-  it('der Rahmen der Hervorhebung ist selbst der Timer, kein zweiter Ring (WP-037)', () => {
+  it('der Rahmen der Hervorhebung ist selbst der Timer, kein zweiter Ring', () => {
     render(<PokerTable view={{ ...mock('six-flop'), timeRemaining: 0.1 }} />);
     const plate = within(seatEl(7)).getByTestId('seat-plate');
     expect(plate.className).toContain('pt-plate--timed');
@@ -134,7 +134,7 @@ describe('PokerTable – Status', () => {
     expect(screen.getAllByTestId('timer')).toHaveLength(1);
   });
 
-  it('färbt den Timer gegen Ende orange, dann rot (WP-037)', () => {
+  it('färbt den Timer gegen Ende orange, dann rot', () => {
     const { rerender } = render(<PokerTable view={{ ...mock('six-flop'), timeRemaining: 0.8 }} />);
     expect(screen.getByTestId('timer').getAttribute('class')).toContain('pt-timer-ring--ok');
     rerender(<PokerTable view={{ ...mock('six-flop'), timeRemaining: 0.45 }} />);
@@ -143,7 +143,7 @@ describe('PokerTable – Status', () => {
     expect(screen.getByTestId('timer').getAttribute('class')).toContain('pt-timer-ring--low');
   });
 
-  it('zeigt die Restsekunden am Platz am Zug (WP-037)', () => {
+  it('zeigt die Restsekunden am Platz am Zug', () => {
     render(<PokerTable view={{ ...mock('six-flop'), timeRemaining: 0.1, timeSeconds: 3 }} />);
     const clock = within(seatEl(7)).getByTestId('turn-clock');
     expect(clock.textContent).toBe('3 s');
@@ -196,7 +196,7 @@ describe('PokerTable – Einsätze und Pots', () => {
     expect(screen.getByTestId('blinds').textContent).toBe('Level 2 · Blinds 50/100');
   });
 
-  it('Blinds nach Händen (WP-036): Kopfzeile zeigt die restlichen Hände des Levels', () => {
+  it('Blinds nach Händen (D-033): Kopfzeile zeigt die restlichen Hände des Levels', () => {
     const base = mock('heads-up');
     const { rerender } = render(<PokerTable view={{ ...base, blinds: { ...base.blinds, handsLeft: 3 } }} />);
     expect(screen.getByTestId('blinds').textContent).toBe('Level 2 · Blinds 50/100 · noch 3 Hände');
@@ -217,7 +217,7 @@ describe('PokerTable – reine Darstellung', () => {
   });
 });
 
-describe('PokerTable – letzte Aktion und eigene Hand (WP-037)', () => {
+describe('PokerTable – letzte Aktion und eigene Hand', () => {
   it('zeigt die letzte Aktion als Schriftzug am Platz', () => {
     render(<PokerTable view={mock('six-hints')} />);
     const tag = (seat: number) => within(seatEl(seat)).queryByTestId('last-action');
@@ -267,7 +267,7 @@ describe('PokerTable – letzte Aktion und eigene Hand (WP-037)', () => {
   });
 });
 
-describe('PokerTable – Avatare und Reaktionen (WP-032)', () => {
+describe('PokerTable – Avatare und Reaktionen', () => {
   it('Avatar an der Plakette, gegenüber dem Marker; ohne Avatar keiner', () => {
     render(<PokerTable view={mock('six-flop')} />);
     const avatarOf = (seat: number) => within(seatEl(seat)).queryByTestId('avatar');
@@ -289,7 +289,7 @@ describe('PokerTable – Avatare und Reaktionen (WP-032)', () => {
     expect(screen.queryByTestId('react-slot')).toBeNull();
   });
 
-  it('Knopf für die Hand-Übersicht für alle sichtbar, mit Reaktions-Knopf darunter (WP-038)', () => {
+  it('Knopf für die Hand-Übersicht für alle sichtbar, mit Reaktions-Knopf darunter', () => {
     const { rerender } = render(
       <PokerTable view={mock('six-flop')} reactionPicker={<button type="button">R</button>} />,
     );

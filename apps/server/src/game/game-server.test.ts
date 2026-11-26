@@ -1,4 +1,4 @@
-// Tischmodell ohne Netzwerk und ohne DB (WP-011): GameServer mit In-Memory-Verbindungen, ManualClock.
+// Tischmodell ohne Netzwerk und ohne DB: GameServer mit In-Memory-Verbindungen, ManualClock.
 import { describe, expect, it } from 'vitest';
 import { createSeededRng } from '@poker/engine';
 import { PROTOCOL_VERSION, type ServerMessage, type TableView } from '@poker/engine/protocol';
@@ -82,7 +82,7 @@ describe('GameServer ohne Netzwerk', () => {
     expect(s.last(2).round?.hand?.phase).toBe('betting');
   });
 
-  it('Showdown verlängert die Pause für Aufdecken und Gewinneranzeige (WP-039)', async () => {
+  it('Showdown verlängert die Pause für Aufdecken und Gewinneranzeige', async () => {
     const s = setup({ showdownPauseMs: 1500 });
     const { a, b, id } = await twoSeated(s);
     await s.send(a, { type: 'table.start', tableId: id });
@@ -109,7 +109,7 @@ describe('GameServer ohne Netzwerk', () => {
     expect(s.last(1).round?.handNumber).toBe(2);
   });
 
-  it('All-in-Runout verlängert die Pause je ausgeteilter Straße (WP-031)', async () => {
+  it('All-in-Runout verlängert die Pause je ausgeteilter Straße', async () => {
     const s = setup({ runoutPauseMs: 1000, showdownPauseMs: 1500 });
     const a = await s.client(1);
     const b = await s.client(2);
@@ -166,7 +166,7 @@ describe('GameServer ohne Netzwerk', () => {
     });
   });
 
-  it('Blinds nach Händen (WP-036): Level steigt nach N Händen, nicht nach Zeit', async () => {
+  it('Blinds nach Händen (D-033): Level steigt nach N Händen, nicht nach Zeit', async () => {
     // Eine Stunde Pause zwischen den Händen: bei Zeit-Blinds (10 min) wäre jedes Mal ein neues Level fällig.
     const s = setup({ handPauseMs: 60 * 60_000 });
     const a = await s.client(1);
@@ -205,7 +205,7 @@ describe('GameServer ohne Netzwerk', () => {
     ]);
   });
 
-  it('WP-012-Erweiterungspunkte: actFor/autoCheckOrFold handeln im Namen eines Spielers', async () => {
+  it('Erweiterungspunkte für den Zug-Timer: actFor/autoCheckOrFold handeln im Namen eines Spielers', async () => {
     const s = setup();
     const { a, id } = await twoSeated(s);
     await s.send(a, { type: 'table.start', tableId: id });

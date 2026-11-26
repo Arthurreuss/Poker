@@ -1,4 +1,4 @@
-// Retry und Hook-Kombination der Hand-Historie (WP-013), ohne DB.
+// Retry und Hook-Kombination der Hand-Historie, ohne DB.
 import { describe, expect, it } from 'vitest';
 import { InMemoryTableRepository } from '../game/repository';
 import { combineHooks } from './hooks';
@@ -118,7 +118,7 @@ describe('withFinishRoundRetry', () => {
     expect(r.sleeps).toEqual([10]);
   });
 
-  it('wiederholt auch abortRound (verwaiste Runde, WP-015)', async () => {
+  it('wiederholt auch abortRound (verwaiste Runde)', async () => {
     const r = recorder();
     const inner = new InMemoryTableRepository();
     let failAbort = 1;

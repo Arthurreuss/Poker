@@ -1,4 +1,4 @@
-// Liste der öffentlichen Tische (WP-015), live über `lobby.snapshot`/`lobby.update`/`lobby.remove`.
+// Liste der öffentlichen Tische, live über `lobby.snapshot`/`lobby.update`/`lobby.remove`.
 import type { LobbyTable } from '@poker/engine/protocol';
 import { formatBlinds, formatNumber } from './tableSettingsForm';
 import styles from './Lobby.module.css';

@@ -1,5 +1,5 @@
 /**
- * Pots und Showdown (WP-007): Main/Side Pots aus `totalBet`, Rückgabe nicht gecallter Beträge,
+ * Pots und Showdown: Main/Side Pots aus `totalBet`, Rückgabe nicht gecallter Beträge,
  * Handvergleich je Pot, Split mit ungeraden Chips, Zeigereihenfolge.
  * Regeln und Auslegungen: ARCHITECTURE.md, Abschnitt „Engine: Pots und Showdown“.
  */

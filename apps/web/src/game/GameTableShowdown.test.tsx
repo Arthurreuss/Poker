@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-// Showdown mit Krone (WP-039): Spielseite mit Fake-Verbindung und echten Engine-Ständen. Erst stehen die
+// Showdown mit Krone: Spielseite mit Fake-Verbindung und echten Engine-Ständen. Erst stehen die
 // aufgedeckten Karten ohne Ergebnis da (Flip), nach SHOWDOWN_FLIP_MS erscheinen Gewinner, Krone und Auszahlung.
 import type { TableView as ServerTableView } from '@poker/engine/protocol';
 import { act, render, screen, within } from '@testing-library/react';
@@ -85,7 +85,7 @@ const tick = (ms: number) => {
   });
 };
 
-describe('Showdown mit Krone (GameTable, WP-039)', () => {
+describe('Showdown mit Krone (GameTable)', () => {
   it('Karten erst umdrehen, Gewinner mit Krone nach SHOWDOWN_FLIP_MS', () => {
     vi.useFakeTimers();
     const { before, after } = showdownWith(1);

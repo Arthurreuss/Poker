@@ -1,4 +1,4 @@
-// Speicherdauer von Feedback (WP-022, D-025) gegen die Test-DB (nur mit TEST_DATABASE_URL, sonst übersprungen).
+// Speicherdauer von Feedback (D-025) gegen die Test-DB (nur mit TEST_DATABASE_URL, sonst übersprungen).
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { runMigrations } from '../db/migrate';
 import { createTestSchema, testDatabaseUrl, type TestSchema } from '../db/test-db';

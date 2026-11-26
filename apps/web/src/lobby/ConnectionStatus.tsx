@@ -1,4 +1,4 @@
-// Verbindungsanzeige für Lobby und Einladungsseite (WP-015).
+// Verbindungsanzeige für Lobby und Einladungsseite.
 import type { LobbyStatus } from './client';
 import styles from './Lobby.module.css';
 

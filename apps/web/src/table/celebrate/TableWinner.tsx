@@ -10,7 +10,7 @@ export interface TableWinnerProps {
 }
 
 /**
- * Sieger des ganzen Tisches (WP-040): nach der letzten Hand Pokal-Animation, Avatar und Name groß in der Mitte,
+ * Sieger des ganzen Tisches: nach der letzten Hand Pokal-Animation, Avatar und Name groß in der Mitte,
  * danach der Rundenende-Dialog (`game/roundEndHold.ts`). Ein Tipp überspringt.
  */
 export function TableWinner({ winners, animate }: TableWinnerProps) {

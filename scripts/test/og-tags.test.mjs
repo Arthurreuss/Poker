@@ -1,4 +1,4 @@
-// Link-Vorschau in Messengern (WP-030): Open-Graph-/Twitter-Tags in apps/web/index.html (landen unverändert im
+// Link-Vorschau in Messengern: Open-Graph-/Twitter-Tags in apps/web/index.html (landen unverändert im
 // Build, Vite ergänzt nur Skript-/Style-Tags), Platzhalter-Ersetzung per nginx sub_filter für beide Domains (D-023),
 // Vorschaubild 1200×630 und unveränderte CSP. Manueller Lauf gegen ein Image: docs/OPERATIONS.md, „Link-Vorschau“.
 import { test } from 'node:test';
@@ -80,7 +80,7 @@ test('Vorschaubild: PNG 1200×630, nicht im Offline-Cache', () => {
   assert.match(viteConfig, /globIgnores:\s*\['\*\*\/og-image\.png'\]/);
 });
 
-test('CSP bleibt unverändert streng (WP-022)', () => {
+test('CSP bleibt unverändert streng', () => {
   const csp = /add_header\s+Content-Security-Policy\s+"([^"]*)"/.exec(snippet)?.[1];
   assert.equal(
     csp,

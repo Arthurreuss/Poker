@@ -1,5 +1,5 @@
 /**
- * Handgeschriebene Validatoren für eingehende Client-Nachrichten (WP-011). Jede Nachricht wird vollständig
+ * Handgeschriebene Validatoren für eingehende Client-Nachrichten. Jede Nachricht wird vollständig
  * geprüft und in ein frisches Objekt mit nur den bekannten Feldern kopiert (unbekannte Felder fallen weg).
  */
 import {
@@ -43,7 +43,7 @@ export const MAX_STARTING_STACK = 100_000_000;
 /** Dauer eines Blind-Levels bei steigenden Blinds (Minuten). */
 export const MIN_LEVEL_MINUTES = 1;
 export const MAX_LEVEL_MINUTES = 1440;
-/** Hände pro Blind-Level bei steigenden Blinds nach Händen (WP-036, D-033). */
+/** Hände pro Blind-Level bei steigenden Blinds nach Händen (D-033). */
 export const MIN_LEVEL_HANDS = 1;
 export const MAX_LEVEL_HANDS = 1000;
 const MAX_ID = 2 ** 31 - 1; // integer-IDs in Postgres (D-015)
@@ -120,7 +120,7 @@ function blindStructure(v: unknown): BlindStructure {
     if (!Array.isArray(levels) || levels.length === 0 || levels.length > 100) {
       fail('levels muss 1–100 Level enthalten');
     }
-    // Genau eins von beiden (D-033); ohne `levelHands` ist es die Zeit-Variante (wie vor WP-036).
+    // Genau eins von beiden (D-033); ohne `levelHands` ist es die Zeit-Variante.
     if (v['levelHands'] !== undefined) {
       if (v['levelMinutes'] !== undefined) {
         fail('Blinds steigen entweder nach Zeit (levelMinutes) oder nach Händen (levelHands)');

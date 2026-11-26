@@ -20,7 +20,7 @@ export function rawToText(data: RawData): string {
 
 /**
  * Fake-Session für Tests ohne DB: Cookie `poker_session=user-<id>` → User <id> (`user<id>`);
- * `poker_session=admin-<id>` → derselbe User mit Admin-Flag (WP-033).
+ * `poker_session=admin-<id>` → derselbe User mit Admin-Flag.
  */
 export function fakeAuthenticate(cookie: string | undefined): Promise<AuthUser | null> {
   const match = /poker_session=(user|admin)-(\d+)/.exec(cookie ?? '');

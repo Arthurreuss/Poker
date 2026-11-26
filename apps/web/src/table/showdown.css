@@ -1,5 +1,5 @@
 /*
- * Showdown (WP-039): Rückseite für den Karten-Flip (TableFx) und Krone am Platz des Gewinners.
+ * Showdown: Rückseite für den Karten-Flip (TableFx) und Krone am Platz des Gewinners.
  * Eigene Datei neben table.css/fx.css, damit parallele Änderungen dort nicht kollidieren. Farben nur über die
  * Aliase aus table.css. Bewegung nur mit „Animationen“ (.pg-anim) und ohne prefers-reduced-motion.
  */

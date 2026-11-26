@@ -15,7 +15,7 @@ export function BetChips({
   amount: number;
   style?: CSSProperties;
   align: string;
-  /** Sitz des Einsatzes (WP-031: Ziel/Start der Chip-Animationen). */
+  /** Sitz des Einsatzes (Ziel/Start der Chip-Animationen). */
   seat?: number;
 }) {
   return (
@@ -58,7 +58,7 @@ export function Board({
 }: {
   cards: readonly CardValue[];
   fourColor: boolean;
-  /** Karten der Gewinnerhand (WP-031); übrige Board-Karten treten zurück. */
+  /** Karten der Gewinnerhand; übrige Board-Karten treten zurück. */
   winning?: readonly CardValue[] | undefined;
 }) {
   return (

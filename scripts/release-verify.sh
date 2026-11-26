@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Letzter Schritt von npm run release (WP-020): prüft das frisch gestartete prod – erst Smoke-Test, dann der
+# Letzter Schritt von npm run release: prüft das frisch gestartete prod – erst Smoke-Test, dann der
 # E2E-Smoke-Test im Browser (zwei Test-Konten spielen eine Runde, D-028). Schlägt etwas fehl, bricht der Release
 # mit Exit-Code 1 ab und nennt den Befehl zum Zurückrollen auf den vorherigen main-Stand (Deploy-Job, D-039).
 #   scripts/release-verify.sh <vorheriger-main-commit> [<neuer-main-commit>]

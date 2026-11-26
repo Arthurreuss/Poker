@@ -1,4 +1,4 @@
-// Routen der App (WP-014). Übersicht: docs/ARCHITECTURE.md, Abschnitt „Frontend“.
+// Routen der App. Übersicht: docs/ARCHITECTURE.md, Abschnitt „Frontend“.
 import { lazy, Suspense } from 'react';
 import { BrowserRouter, Route, Routes } from 'react-router';
 import { AuthProvider } from './auth/AuthContext';
@@ -19,11 +19,11 @@ import { RoundPage } from './pages/RoundPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { TablePage } from './pages/TablePage';
 
-// Testseite der Tischansicht (WP-016) – nur im Dev-Build, landet nicht im Prod-Bundle.
+// Testseite der Tischansicht – nur im Dev-Build, landet nicht im Prod-Bundle.
 const TableDevPage = import.meta.env.DEV
   ? lazy(() => import('./table/dev/TableDevPage').then((m) => ({ default: m.TableDevPage })))
   : null;
-// Tisch per WebSocket anlegen, solange es keine Lobby gibt (WP-018) – ebenfalls nur im Dev-Build.
+// Tisch per WebSocket anlegen, ohne die Lobby (Dev-Helfer) – ebenfalls nur im Dev-Build.
 const DevNewTablePage = import.meta.env.DEV
   ? lazy(() => import('./game/dev/DevNewTablePage').then((m) => ({ default: m.DevNewTablePage })))
   : null;
@@ -48,7 +48,7 @@ export function AppRoutes() {
           </RedirectIfAuthenticated>
         }
       />
-      {/* Rechtstexte ohne Login (WP-022). */}
+      {/* Rechtstexte ohne Login. */}
       <Route path={IMPRESSUM_PATH} element={<ImpressumPage />} />
       <Route path={DATENSCHUTZ_PATH} element={<DatenschutzPage />} />
       {TableDevPage && (
@@ -73,7 +73,7 @@ export function AppRoutes() {
           }
         />
       )}
-      {/* Tisch ohne App-Shell: volle Fläche, eigenes Tisch-Menü (WP-016/017/018). */}
+      {/* Tisch ohne App-Shell: volle Fläche, eigenes Tisch-Menü. */}
       <Route
         path="/table/:id"
         element={

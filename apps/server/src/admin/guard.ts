@@ -1,4 +1,4 @@
-// Allgemeiner Admin-Guard (WP-028, D-029): Jede Anfrage auf `/api/admin` oder `/api/admin/*` braucht eine gültige
+// Allgemeiner Admin-Guard (D-029): Jede Anfrage auf `/api/admin` oder `/api/admin/*` braucht eine gültige
 // Session eines Admins – ohne Session 401, ohne Admin-Flag 403. Der Hook hängt an der Wurzel der App und greift
 // damit für alle Plugins und auch für unbekannte Pfade (kein Ausspähen von Admin-Routen über 404).
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';

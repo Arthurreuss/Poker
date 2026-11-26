@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Restore der prod-DB aus einem Dump (WP-021). Aufruf: npm run prod:restore -- <dump.sql.gz> [--yes]
+# Restore der prod-DB aus einem Dump. Aufruf: npm run prod:restore -- <dump.sql.gz> [--yes]
 # Ablauf: Dump prüfen → Sicherheitsabfrage → Sicherungs-Dump des aktuellen Stands nach $BACKUP_DIR/pre-restore/
 # → Server stoppen → Datenbank löschen und leer neu anlegen → Dump einspielen (eine Transaktion) → Server starten.
 # Doku: docs/OPERATIONS.md, Abschnitt "Restore".

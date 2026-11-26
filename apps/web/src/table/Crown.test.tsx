@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-// Krone am Gewinner (WP-039): nur an Sitzen in `winnerSeats`, bei Split-Pot an allen.
+// Krone am Gewinner: nur an Sitzen in `winnerSeats`, bei Split-Pot an allen.
 import { cleanup, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { mockById } from './dev/mocks';
@@ -20,7 +20,7 @@ function seatEl(seat: number): HTMLElement {
   return el;
 }
 
-describe('PokerTable – Krone am Gewinner (WP-039)', () => {
+describe('PokerTable – Krone am Gewinner', () => {
   it('ohne Ergebnis keine Krone', () => {
     render(<PokerTable view={mock('six-flop')} />);
     expect(screen.queryAllByTestId('winner-crown')).toEqual([]);

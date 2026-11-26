@@ -1,4 +1,4 @@
-// Secrets-Backup (WP-043, D-037): docker/backup/secrets-hook.sh gegen einen temporären Ordner.
+// Secrets-Backup (D-037): docker/backup/secrets-hook.sh gegen einen temporären Ordner.
 // Das Skript läuft in prod im Backup-Image (Debian, dash, GNU tar, gpg), hier mit sh, tar und find des Rechners;
 // gpg ist durch ein Stub-Skript ersetzt, das Argumente, Passphrase (fd 3) und GNUPGHOME protokolliert und die
 // Eingabe unverschlüsselt nach --output kopiert. Echtes gpg prüft scripts/test-restore.sh (npm run prod:test-restore).

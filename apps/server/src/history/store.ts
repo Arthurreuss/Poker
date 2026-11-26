@@ -1,6 +1,6 @@
-// Hand-Historie in Postgres (WP-013, Tabellen `hands`, `hand_actions`, Migration 0003). Beide Schreibvorgänge
+// Hand-Historie in Postgres (Tabellen `hands`, `hand_actions`, Migration 0003). Beide Schreibvorgänge
 // sind genau eine SQL-Anweisung und idempotent (ON CONFLICT), damit ein Retry nach einem Fehler nichts doppelt
-// schreibt. Lesefunktionen für Replay, Tests und spätere Anzeigen (WP-019).
+// schreibt. Lesefunktionen für Replay, Tests und Anzeigen (`stats/`).
 import type { Card } from '@poker/engine';
 import type { Queryable } from '../db';
 import type { HandActionRow, HandRow } from '../db/types';
@@ -106,7 +106,7 @@ async function loadWithActions(db: Queryable, hands: HandRow[]): Promise<LoadedH
   );
   return hands.map((h) => {
     if (h.deck === null || h.big_blind_seat === null) {
-      throw new Error(`Hand ${String(h.id)} wurde vor WP-013 gespeichert (ohne Deck/Blind-Sitze)`);
+      throw new Error(`Hand ${String(h.id)} wurde vor Migration 0003 gespeichert (ohne Deck/Blind-Sitze)`);
     }
     return {
       id: h.id,

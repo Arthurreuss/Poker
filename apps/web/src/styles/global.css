@@ -1,4 +1,4 @@
-/* Globale Basis-Styles (WP-014). Farben, Abstände, Schrift nur über tokens.css. */
+/* Globale Basis-Styles. Farben, Abstände, Schrift nur über tokens.css. */
 @import './tokens.css';
 
 *,

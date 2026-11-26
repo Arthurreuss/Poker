@@ -4,7 +4,7 @@ import type { Action, HandState, LegalAction } from './hand-state';
 import { createSeededRng, type Rng } from './rng';
 import { calculatePots } from './showdown';
 
-// Property-Test (WP-007): viele zufällige Hände mit 2–9 Spielern bis zum Ende inkl. Showdown.
+// Property-Test: viele zufällige Hände mit 2–9 Spielern bis zum Ende inkl. Showdown.
 // Prüft Chip-Erhaltung, keine negativen Stacks, Pots = Σ totalBet, Pots nur an Berechtigte.
 
 const HANDS = 1500;

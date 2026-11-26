@@ -1,4 +1,4 @@
-// Formular „Tisch erstellen“ (WP-015): Werte, Defaults und Validierung mit denselben Grenzen wie der Server
+// Formular „Tisch erstellen“: Werte, Defaults und Validierung mit denselben Grenzen wie der Server
 // (`@poker/engine/protocol`, D-012/D-013/D-016/D-020). Zum Schluss prüft `validateTableSettings` – also exakt
 // der Server-Code – das Ergebnis; die Feldprüfungen davor liefern nur verständliche Meldungen je Feld.
 import { DEFAULT_BLIND_LEVELS, DEFAULT_LEVEL_HANDS, DEFAULT_LEVEL_MINUTES, type BlindStructure } from '@poker/engine';
@@ -23,7 +23,7 @@ import {
 /** Blind-Erhöhung: steigend (Standard, D-012) oder fest. */
 export type BlindMode = 'increasing' | 'fixed';
 
-/** Steigende Blinds: alle X Minuten (Standard) oder alle N Hände (WP-036, D-033). */
+/** Steigende Blinds: alle X Minuten (Standard) oder alle N Hände (D-033). */
 export type LevelBy = 'time' | 'hands';
 
 /** Rohwerte der Eingabefelder (Zahlen als Text, wie sie im Feld stehen). */

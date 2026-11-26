@@ -1,6 +1,6 @@
 /**
- * Setzrunden einer Hand als reine Zustandsmaschine (WP-006):
- * `startHand` → (`legalActions` / `applyAction`)* → Phase `complete` (Showdown wird direkt aufgelöst, WP-007).
+ * Setzrunden einer Hand als reine Zustandsmaschine:
+ * `startHand` → (`legalActions` / `applyAction`)* → Phase `complete` (Showdown wird direkt aufgelöst).
  * Eingabezustände werden nie verändert. Semantik: ARCHITECTURE.md, „Engine: Zustandsmodell einer Hand“.
  */
 import { isCard, type Card } from './cards';
@@ -37,7 +37,7 @@ export interface StartHandOptions {
   /** Ante pro Spieler (Standard 0), wird vor den Blinds gezahlt und zählt nicht zum Straßeneinsatz. */
   ante?: number;
   /**
-   * Explizite Blind-Sitze (für Dead-Button-Regeln, WP-008). Ohne Angabe: Heads-up ist der Button
+   * Explizite Blind-Sitze (für Dead-Button-Regeln). Ohne Angabe: Heads-up ist der Button
    * Small Blind, sonst die nächsten beiden besetzten Sitze links vom Button.
    */
   blinds?: { smallBlindSeat: number | null; bigBlindSeat: number };
@@ -232,7 +232,7 @@ export function applyAction(state: HandState, playerId: string, action: Action):
 }
 
 /**
- * Admin zieht neue Hole Cards (WP-035, D-032): tauscht die Karten des Spielers gegen zwei zufällige Karten aus dem
+ * Admin zieht neue Hole Cards (D-032): tauscht die Karten des Spielers gegen zwei zufällige Karten aus dem
  * Restdeck; die alten Karten nehmen deren Plätze im Deck ein. So bleiben Hände, Board, Burns und Deck zusammen genau
  * die 52 Karten, und `initialDeck` rekonstruiert eine Hand, die mit den neuen Karten ausgeteilt worden wäre.
  * Nur in der Setzphase und nur für Spieler, die noch in der Hand sind; das Protokoll bleibt unverändert.
@@ -361,7 +361,7 @@ function proceed(state: HandState, lastSeat: number): void {
   for (;;) {
     if (state.street === 'river') {
       state.toActId = null;
-      resolveShowdown(state); // WP-007: Pots bilden, Hände vergleichen, auszahlen → `complete`
+      resolveShowdown(state); // Pots bilden, Hände vergleichen, auszahlen → `complete`
       return;
     }
     dealNextStreet(state);

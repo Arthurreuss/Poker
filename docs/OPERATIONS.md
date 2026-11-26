@@ -65,7 +65,7 @@ npm run prod:ssh         # Shell im Checkout auf mac-2
 - Container haben `restart: unless-stopped`: nach einem Neustart von Colima (also auch des Rechners) laufen sie wieder, nach `prod:down` nicht (siehe [Betrieb nach Neustart](#betrieb-nach-neustart)).
 - `POSTGRES_PASSWORD` wirkt nur beim **ersten** Start mit leerem Volume. Passwort später ändern = in Postgres ändern (`ALTER USER`) oder – nur ohne echte Daten – Volume löschen: `docker volume rm poker-prod-db` (auf mac-2).
 - Der Smoke-Test schickt als `Origin` die erste `PUBLIC_ORIGIN` aus der `.env.prod` des prod-Hosts; andere Ziele per `SMOKE_URL=… SMOKE_ORIGIN=… npm run prod:smoke` (dann ohne Weiterleitung).
-- WebSocket ohne Session muss `401` liefern (seit WP-011 braucht `/ws` ein Session-Cookie), fremde Origin `403`. Den vollen Handshake (`hello` → `welcome`) prüft er zusätzlich mit einem Session-Cookie aus dem Browser: `SMOKE_COOKIE='poker_session=…' npm run prod:smoke`.
+- WebSocket ohne Session muss `401` liefern (`/ws` braucht ein Session-Cookie), fremde Origin `403`. Den vollen Handshake (`hello` → `welcome`) prüft er zusätzlich mit einem Session-Cookie aus dem Browser: `SMOKE_COOKIE='poker_session=…' npm run prod:smoke`.
 
 ## Release
 `npm run release` (Skript `scripts/release.sh`) auf dem MacBook – der Arbeitsordner wird dabei **nicht** umgeschaltet:
@@ -78,7 +78,7 @@ npm run prod:ssh         # Shell im Checkout auf mac-2
 
 Vorher dev lokal per Docker getestet haben (D-005), am besten auch mit dem E2E-Test: `npm run test:e2e -w @poker/web` (gegen http://localhost:4310).
 
-### E2E-Smoke-Test (WP-020)
+### E2E-Smoke-Test
 Playwright-Test `apps/web/e2e-game/smoke.pw.ts`: zwei Spieler registrieren sich über `/register` (Namen `e2e_<Zeitstempel>…`), A erstellt über die Lobby einen **privaten** Tisch „E2E-Test …“ (2 Plätze, Stack 200, feste Blinds), B tritt über den Einladungslink bei, beide nehmen Platz, A startet, beide gehen All-in, bis bei beiden der Dialog „Runde beendet“ mit zwei Platzierungen und demselben Sieger steht. Danach werden beide Konten per `DELETE /api/me` gelöscht – auch wenn der Test scheitert. Dauer: wenige Sekunden; greift das Auth-Rate-Limit (10 pro Minute und IP), wartet der Test es ab.
 ```sh
 npm run test:e2e -w @poker/web                      # gegen dev-Docker (http://localhost:4310)
@@ -101,7 +101,7 @@ Schlägt Smoke-Test oder E2E fehl, steht `main` schon auf dem neuen Stand (gepus
 3. Fehler auf dev beheben, dann `npm run release`; der Deploy-Job setzt den prod-Checkout dabei von selbst zurück auf `main`.
 4. Hat der neue Stand Datenbank-Migrationen ausgeführt, läuft der alte Server auf dem neueren Schema. Migrationen sind bisher nur additiv; im Zweifel das letzte Backup einspielen (`npm run prod:restore`, siehe Restore).
 
-### Deploy-Job (WP-045, D-039)
+### Deploy-Job (D-039)
 Deploy und Rollback laufen als Lauf der Warteschlange des Server-Verbunds (Nomad-Job `deploy-poker`, fleet-Repo, README „Deploys“), nicht per ssh: Log und Ergebnis stehen in der Nomad-UI (`http://100.116.114.9:4646`, nur Tailnet) und in Grafana (Warteschlange, Tabelle „Deploys“), zwei Läufe zugleich gibt es nicht.
 - `npm run prod:deploy [-- <commit>]` und `npm run prod:rollback -- <commit>` (`scripts/fleet-deploy.sh`) starten den Lauf mit `fleet.py deploy poker …` aus dem fleet-Checkout (`~/code/Arthurreuss/fleet`, anders: `POKER_FLEET_DIR`) und zeigen sein Log; Strg-C lässt ihn weiterlaufen. Braucht Tailscale und `uv`.
 - Der Job läuft auf der Maschine der Prod-VM (mac-2) als `fleet`: Checkout sauber? `git fetch`, beim Deploy Vorspulen auf `origin/main`; der Commit muss auf `main` liegen. Dann `scripts/deploy_job.sh deploy|rollback [<commit>]`: setzt den Checkout (detached) auf den Commit, wenn er nicht `HEAD` ist, und startet `prod.sh tunnel-up` (mit `TUNNEL_TOKEN`) bzw. `up` mit dem Docker der Prod-VM (`DOCKER_HOST` auf `~fleet/.colima/spiele/docker.sock`).
@@ -229,9 +229,9 @@ Einmalig zu beachten (Arthur):
 **Prüfen (Arthur):** Mac neu starten (ohne Anmeldung), ca. 2 min warten, dann `npm run prod:status` – alle Container `running, healthy`, Health ok. Wer ganz sicher gehen will, testet auch „Stromkabel ziehen“.
 
 ## Feedback lesen
-Spieler schicken Feedback über den Knopf „Feedback“ in der App (Bug, Idee, Sonstiges; WP-024). Es landet in der Tabelle `feedback` (Aufbau: [ARCHITECTURE.md](ARCHITECTURE.md), „Datenmodell“ → „Feedback“).
+Spieler schicken Feedback über den Knopf „Feedback“ in der App (Bug, Idee, Sonstiges). Es landet in der Tabelle `feedback` (Aufbau: [ARCHITECTURE.md](ARCHITECTURE.md), „Datenmodell“ → „Feedback“).
 
-- **Im Browser (Dashboard, WP-029):** als Admin unter `/admin/feedback` (Menü „Admin“ → Bereich „Feedback“; die Übersicht `/admin` zeigt die Zahl neuer Einträge), z. B. https://poker.arthur-reuss.de/admin/feedback oder https://poker.deinemudda.win/admin/feedback. Filter Neu/Gelesen/Erledigt/Alle; den Status je Eintrag über die Auswahl „Status“ ändern. Admin-Flag setzen: README, Abschnitt „Admin“.
+- **Im Browser (Dashboard):** als Admin unter `/admin/feedback` (Menü „Admin“ → Bereich „Feedback“; die Übersicht `/admin` zeigt die Zahl neuer Einträge), z. B. https://poker.arthur-reuss.de/admin/feedback oder https://poker.deinemudda.win/admin/feedback. Filter Neu/Gelesen/Erledigt/Alle; den Status je Eintrag über die Auswahl „Status“ ändern. Admin-Flag setzen: README, Abschnitt „Admin“.
 - **Im Terminal (prod):** die CLI ist im Server-Image gebündelt:
   ```sh
   npm run prod:compose -- exec server node cli/feedback.mjs                 # die 20 neuesten, alle Status
@@ -248,17 +248,17 @@ Spieler schicken Feedback über den Knopf „Feedback“ in der App (Bug, Idee, 
 ## Admin anlegen und Admin-Aktionen
 Admin wird man nur per CLI (D-029): `admin:make-admin <benutzername>` (prod: `npm run prod:compose -- exec server node cli/make-admin.mjs <benutzername>`, mit `--revoke` entziehen; Aufrufe: README, Abschnitt „Admin“). Danach im Browser neu laden – das Flag kommt aus `/api/me`. Admin-Rechte nur an Vertrauenspersonen (D-027: Admins können am Tisch verdeckte Karten sehen).
 
-- **Dashboard** (WP-029): Menü „Admin“ bzw. `/admin`. Übersicht mit aktiven Tischen, Spielern online, Runden heute (Europe/Berlin) und in den letzten 7 Tagen, neuem Feedback und Server-Health (Datenbank, Laufzeit, Speicher). Das **letzte Backup** steht dort nicht – der Server sieht den Backup-Ordner nicht; dafür `npm run prod:status`.
-- **Aktionen** im Dashboard (jeweils mit Bestätigung) oder per API (Endpunkte: [ARCHITECTURE.md](ARCHITECTURE.md), „Auth“ → „Admin (WP-028)“): unter „Spieler“ sperren (optional mit Begründung)/entsperren, abmelden (alle Sessions beenden), Passwort zurücksetzen – das neue Zufallspasswort erscheint **genau einmal** im Dialog („Kopieren“, dann „Fertig“), danach ist es nirgends mehr abrufbar; unter „Tische“ Tisch schließen (laufende Runde wird ohne Punkte abgebrochen).
+- **Dashboard:** Menü „Admin“ bzw. `/admin`. Übersicht mit aktiven Tischen, Spielern online, Runden heute (Europe/Berlin) und in den letzten 7 Tagen, neuem Feedback und Server-Health (Datenbank, Laufzeit, Speicher). Das **letzte Backup** steht dort nicht – der Server sieht den Backup-Ordner nicht; dafür `npm run prod:status`.
+- **Aktionen** im Dashboard (jeweils mit Bestätigung) oder per API (Endpunkte: [ARCHITECTURE.md](ARCHITECTURE.md), „Auth“ → „Admin“): unter „Spieler“ sperren (optional mit Begründung)/entsperren, abmelden (alle Sessions beenden), Passwort zurücksetzen – das neue Zufallspasswort erscheint **genau einmal** im Dialog („Kopieren“, dann „Fertig“), danach ist es nirgends mehr abrufbar; unter „Tische“ Tisch schließen (laufende Runde wird ohne Punkte abgebrochen).
 - **Sperre:** beendet sofort alle Anmeldungen und Verbindungen des Spielers; am Tisch wird er automatisch gecheckt/gefoldet. Beim Login sieht er „Dein Konto ist gesperrt“. Admins lassen sich nicht sperren – erst `--revoke`.
 - **Admin-Protokoll:** jede Aktion (auch die CLI-Befehle `make-admin` und `reset-password`) steht in der Tabelle `admin_audit_log`; lesen im Dashboard unter „Protokoll“, per `GET /api/admin/audit` oder SQL: `SELECT * FROM admin_audit_log ORDER BY id DESC LIMIT 50;`. Einträge werden nach **1 Jahr** automatisch gelöscht (D-025, Log „Admin-Protokoll: abgelaufene Einträge gelöscht“).
 
 ## Security-Checkliste
-Grundschutz der öffentlichen Seite (WP-022). Vor jedem Release mit Änderungen an nginx, Abhängigkeiten oder Datenverarbeitung durchgehen.
+Grundschutz der öffentlichen Seite. Vor jedem Release mit Änderungen an nginx, Abhängigkeiten oder Datenverarbeitung durchgehen.
 
 **Automatisch (in `npm run check`):**
 - [ ] `scripts/test/nginx-headers.test.mjs`: jede `location` bindet `docker/nginx/security-headers.conf` ein, CSP ohne `unsafe-inline`/`unsafe-eval`, keine Inline-Skripte in `index.html`, PWA-Registrierung als eigene Datei.
-- [ ] `scripts/test/og-tags.test.mjs`: Open-Graph-Tags, `sub_filter` für die Origin, CSP-Wortlaut unverändert (WP-030).
+- [ ] `scripts/test/og-tags.test.mjs`: Open-Graph-Tags, `sub_filter` für die Origin, CSP-Wortlaut unverändert.
 - [ ] `scripts/test/compose-prod.test.mjs` und `scripts/test/log-rotate.test.mjs`: Log-Rotation nach D-025 (Größen-Rotation aller Container-Logs, Request-Logs in rotierten Dateien, Löschfrist < 14 Tage, cloudflared nicht auf `debug`).
 
 **Security-Header (nginx, prod):** Wortlaut in `docker/nginx/security-headers.conf`:
@@ -323,7 +323,7 @@ Für **jede** der beiden Zonen:
   Nach dem Restore die IDs, die im Backup noch nicht gelöscht sind, erneut anonymisieren, z. B. per `UPDATE users SET username = NULL, password_hash = NULL, is_admin = false, deleted_at = now() WHERE id = … AND deleted_at IS NULL` (der Trigger trennt dabei auch ihr Feedback) plus `DELETE FROM sessions WHERE user_id = …`. Abgelaufenes Feedback löscht der Server beim Start nach dem Restore selbst.
 
 ## Link-Vorschau
-Messenger zeigen für geteilte Links (Startseite, `/join/…`, `/table/…`) Bild und Titel aus den Open-Graph-Tags (WP-030, ARCHITECTURE.md → „Frontend“ → „Link-Vorschau“). nginx setzt dabei die aufgerufene Domain in Bild- und Seiten-URL ein.
+Messenger zeigen für geteilte Links (Startseite, `/join/…`, `/table/…`) Bild und Titel aus den Open-Graph-Tags (ARCHITECTURE.md → „Frontend“ → „Link-Vorschau“). nginx setzt dabei die aufgerufene Domain in Bild- und Seiten-URL ein.
 
 **Lokal gegen ein gebautes Web-Image** (Ports 4324/4325, wie bei der Security-Checkliste):
 ```sh

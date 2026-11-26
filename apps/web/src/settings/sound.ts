@@ -1,4 +1,4 @@
-// Ton und Vibration am Tisch (WP-031). Pro Gerät in localStorage (Zugriffe in try/catch, sonst nur im
+// Ton und Vibration am Tisch. Pro Gerät in localStorage (Zugriffe in try/catch, sonst nur im
 // Speicher); Standard: Ton an, Lautstärke 70 %, Vibration an (nur wo `navigator.vibrate` existiert).
 import { useCallback, useSyncExternalStore } from 'react';
 

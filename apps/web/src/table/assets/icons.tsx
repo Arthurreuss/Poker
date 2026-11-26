@@ -64,7 +64,7 @@ export function DisconnectedSvg() {
   );
 }
 
-/** Menü-Symbol des Tisch-Menüs: drei abgerundete Balken (WP-017). */
+/** Menü-Symbol des Tisch-Menüs: drei abgerundete Balken. */
 export function MenuSvg() {
   return (
     <svg viewBox="0 0 24 24" className="pt-icon-svg" aria-hidden="true" focusable="false">

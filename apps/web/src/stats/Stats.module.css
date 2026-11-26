@@ -1,4 +1,4 @@
-/* Rangliste, Profil, Hand-Historie (WP-019). Nur Design-Tokens. */
+/* Rangliste, Profil, Hand-Historie. Nur Design-Tokens. */
 
 .toolbar {
   display: flex;
@@ -238,7 +238,7 @@ a.card:focus-visible {
   font-style: italic;
 }
 
-/* Avatare (WP-032) */
+/* Avatare */
 .who {
   display: inline-flex;
   align-items: center;

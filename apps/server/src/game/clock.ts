@@ -1,5 +1,5 @@
-// Injizierbare Uhr für den Game-Server (WP-011): Zeit für Blind-Level und Pausen nach einer Hand,
-// später Zug-Timer und Zeitbank (WP-012). Tests nutzen `ManualClock` oder `systemClock` mit Pause 0.
+// Injizierbare Uhr für den Game-Server: Zeit für Blind-Level und Pausen nach einer Hand,
+// Zug-Timer und Zeitbank. Tests nutzen `ManualClock` oder `systemClock` mit Pause 0.
 
 /** Hebt einen geplanten Aufruf auf (mehrfacher Aufruf ist harmlos). */
 export type Cancel = () => void;
@@ -23,7 +23,7 @@ export const systemClock: Clock = {
   },
 };
 
-/** Von Hand gesteuerte Uhr für Tests (und Zug-Timer-Tests in WP-012). */
+/** Von Hand gesteuerte Uhr für Tests (auch Zug-Timer-Tests). */
 export class ManualClock implements Clock {
   private pending: { at: number; fn: () => void; id: number }[] = [];
   private nextId = 0;

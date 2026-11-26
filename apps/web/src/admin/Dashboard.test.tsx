@@ -1,4 +1,4 @@
-// Komponenten-Tests des Admin-Dashboards /admin/* (WP-029): Zugriff, Übersicht, Spieler-Aktionen mit Bestätigung,
+// Komponenten-Tests des Admin-Dashboards /admin/*: Zugriff, Übersicht, Spieler-Aktionen mit Bestätigung,
 // Passwort einmalig mit Kopier-Knopf, Tische schließen, Feedback erledigen, Protokoll mit Blättern.
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';

@@ -1,4 +1,4 @@
-// Gemeinsame Bausteine des Admin-Dashboards (WP-029): Laden mit Abbruch, Fehlertexte, Formate, Bestätigungsdialog.
+// Gemeinsame Bausteine des Admin-Dashboards: Laden mit Abbruch, Fehlertexte, Formate, Bestätigungsdialog.
 import { useCallback, useEffect, useId, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
 import { ApiError } from '../api';

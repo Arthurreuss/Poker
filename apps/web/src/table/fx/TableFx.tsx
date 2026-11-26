@@ -1,6 +1,6 @@
 /**
- * Animationen am Tisch (WP-031): Austeilen, Board aufdecken, Einsätze, Check, Fold, Einsätze → Pot,
- * Pot → Gewinner; Showdown-Karten drehen sich um (WP-039). Wird als `overlay` in die Tischfläche von `PokerTable` gelegt und arbeitet nur über die
+ * Animationen am Tisch: Austeilen, Board aufdecken, Einsätze, Check, Fold, Einsätze → Pot,
+ * Pot → Gewinner; Showdown-Karten drehen sich um. Wird als `overlay` in die Tischfläche von `PokerTable` gelegt und arbeitet nur über die
  * Web Animations API (`element.animate`) und kurzlebige „Geister“-Elemente in der eigenen Ebene – keine
  * `<style>`-Elemente, keine Inline-Styles im Markup (CSP `style-src 'self'`, D-014).
  *
@@ -16,7 +16,7 @@ import '../showdown.css';
 
 export interface TableFxProps {
   readonly view: TableView;
-  /** Einstellung „Animationen“ (WP-018); `prefers-reduced-motion` wird zusätzlich geprüft. */
+  /** Einstellung „Animationen“; `prefers-reduced-motion` wird zusätzlich geprüft. */
   readonly enabled: boolean;
 }
 
@@ -124,12 +124,12 @@ function ghost(
   window.setTimeout(remove, Number(options.duration ?? 0) + (options.delay ?? 0) + 500);
 }
 
-/** Showdown-Flip (WP-039): eine Hälfte Rückseite, eine Hälfte Vorderseite; mit Versatz der zweiten Karte ca. 1 s. */
+/** Showdown-Flip: eine Hälfte Rückseite, eine Hälfte Vorderseite; mit Versatz der zweiten Karte ca. 1 s. */
 export const FLIP_HALF_MS = 450;
 export const FLIP_CARD_STAGGER_MS = 120;
 
 /**
- * Karte im Showdown umdrehen (WP-039): Eine Rückseite (Geist in der Effekt-Ebene) dreht sich bis zur Kante weg,
+ * Karte im Showdown umdrehen: Eine Rückseite (Geist in der Effekt-Ebene) dreht sich bis zur Kante weg,
  * dann dreht sich die echte, schon offene Karte von der Kante her auf. Die Karte selbst steht sofort richtig
  * im DOM (`fill: 'backwards'` hält sie nur während der ersten Hälfte unsichtbar auf der Kante).
  */

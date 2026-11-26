@@ -1,4 +1,4 @@
-# Avatare (WP-032)
+# Avatare
 
 Alle 24 Avatare sind **selbst gezeichnet** als React-SVG-Komponenten in `art.tsx` (Raster 0–64, Kreis mit Hintergrundfarbe und einfachem Motiv aus Kreisen, Ellipsen und Pfaden) – keine fremden Dateien, keine Originalassets anderer Anbieter (D-008). Nur SVG-Attribute, kein `style` (CSP). Lizenz: wie das Projekt.
 

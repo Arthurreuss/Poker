@@ -1,4 +1,4 @@
-// React-Anbindung des Lobby-Clients (WP-015): eine Verbindung pro Seite, beim Verlassen getrennt.
+// React-Anbindung des Lobby-Clients: eine Verbindung pro Seite, beim Verlassen getrennt.
 import { createContext, useContext, useEffect, useState, useSyncExternalStore } from 'react';
 import { browserSocketFactory, LobbyClient, type LobbyState, type SocketFactory } from './client';
 

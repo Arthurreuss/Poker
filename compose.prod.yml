@@ -68,7 +68,7 @@ services:
       context: .
       dockerfile: docker/web.Dockerfile
       args:
-        # Commit des prod-Checkouts, gesetzt von scripts/prod.sh (Feedback-Kontext, WP-024).
+        # Commit des prod-Checkouts, gesetzt von scripts/prod.sh (Feedback-Kontext).
         APP_VERSION: ${APP_VERSION:-}
     image: poker-prod-web
     environment:
@@ -92,7 +92,7 @@ services:
     logging: *logging
     restart: unless-stopped
 
-  # Tägliches pg_dump (WP-021) in einen Host-Ordner außerhalb von Docker-Volumes. BACKUP_DIR setzen die
+  # Tägliches pg_dump in einen Host-Ordner außerhalb von Docker-Volumes. BACKUP_DIR setzen die
   # npm-Skripte (scripts/lib/prod-env.sh, Standard /Users/Shared/fleet/backups/poker, D-037). Aufbewahrung 7 täglich /
   # 4 wöchentlich / 6 monatlich, Unterordner last/ daily/ weekly/ monthly/. Manuell: npm run prod:backup.
   # Nach jedem Lauf legt der Hook docker/backup/secrets-hook.sh eine verschlüsselte Kopie von .env.prod nach secrets/

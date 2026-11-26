@@ -1,4 +1,4 @@
-// Spielstil-Statistiken (WP-019): reine Berechnung ohne DB. Definitionen und Begründungen:
+// Spielstil-Statistiken: reine Berechnung ohne DB. Definitionen und Begründungen:
 // docs/ARCHITECTURE.md, Abschnitt „Statistiken“. Welche Hände überhaupt zählen (nur beendete Hände beendeter
 // Runden, D-019/D-022), entscheidet die Abfrage in `queries.ts` – hier wird nur je Hand klassifiziert und summiert.
 import type { HandActionType, Street } from '../db/types';

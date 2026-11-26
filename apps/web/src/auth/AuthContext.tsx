@@ -8,7 +8,7 @@ export type AuthState =
   | { status: 'loading' }
   /**
    * `loggedOut`: bewusst abgemeldet – dann kein „zurück zur Zielseite“ nach dem nächsten Login.
-   * `accountDeleted`: das Konto wurde eben gelöscht (WP-022) – die Login-Seite zeigt eine Bestätigung.
+   * `accountDeleted`: das Konto wurde eben gelöscht – die Login-Seite zeigt eine Bestätigung.
    */
   | { status: 'anonymous'; loggedOut?: boolean; accountDeleted?: boolean }
   | { status: 'authenticated'; user: User };
@@ -20,9 +20,9 @@ export interface AuthContextValue {
   login: (credentials: Credentials) => Promise<User>;
   register: (credentials: Credentials) => Promise<User>;
   logout: () => Promise<void>;
-  /** Konto löschen (WP-022); danach ausgeloggt. Wirft `ApiError` z. B. bei falschem Passwort (403). */
+  /** Konto löschen; danach ausgeloggt. Wirft `ApiError` z. B. bei falschem Passwort (403). */
   deleteAccount: (password: string) => Promise<void>;
-  /** Eigenen Avatar setzen (WP-032); wirft `ApiError`. Der User im Kontext wird danach aktualisiert. */
+  /** Eigenen Avatar setzen; wirft `ApiError`. Der User im Kontext wird danach aktualisiert. */
   setAvatar: (avatar: AvatarId | null) => Promise<void>;
 }
 

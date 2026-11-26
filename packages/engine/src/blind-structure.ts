@@ -1,5 +1,5 @@
 /**
- * Blind-Struktur einer Runde (WP-008, D-012, keine Antes laut D-016).
+ * Blind-Struktur einer Runde (D-012, keine Antes laut D-016).
  * Zeit kommt nur als Parameter in Millisekunden herein – die Engine liest nie die Uhr.
  */
 
@@ -15,7 +15,7 @@ export interface TimedBlindStructure {
   levelMinutes: number;
 }
 
-/** Steigende Blinds nach Händen: jedes Level gilt für `levelHands` Hände (WP-036, D-033). */
+/** Steigende Blinds nach Händen: jedes Level gilt für `levelHands` Hände (D-033). */
 export interface HandsBlindStructure {
   type: 'increasing';
   levels: BlindLevel[];
@@ -26,7 +26,7 @@ export interface HandsBlindStructure {
  * - `fixed`: dieselben Blinds für die ganze Runde.
  * - `increasing`: `levels` nacheinander, je `levelMinutes` Minuten **oder** je `levelHands` Hände (genau eins
  *   von beiden, D-033); nach dem letzten Level bleibt es dabei. Ohne `levelHands` ist es die Zeit-Variante –
- *   so bleiben gespeicherte Strukturen von vor WP-036 unverändert gültig.
+ *   so bleiben gespeicherte Strukturen aus der Zeit vor `levelHands` unverändert gültig.
  */
 export type BlindStructure = { type: 'fixed'; level: BlindLevel } | TimedBlindStructure | HandsBlindStructure;
 
@@ -61,7 +61,7 @@ export const DEFAULT_BLIND_LEVELS: readonly BlindLevel[] = [
 /** Standard-Level-Dauer (D-012: Standard ist steigend). */
 export const DEFAULT_LEVEL_MINUTES = 10;
 
-/** Vorschlag für Hände pro Level, wenn die Blinds nach Händen steigen (WP-036, D-033). */
+/** Vorschlag für Hände pro Level, wenn die Blinds nach Händen steigen (D-033). */
 export const DEFAULT_LEVEL_HANDS = 10;
 
 /** Standard-Blind-Struktur: `DEFAULT_BLIND_LEVELS`, steigend alle 10 Minuten. */

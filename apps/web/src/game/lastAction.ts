@@ -1,4 +1,4 @@
-// Letzte Aktion je Spieler (WP-037): aus dem öffentlichen Hand-Log der Server-Sicht (D-003, nichts Verdecktes).
+// Letzte Aktion je Spieler: aus dem öffentlichen Hand-Log der Server-Sicht (D-003, nichts Verdecktes).
 // Rein und unit-getestet; der Adapter (`adapter.ts`) legt das Ergebnis als `lastAction` an die Sitze.
 import type { HandEvent, HandPhase, Street } from '@poker/engine';
 import type { LastActionView } from '../table/types';

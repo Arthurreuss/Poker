@@ -1,4 +1,4 @@
-// Reaktions-Knopf am Tisch (WP-032).
+// Reaktions-Knopf am Tisch.
 import { REACTION_IDS } from '@poker/engine/protocol';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';

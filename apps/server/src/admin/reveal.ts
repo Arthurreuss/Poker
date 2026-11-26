@@ -1,5 +1,5 @@
-// Admin-Eingriffe am Tisch im Admin-Protokoll: Karten aufdecken (WP-033, D-027, `table.reveal_cards`) und eigene
-// Karten neu ziehen (WP-035, D-032, `table.redraw_cards`). Die Spiellogik (wer darf was wann) steckt im Game-Server
+// Admin-Eingriffe am Tisch im Admin-Protokoll: Karten aufdecken (D-027, `table.reveal_cards`) und eigene
+// Karten neu ziehen (D-032, `table.redraw_cards`). Die Spiellogik (wer darf was wann) steckt im Game-Server
 // (`game/admin-reveal.ts`, `GameServer`); hier nur das Schreiben.
 import type { Queryable } from '../db';
 import type { CardRedrawAudit, CardRevealAudit } from '../game/admin-reveal';

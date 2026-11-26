@@ -1,4 +1,4 @@
-// Eine Hand zum Nachlesen (WP-019): Spieler mit Karten (fremde nur, wenn gezeigt – filtert der Server, D-003),
+// Eine Hand zum Nachlesen: Spieler mit Karten (fremde nur, wenn gezeigt – filtert der Server, D-003),
 // Aktionen je Straße mit Board, Pots und Gewinner.
 import { Link, useParams } from 'react-router';
 import { fetchHand, type HandDetail, type Street } from '../api/stats';

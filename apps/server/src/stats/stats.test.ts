@@ -1,4 +1,4 @@
-// Statistik-Definitionen (WP-019) als Tabellentests auf bekannten Hand-Historien.
+// Statistik-Definitionen als Tabellentests auf bekannten Hand-Historien.
 import { describe, expect, it } from 'vitest';
 import type { HandActionType, Street } from '../db/types';
 import type { HandRecord, StoredAction } from '../history/records';

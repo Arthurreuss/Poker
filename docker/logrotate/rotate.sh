@@ -1,5 +1,5 @@
 #!/bin/sh
-# Log-Rotation für prod (WP-022, D-025): Server- und nginx-Logs enthalten IP-Adressen und dürfen höchstens
+# Log-Rotation für prod (D-025): Server- und nginx-Logs enthalten IP-Adressen und dürfen höchstens
 # 14 Tage aufbewahrt werden. Docker rotiert seine Container-Logs nur nach Größe, deshalb schreiben server und web
 # ihre Request-Logs in Dateien (Volumes, eingehängt unter LOG_DIR) und dieser Dienst rotiert sie nach Zeit.
 #

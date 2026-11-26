@@ -1,4 +1,4 @@
-// Adapter Protokoll → Tischansicht (WP-018): macht aus der gefilterten Server-Sicht (`@poker/engine/protocol`)
+// Adapter Protokoll → Tischansicht: macht aus der gefilterten Server-Sicht (`@poker/engine/protocol`)
 // das darstellungsorientierte View-Model der Tischansicht (`src/table/types.ts`). Rein und unit-getestet;
 // keine Spiellogik außer Darstellung (D-003). Pots der laufenden Hand rechnet `calculatePots` der Engine
 // aus den Einsätzen früherer Straßen (dieselbe Regel wie im Showdown).
@@ -67,7 +67,7 @@ function winnerIdsOf(hand: HandView): Set<string> {
 }
 
 /**
- * Was die Tischansicht von der Hand schon zeigt (WP-031, `game/presentation.ts`): Bei einem All-in-Runout
+ * Was die Tischansicht von der Hand schon zeigt (`game/presentation.ts`): Bei einem All-in-Runout
  * deckt der Client Flop, Turn und River nacheinander auf und zeigt das Ergebnis erst danach.
  * - `board`: so viele Board-Karten zeigen
  * - `result`: Ergebnis zeigen (Auszahlung in den Stacks, Gewinner); sonst Stacks und Pots vor der Auszahlung
@@ -78,7 +78,7 @@ export interface Reveal {
 }
 
 export interface AdaptOptions {
-  /** Teil-Aufdecken (WP-031); ohne Angabe wird alles gezeigt. */
+  /** Teil-Aufdecken; ohne Angabe wird alles gezeigt. */
   readonly reveal?: Reveal | null;
   /** Zug-Timer (aus `readTurnClock`); ohne Timer bleibt der Ring aus. */
   readonly turnClock?: TurnClock | null;
@@ -96,7 +96,7 @@ export function toTableView(server: ServerTableView, options: AdaptOptions = {})
   const unpaid = holdResult ? unpaidPotsOf(hand) : null;
   const winners = hand !== null && hand.phase === 'complete' && !holdResult ? winnerIdsOf(hand) : null;
   const seats: SeatView[] = Array.from({ length: MAX_SEATS }, () => EMPTY);
-  // WP-037: letzte Aktion der laufenden Straße je Spieler (öffentliches Log).
+  // Letzte Aktion der laufenden Straße je Spieler (öffentliches Log).
   const lastActions = hand === null ? null : lastActionsOf(hand);
 
   for (const s of server.seats) {
@@ -162,7 +162,7 @@ export function toTableView(server: ServerTableView, options: AdaptOptions = {})
         ? { small: level.smallBlind, big: level.bigBlind }
         : { small: firstLevel?.smallBlind ?? 0, big: firstLevel?.bigBlind ?? 0 };
   const levelNumber = increasing ? (level?.levelIndex ?? 0) + 1 : undefined;
-  // Blinds nach Händen (WP-036): Restzahl der Hände auf diesem Level; `null` = letztes Level oder nach Zeit.
+  // Blinds nach Händen (D-033): Restzahl der Hände auf diesem Level; `null` = letztes Level oder nach Zeit.
   const handsLeft = level?.handsLeftInLevel ?? null;
 
   let timer: { timeRemaining?: number; timeBankSeconds?: number; timeSeconds?: number } = {};
@@ -178,7 +178,7 @@ export function toTableView(server: ServerTableView, options: AdaptOptions = {})
 
   const board = hand?.board ?? [];
   const shownBoard = reveal === null ? board : board.slice(0, reveal.board);
-  // WP-037: eigene beste Hand mit dem gezeigten Board (beim Runout Straße für Straße).
+  // Eigene beste Hand mit dem gezeigten Board (beim Runout Straße für Straße).
   const heroCards = heroSeat === null ? undefined : seats[heroSeat];
   const heroHand =
     heroCards?.kind === 'player' && heroCards.holeCards.kind === 'visible'
@@ -187,7 +187,7 @@ export function toTableView(server: ServerTableView, options: AdaptOptions = {})
   const winnerSeats =
     winners === null || hand === null ? [] : hand.players.filter((p) => winners.has(p.playerId)).map((p) => p.seat);
   const winningCards = winners === null ? undefined : hand?.showdown?.pots[0]?.winningHand?.cards;
-  // WP-040: Feier erst mit dem sichtbaren Ergebnis (nach Aufdecken bzw. Runout).
+  // Feier erst mit dem sichtbaren Ergebnis (nach Aufdecken bzw. Runout).
   const celebration = winners === null ? null : handCelebration(server);
 
   return {
@@ -252,7 +252,7 @@ export function heroHandContext(server: ServerTableView): HeroHandContext | null
   };
 }
 
-/** Eingeblendete Reaktionen (Store) → View-Model; nur Sitze, an denen gerade jemand sitzt (WP-032). */
+/** Eingeblendete Reaktionen (Store) → View-Model; nur Sitze, an denen gerade jemand sitzt. */
 export function toReactionViews(bubbles: readonly ReactionBubble[], view: TableView): SeatReactionView[] {
   return bubbles
     .filter((b) => view.seats[b.seat]?.kind === 'player')

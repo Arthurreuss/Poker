@@ -1,4 +1,4 @@
-// Seiten /impressum und /datenschutz (WP-022): ohne Login erreichbar, eigener schlichter Rahmen.
+// Seiten /impressum und /datenschutz: ohne Login erreichbar, eigener schlichter Rahmen.
 // Die Texte stehen in content/ (je eine Datei, leicht editierbar).
 import type { ReactNode } from 'react';
 import { Link } from 'react-router';

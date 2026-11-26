@@ -14,14 +14,14 @@ export interface SeatPlateProps {
   readonly timeRemaining?: number | undefined;
   /** Restliche Zeitbank in Sekunden, solange sie läuft (D-013). */
   readonly timeBankSeconds?: number | undefined;
-  /** Restsekunden für die Anzeige unter der Plakette (WP-037). */
+  /** Restsekunden für die Anzeige unter der Plakette. */
   readonly timeSeconds?: number | undefined;
-  /** Letzte Aktion der Straße als Schriftzug (WP-037); „Fold“ zeigt weiter das Etikett. */
+  /** Letzte Aktion der Straße als Schriftzug; „Fold“ zeigt weiter das Etikett. */
   readonly lastAction?: LastActionView | undefined;
-  /** Name der eigenen besten Hand unter der Plakette (WP-037, nur eigener Sitz). */
+  /** Name der eigenen besten Hand unter der Plakette (nur eigener Sitz). */
   readonly heroHand?: HeroHandView | undefined;
   readonly isHero?: boolean;
-  /** Avatar-ID (WP-032); ohne Wert kein Avatar an der Plakette. */
+  /** Avatar-ID; ohne Wert kein Avatar an der Plakette. */
   readonly avatar?: string | null | undefined;
   /** Seite, an der der Avatar über den Rand ragt (gegenüber Dealer-Button/Blind-Marker). */
   readonly avatarSide?: 'left' | 'right';
@@ -64,7 +64,7 @@ export function SeatPlate({
     'pt-plate',
     isHero && 'pt-plate--hero',
     toAct && 'pt-plate--to-act',
-    // Läuft ein Timer, ist der Rahmen der Hervorhebung selbst der Timer (WP-037): Farbe je Stufe.
+    // Läuft ein Timer, ist der Rahmen der Hervorhebung selbst der Timer: Farbe je Stufe.
     toAct && stage !== null && `pt-plate--timed pt-plate--timer-${stage}`,
     `pt-plate--${status}`,
     !connected && 'pt-plate--disconnected',

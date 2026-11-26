@@ -122,7 +122,7 @@ describe.skipIf(testDatabaseUrl === undefined)('Schema (Test-DB)', () => {
       await insertUser('dave');
     });
 
-    it('Avatar (WP-032): optional, nur gültiges Format, gelöschte Accounts ohne Avatar', async () => {
+    it('Avatar: optional, nur gültiges Format, gelöschte Accounts ohne Avatar', async () => {
       const user = await insertUser('erin');
       expect(user.avatar).toBeNull();
       await s.pool.query(`UPDATE users SET avatar = 'fox' WHERE id = $1`, [user.id]);
@@ -189,7 +189,7 @@ describe.skipIf(testDatabaseUrl === undefined)('Schema (Test-DB)', () => {
   });
 
   describe('Constraints', () => {
-    it('Sitz ist pro Runde eindeutig, Platzierung darf geteilt sein (0002, WP-008)', async () => {
+    it('Sitz ist pro Runde eindeutig, Platzierung darf geteilt sein (0002)', async () => {
       const { roundId } = await seedRound();
       const carol = await insertUser('carol');
       await expectPgError(
@@ -203,7 +203,7 @@ describe.skipIf(testDatabaseUrl === undefined)('Schema (Test-DB)', () => {
       ]);
     });
 
-    it('Hände: Deck hat 52 Karten, Blind-Sitze 0–8, Small Blind darf fehlen (0003, WP-013)', async () => {
+    it('Hände: Deck hat 52 Karten, Blind-Sitze 0–8, Small Blind darf fehlen (0003)', async () => {
       const { roundId } = await seedRound();
       const deck = Array.from({ length: 52 }, (_, i) => `c${String(i)}`);
       const insert = (n: number, sb: number | null, bb: number, d: string[]) =>

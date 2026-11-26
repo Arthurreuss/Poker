@@ -1,4 +1,4 @@
-// Hand-Historie (WP-013): Abbildung eines Engine-Handzustands auf die gespeicherte Form (Tabellen `hands`,
+// Hand-Historie: Abbildung eines Engine-Handzustands auf die gespeicherte Form (Tabellen `hands`,
 // `hand_actions`) – rein, ohne DB. Format der JSONB-Spalten: siehe Typen unten und ARCHITECTURE.md,
 // „Datenmodell“ → „Persistenz“. Engine-Spieler-ID = String(userId) (D-003).
 import {

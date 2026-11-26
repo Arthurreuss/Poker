@@ -40,13 +40,13 @@ function readParams(): {
 }
 
 /**
- * Entwicklungsseite mit Mock-Zuständen der Tischansicht (WP-016). Im Dev-Build unter `/dev/table`
+ * Entwicklungsseite mit Mock-Zuständen der Tischansicht. Im Dev-Build unter `/dev/table`
  * (App-Router) und über `table-dev.html` (eigene Entry, für die Playwright-Tests) erreichbar.
  * URL-Parameter: `state=<id>`, `four=1` (Vier-Farben-Deck), `bare=1` (ohne Umschalter, für Screenshots),
- * `layout=auto|portrait|landscape` (WP-017; nur für diese Seite, ohne die gespeicherte Einstellung
+ * `layout=auto|portrait|landscape` (nur für diese Seite, ohne die gespeicherte Einstellung
  * zu ändern). Ohne `layout` gilt die gespeicherte Einstellung wie am echten Tisch.
- * `fx=1` (WP-031): statt der Mock-Zustände läuft eine Hand mit allen Animationen in Schleife (`fxDemo.ts`).
- * `winner=1` (WP-040): zusätzlich die Einblendung „Sieger des Tisches“.
+ * `fx=1`: statt der Mock-Zustände läuft eine Hand mit allen Animationen in Schleife (`fxDemo.ts`).
+ * `winner=1`: zusätzlich die Einblendung „Sieger des Tisches“.
  */
 export function TableDevPage() {
   const initial = readParams();
@@ -151,7 +151,7 @@ export function TableDevPage() {
           }
           preference={preference}
           onPreferenceChange={setPreference}
-          actionBar={<div className="pt-dev-action">Platz für die Aktionsleiste (WP-018)</div>}
+          actionBar={<div className="pt-dev-action">Platz für die Aktionsleiste</div>}
           reactionPicker={mock.view.heroSeat === null ? undefined : <ReactionPicker onReact={() => true} />}
         />
       </div>

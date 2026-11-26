@@ -1,5 +1,5 @@
 /**
- * Avatare und Emoji-Reaktionen (WP-032): feste Auswahl, die Server (Validierung, DB) und Web (Darstellung)
+ * Avatare und Emoji-Reaktionen: feste Auswahl, die Server (Validierung, DB) und Web (Darstellung)
  * teilen. Die Grafiken selbst liegen nur im Web (`apps/web/src/avatars/`); hier stehen nur die IDs.
  * Neue IDs dürfen hinten angehängt werden; entfernte IDs müssten per Migration in `users.avatar` auf `NULL`.
  */

@@ -1,4 +1,4 @@
-// Einstellungen → Emoji-Reaktionen am Tisch ein/aus (WP-032). Nur auf diesem Gerät gespeichert.
+// Einstellungen → Emoji-Reaktionen am Tisch ein/aus. Nur auf diesem Gerät gespeichert.
 import pageStyles from '../pages/Page.module.css';
 import { useReactionsPreference } from './reactions';
 

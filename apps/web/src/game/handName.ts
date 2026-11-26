@@ -1,4 +1,4 @@
-// Kurzname der eigenen besten Hand (WP-037), z. B. „Paar Könige“, „Straße“. Ab dem Flop über die
+// Kurzname der eigenen besten Hand, z. B. „Paar Könige“, „Straße“. Ab dem Flop über die
 // Handbewertung der Engine (`evaluateHand`, 5–7 Karten); preflop (nur zwei Karten, das kann die Engine
 // nicht) eigene kleine Ableitung: Paar oder höchste Karte. Kategorienamen aus `HAND_CATEGORY_NAMES`.
 import { evaluateHand, HAND_CATEGORY_NAMES, type Card } from '@poker/engine';

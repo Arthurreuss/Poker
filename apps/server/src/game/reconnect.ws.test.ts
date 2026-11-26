@@ -1,4 +1,4 @@
-// WP-012 über echte WebSockets (ohne DB): Reconnect mitten in der Hand, zwei Tabs desselben Users,
+// Verbindungsabbrüche über echte WebSockets (ohne DB): Reconnect mitten in der Hand, zwei Tabs desselben Users,
 // Zug-Timer und Anwendungs-Heartbeat. Zeit über `ManualClock` – kein echtes Warten auf Timer.
 import type { AddressInfo } from 'node:net';
 import type { FastifyInstance } from 'fastify';

@@ -1,4 +1,4 @@
-/** Mock-Tischzustände für die Testseite, Komponenten- und Screenshot-Tests (WP-016). */
+/** Mock-Tischzustände für die Testseite, Komponenten- und Screenshot-Tests. */
 import type { Card, HoleCardsView, PlayerSeatView, SeatView, TableView } from '../types';
 import { MAX_SEATS } from '../types';
 
@@ -134,7 +134,7 @@ const sixShowdown: TableView = {
   board: ['Qh', 'Th', '3c', '8d', '2h'],
   pots: [{ amount: 9_600 }, { amount: 2_400 }],
   blinds: { small: 150, big: 300, level: 5 },
-  // WP-031: Arthur gewinnt mit dem Herz-Flush – Plakette und Gewinnerhand hervorgehoben.
+  // Arthur gewinnt mit dem Herz-Flush – Plakette und Gewinnerhand hervorgehoben.
   winnerSeats: [0],
   winningCards: ['Kh', 'Qh', 'Jh', 'Th', '2h'],
 };
@@ -159,7 +159,7 @@ const sixDisconnected: TableView = {
   blinds: { small: 200, big: 400, level: 7 },
 };
 
-/** WP-037: letzte Aktionen als Schriftzug, Timer gegen Ende (rot) mit Sekunden, eigene Hand. */
+/** Letzte Aktionen als Schriftzug, Timer gegen Ende (rot) mit Sekunden, eigene Hand. */
 const sixHints: TableView = {
   ...sixFlop,
   seats: seats({
@@ -181,7 +181,7 @@ const sixHints: TableView = {
   reactions: [],
 };
 
-/** WP-037: eigener Sitz am Zug mit laufender Zeitbank und eigener Hand. */
+/** Eigener Sitz am Zug mit laufender Zeitbank und eigener Hand. */
 const heroTimeBank: TableView = {
   ...headsUp,
   seats: seats({
@@ -206,7 +206,7 @@ function withPlayers(n: number): TableView {
   };
 }
 
-// WP-040: Feier nach der Hand – Flush mit Münzstapel, Straße mit Münzregen, Fold-out ohne Münzen.
+// Feier nach der Hand – Flush mit Münzstapel, Straße mit Münzregen, Fold-out ohne Münzen.
 const celebrateFlush: TableView = {
   ...sixShowdown,
   celebration: {

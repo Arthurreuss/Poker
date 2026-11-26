@@ -1,4 +1,4 @@
-// Spieler-Verwaltung für Admins (WP-028): Liste, Sperren/Entsperren, Sessions beenden, Passwort zurücksetzen.
+// Spieler-Verwaltung für Admins: Liste, Sperren/Entsperren, Sessions beenden, Passwort zurücksetzen.
 // Jede ändernde Funktion schreibt den Protokolleintrag in **derselben** SQL-Anweisung wie die Änderung (CTE) –
 // eine Aktion ohne Protokoll gibt es so nicht. Ändert sich nichts (User fehlt, Zustand passt nicht), wird auch
 // nichts protokolliert. Prüfungen wie „nicht sich selbst sperren“ macht die Route (admin/routes.ts).

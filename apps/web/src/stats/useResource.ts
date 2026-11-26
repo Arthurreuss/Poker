@@ -1,4 +1,4 @@
-// Daten einer Seite laden (WP-019): Abbruch beim Verlassen, optional neu laden, wenn die App wieder sichtbar wird.
+// Daten einer Seite laden: Abbruch beim Verlassen, optional neu laden, wenn die App wieder sichtbar wird.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ApiError } from '../api/client';
 

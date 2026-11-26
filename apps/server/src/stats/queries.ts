@@ -1,6 +1,6 @@
-// Abfragen für Rangliste, Statistiken und Hand-Historie (WP-019). Gewertet werden nur Runden mit Status
+// Abfragen für Rangliste, Statistiken und Hand-Historie. Gewertet werden nur Runden mit Status
 // `finished` und darin nur beendete Hände (D-019, D-022). Definitionen: docs/ARCHITECTURE.md, „Statistiken“.
-// Gelöschte Accounts (WP-022): Name `null`, egal ob die User-Zeile anonymisiert oder ganz weg ist.
+// Gelöschte Accounts: Name `null`, egal ob die User-Zeile anonymisiert oder ganz weg ist.
 import type { Card } from '@poker/engine';
 import type { AvatarId } from '@poker/engine/protocol';
 import { toAvatarId } from '../avatar/avatar';
@@ -15,7 +15,7 @@ export interface LeaderboardEntry {
   rank: number;
   userId: number;
   name: string;
-  /** Avatar (WP-032); `null` = keiner. */
+  /** Avatar; `null` = keiner. */
   avatar: AvatarId | null;
   points: number;
   /** Gewertete (beendete) Runden. */
@@ -287,7 +287,7 @@ function toHistoryHand(row: HistoryHandRow): HistoryHand {
     smallBlind: row.small_blind,
     bigBlind: row.big_blind,
     smallBlindSeat: row.small_blind_seat,
-    // Altzeilen vor WP-013 ohne Blind-Sitz: Anzeige ohne BB-Markierung (-1 passt auf keinen Sitz).
+    // Altzeilen von vor 0003 ohne Blind-Sitz: Anzeige ohne BB-Markierung (-1 passt auf keinen Sitz).
     bigBlindSeat: row.big_blind_seat ?? -1,
     board: row.board as Card[],
     players: row.players,

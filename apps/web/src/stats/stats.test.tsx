@@ -1,4 +1,4 @@
-// Rangliste, Profil und Hand-Historie (WP-019) – Seiten mit gemockter API.
+// Rangliste, Profil und Hand-Historie – Seiten mit gemockter API.
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { describe, expect, it } from 'vitest';
@@ -54,7 +54,7 @@ describe('Rangliste', () => {
     expect(rows.slice(1).map((r) => r.textContent)).toEqual([
       '1.anna1242',
       `1.${PLAYER.username} (du)1251`,
-      '3.Ccleo340', // ohne Avatar: Anfangsbuchstabe (WP-032)
+      '3.Ccleo340', // ohne Avatar: Anfangsbuchstabe
     ]);
     expect(rows.slice(1).map((r) => within(r).getByTestId('avatar').dataset['avatar'])).toEqual(['owl', 'fox', 'none']);
     const own = rows[2];

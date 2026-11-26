@@ -1,4 +1,4 @@
-// Erzeugt die App-Icons (WP-014) aus eigenen, hier definierten SVGs – keine fremden Assets (D-008).
+// Erzeugt die App-Icons aus eigenen, hier definierten SVGs – keine fremden Assets (D-008).
 // Aufruf: npm run icons -w @poker/web. Die Ergebnisse liegen eingecheckt in public/icons/,
 // der Prod-Build braucht dieses Skript nicht. Farben = Tokens aus src/styles/tokens.css.
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';

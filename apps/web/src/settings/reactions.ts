@@ -1,4 +1,4 @@
-// Emoji-Reaktionen am Tisch für sich selbst ein/aus (WP-032). Lokal gespeichert (localStorage), Standard: an.
+// Emoji-Reaktionen am Tisch für sich selbst ein/aus. Lokal gespeichert (localStorage), Standard: an.
 // Aus = keine Reaktionen einblenden und keinen Reaktions-Knopf zeigen; der Server schickt sie trotzdem.
 import { useCallback, useSyncExternalStore } from 'react';
 
@@ -40,7 +40,7 @@ function subscribe(listener: () => void): () => void {
   };
 }
 
-/** `[enabled, setEnabled]` – Einstellungsseite und Tisch (WP-032). */
+/** `[enabled, setEnabled]` – Einstellungsseite und Tisch. */
 export function useReactionsPreference(): [boolean, (value: boolean) => void] {
   const enabled = useSyncExternalStore(subscribe, readReactionsPreference, () => DEFAULT_VALUE);
   const setEnabled = useCallback((value: boolean) => {

@@ -1,4 +1,4 @@
-// Feedback-Formular (WP-024): Kategorie, Text (max. 2000 Zeichen mit Zähler), Bestätigung nach dem Senden.
+// Feedback-Formular: Kategorie, Text (max. 2000 Zeichen mit Zähler), Bestätigung nach dem Senden.
 import { useId, useState, type SyntheticEvent } from 'react';
 import { ApiError, sendFeedback, type FeedbackCategory } from '../api';
 import { useOrientationPreference } from '../settings/orientation';

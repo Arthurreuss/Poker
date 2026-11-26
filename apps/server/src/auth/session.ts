@@ -14,7 +14,7 @@ export interface AuthUser {
   id: number;
   username: string;
   isAdmin: boolean;
-  /** Gewählter Avatar (WP-032); `null` = keiner. */
+  /** Gewählter Avatar; `null` = keiner. */
   avatar: AvatarId | null;
 }
 
@@ -93,7 +93,7 @@ export function readSessionToken(cookieHeader: string | undefined): string | und
 
 /**
  * Löst den eingeloggten User aus einem rohen `Cookie`-Header auf – für Stellen ohne Fastify-Cookie-Plugin,
- * vor allem das WebSocket-Upgrade (WP-011): `getUserFromCookieHeader(db, request.headers.cookie)`.
+ * vor allem das WebSocket-Upgrade: `getUserFromCookieHeader(db, request.headers.cookie)`.
  */
 export async function getUserFromCookieHeader(
   db: Queryable,

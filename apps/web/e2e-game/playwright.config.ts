@@ -1,6 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
 
-// Ende-zu-Ende-Tests mit echten Browsern gegen einen laufenden Server (WP-018, WP-020):
+// Ende-zu-Ende-Tests mit echten Browsern gegen einen laufenden Server:
 // - round.pw.ts: komplette Runde mit drei Browsern (Tisch über den Dev-Helfer, nur Dev-Build)
 // - smoke.pw.ts: E2E-Smoke-Test – zwei Spieler, Registrierung und Tisch über die Lobby, Runde bis zum Ende
 // Ziele (D-028):

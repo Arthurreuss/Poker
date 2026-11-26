@@ -1,4 +1,4 @@
-// `PUT /api/me/avatar` (WP-032): eigenen Avatar wählen oder entfernen. Eigenes Plugin neben dem Auth-Plugin;
+// `PUT /api/me/avatar`: eigenen Avatar wählen oder entfernen. Eigenes Plugin neben dem Auth-Plugin;
 // die Session wird wie bei den Statistiken aus dem rohen Cookie-Header gelesen. Format: ARCHITECTURE.md „Auth“.
 import type { AvatarId } from '@poker/engine/protocol';
 import type { FastifyError, FastifyPluginAsync } from 'fastify';

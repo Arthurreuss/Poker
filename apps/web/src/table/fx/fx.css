@@ -1,11 +1,11 @@
 /*
- * WP-031: Effekt-Ebene (TableFx) und Gewinner-Hervorhebung. Farben nur über die Aliase aus table.css.
+ * Effekt-Ebene (TableFx) und Gewinner-Hervorhebung. Farben nur über die Aliase aus table.css.
  * Bewegung läuft per Web Animations API; hier nur Aussehen und statische Hervorhebung.
  */
 .fx-layer {
   position: absolute;
   inset: 0;
-  /* Über Plaketten (2) und Markern (3), unter den Emoji-Reaktionen (5, WP-032). */
+  /* Über Plaketten (2) und Markern (3), unter den Emoji-Reaktionen (5). */
   z-index: 4;
   pointer-events: none;
   overflow: visible;

@@ -1,12 +1,12 @@
 /**
- * Screenshot- und Geometrie-Tests der Tischansicht im Hoch- (WP-016) und Querformat (WP-017).
+ * Screenshot- und Geometrie-Tests der Tischansicht im Hoch- und Querformat.
  * Ohne `layout`-Parameter gilt „Auto“: Hochformat-Viewports zeigen das Hochformat-, Querformat-
  * Viewports das Querformat-Layout. Prüft pro Mock-Zustand und Viewport per Bounding-Box:
  * - Teile verschiedener Sitze (Plakette, Karten, Marker, Status-Etikett bzw. letzte Aktion, Timer-Sekunden,
  *   eigene Hand) überlappen sich nicht,
  * - Einsätze, Pots, Board, Kopfzeile, Menü- und Reaktions-Knopf überlappen keine Sitze und einander nicht
- *   (Avatar und Emoji-Reaktion zählen zum Sitz, WP-032),
- * - alles liegt im Viewport und außerhalb der freien Fläche für die Aktionsleiste (WP-018),
+ *   (Avatar und Emoji-Reaktion zählen zum Sitz),
+ * - alles liegt im Viewport und außerhalb der freien Fläche für die Aktionsleiste,
  * - Texte sind nicht abgeschnitten und mindestens 11 px groß.
  * Ausführen: `npm run test:visual -w @poker/web` (Baselines aktualisieren: `-- --update-snapshots`).
  */
@@ -32,7 +32,7 @@ const STATES = [
 /** Weitere Spielerzahlen: nur Geometrie-Prüfung, ohne Screenshot-Baseline. */
 const LAYOUT_ONLY = [
   ...[3, 4, 5, 7, 8].map((n) => ({ id: `players-${String(n)}`, players: n })),
-  // WP-037: Schriftzüge der letzten Aktion, Timer-Sekunden, Zeitbank und eigene Hand
+  // Schriftzüge der letzten Aktion, Timer-Sekunden, Zeitbank und eigene Hand
   { id: 'six-hints', players: 6 },
   { id: 'hero-timebank', players: 2 },
 ];
@@ -156,7 +156,7 @@ for (const vp of VIEWPORTS) {
   });
 }
 
-test.describe('Umschalter Hoch/Quer (WP-017)', () => {
+test.describe('Umschalter Hoch/Quer', () => {
   test('erzwungenes Layout gilt unabhängig von der Gerätelage', async ({ page }) => {
     await page.setViewportSize({ width: 360, height: 740 });
     await page.goto('/table-dev.html?state=six-flop&bare=1&layout=landscape');

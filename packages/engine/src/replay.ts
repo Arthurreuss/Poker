@@ -1,5 +1,5 @@
 /**
- * Replay gespeicherter Hände (WP-013): Deck-Rekonstruktion und erneutes Abspielen eines Hand-Protokolls.
+ * Replay gespeicherter Hände: Deck-Rekonstruktion und erneutes Abspielen eines Hand-Protokolls.
  * Rein und deterministisch – kein Rng nötig, das Deck wird vorgegeben. Nutzung: Hand-Historie des Servers
  * (ARCHITECTURE.md, „Datenmodell“ → „Persistenz“).
  */
@@ -47,7 +47,7 @@ export interface ReplaySetup {
   buttonSeat: number;
   smallBlind: number;
   bigBlind: number;
-  /** `smallBlindSeat: null` = Dead Small Blind (WP-008). */
+  /** `smallBlindSeat: null` = Dead Small Blind. */
   blinds: { smallBlindSeat: number | null; bigBlindSeat: number };
   /** Deck zu Handbeginn, Index 0 = oben (siehe {@link initialDeck}). */
   deck: readonly Card[];

@@ -1,4 +1,4 @@
-// Ein Tisch im Speicher (WP-011): Sitze, Start, Spielablauf über die Engine-Runde (D-012), gefilterte Sichten.
+// Ein Tisch im Speicher: Sitze, Start, Spielablauf über die Engine-Runde (D-012), gefilterte Sichten.
 // Der Server ist autoritativ (D-003): Zufall per injiziertem Rng (Betrieb: cryptoRng), Zeit per Clock.
 // Alle Zustandsänderungen sind synchron; nur DB-Zugriffe (Repository) und Hooks laufen asynchron.
 import {
@@ -54,17 +54,17 @@ export interface TableDeps {
   hooks: GameHooks;
   /** Pause nach jeder Hand, bevor die nächste startet (Showdown-Anzeige); in Tests 0. */
   handPauseMs: number;
-  /** Zusätzliche Pause je Straße eines All-in-Runouts (Client deckt sie nacheinander auf, WP-031). */
+  /** Zusätzliche Pause je Straße eines All-in-Runouts (Client deckt sie nacheinander auf). */
   runoutPauseMs: number;
-  /** Zusätzliche Pause nach einem Showdown (Client dreht die Karten um, dann Gewinner mit Krone, WP-039). */
+  /** Zusätzliche Pause nach einem Showdown (Client dreht die Karten um, dann Gewinner mit Krone). */
   showdownPauseMs: number;
   /**
-   * Gnadenfrist für getrennte Spieler am Zug (WP-012): so lange nach Zugbeginn bzw. Abbruch wartet der
+   * Gnadenfrist für getrennte Spieler am Zug: so lange nach Zugbeginn bzw. Abbruch wartet der
    * Server höchstens, bevor er für sie checkt/foldet (Reload/Netzwechsel ohne Fold); in Tests frei wählbar.
    */
   disconnectGraceMs: number;
   /**
-   * Verwaiste Runde (D-022, WP-015): so lange darf eine laufende Runde ohne verbundenen Spieler bleiben,
+   * Verwaiste Runde (D-022): so lange darf eine laufende Runde ohne verbundenen Spieler bleiben,
    * dann wird sie ohne Punkte abgebrochen.
    */
   orphanTimeoutMs: number;
@@ -80,7 +80,7 @@ export interface TableDeps {
 /** Engine-Spieler-ID eines Users (D-003: die Engine kennt nur Strings). */
 export const playerIdOf = (userId: number): string => String(userId);
 
-/** Laufender Zug (WP-012, D-013): wer am Zug ist und wann der Server automatisch handelt. */
+/** Laufender Zug (D-013): wer am Zug ist und wann der Server automatisch handelt. */
 interface Turn {
   userId: number;
   seat: number;
@@ -98,14 +98,14 @@ export class Table {
   status: TableStatus = 'open';
   /** Sitz → Spieler. */
   readonly seats = new Map<number, PublicUser>();
-  /** Avatar je sitzendem User (WP-032); aktualisiert per {@link setAvatar}, wenn er ihn ändert. */
+  /** Avatar je sitzendem User; aktualisiert per {@link setAvatar}, wenn er ihn ändert. */
   private readonly avatars = new Map<number, AvatarId | null>();
   round: RoundState | null = null;
   roundId: number | null = null;
-  /** Offene Verbindungen je User, die diesen Tisch beobachten (Verbindungsstatus pro Spieler, WP-012). */
+  /** Offene Verbindungen je User, die diesen Tisch beobachten (Verbindungsstatus pro Spieler). */
   private readonly watchers = new Map<number, number>();
   private cancelPending: Cancel | null = null;
-  /** Aktueller Zug mit Timer (WP-012). */
+  /** Aktueller Zug mit Timer. */
   private turn: Turn | null = null;
   /** Verbleibende Zeitbank je User in ms (pro Runde); fehlt = volle Zeitbank aus den Einstellungen. */
   private readonly timeBanks = new Map<number, number>();
@@ -113,9 +113,9 @@ export class Table {
   private closed = false;
   /** Geplanter Abbruch, solange kein Spieler verbunden ist (D-022). */
   private cancelOrphan: Cancel | null = null;
-  /** Users, die per Einladungscode beigetreten sind – dürfen danach auch per `tableId` zurück (WP-015). */
+  /** Users, die per Einladungscode beigetreten sind – dürfen danach auch per `tableId` zurück. */
   private readonly invited = new Set<number>();
-  /** `seq` (ab 1) der automatischen Aktionen der laufenden Hand (WP-013, Hand-Historie). */
+  /** `seq` (ab 1) der automatischen Aktionen der laufenden Hand (Hand-Historie). */
   private autoActionSeqs: number[] = [];
 
   constructor(
@@ -141,7 +141,7 @@ export class Table {
     else if (this.watchers.delete(userId)) this.onConnectivityChange(userId);
   }
 
-  /** Hat der User mindestens eine Verbindung, die diesen Tisch beobachtet? (WP-012: Auto-Check/Fold) */
+  /** Hat der User mindestens eine Verbindung, die diesen Tisch beobachtet? (für Auto-Check/Fold) */
   isConnected(userId: number): boolean {
     return this.watchers.has(userId);
   }
@@ -156,7 +156,7 @@ export class Table {
     return false;
   }
 
-  /** Per Einladungscode beigetreten (WP-015): darf private Tische danach auch per `tableId` betreten. */
+  /** Per Einladungscode beigetreten: darf private Tische danach auch per `tableId` betreten. */
   invite(userId: number): void {
     this.invited.add(userId);
   }
@@ -194,7 +194,7 @@ export class Table {
   }
 
   /**
-   * Avatar eines Users geändert (WP-032). Liefert `true`, wenn er hier sitzt und sich die Sicht damit ändert –
+   * Avatar eines Users geändert. Liefert `true`, wenn er hier sitzt und sich die Sicht damit ändert –
    * der Aufrufer sendet dann den neuen Zustand.
    */
   setAvatar(userId: number, avatar: AvatarId | null): boolean {
@@ -311,7 +311,7 @@ export class Table {
 
   /**
    * Aktion im Namen eines Spielers ohne Prüfung von `handNumber`/`seq` – für automatische Aktionen
-   * des Servers (WP-012: Zeitablauf, nicht verbunden → Check, sonst Fold).
+   * des Servers (Zeitablauf, nicht verbunden → Check, sonst Fold).
    */
   actFor(userId: number, action: Action): TableResult {
     const round = this.round;
@@ -327,7 +327,7 @@ export class Table {
   }
 
   /**
-   * Admin zieht neue eigene Hole Cards (WP-035, D-032). Das Admin-Recht prüft der Aufrufer (`GameServer`).
+   * Admin zieht neue eigene Hole Cards (D-032). Das Admin-Recht prüft der Aufrufer (`GameServer`).
    * `handNumber`: nur diese Hand (sonst `NO_HAND_IN_PROGRESS`, z. B. wenn sie während des Protokollierens endete);
    * ohne Angabe wird nur geprüft, nichts geändert. Sendet keine Sichten – die neue Sicht geht nur an den Admin.
    */
@@ -346,7 +346,7 @@ export class Table {
     return OK;
   }
 
-  /** Check, wenn möglich, sonst Fold (D-013) – für WP-012. In der Hand-Historie als automatisch markiert (WP-013). */
+  /** Check, wenn möglich, sonst Fold (D-013) – für Zug-Timer und Zeitbank. In der Hand-Historie als automatisch markiert. */
   autoCheckOrFold(userId: number): TableResult {
     // Vorher merken: actFor löst bei Handende synchron onHandComplete aus.
     this.autoActionSeqs.push((this.round?.hand?.log.length ?? 0) + 1);
@@ -369,7 +369,7 @@ export class Table {
   }
 
   // -------------------------------------------------------------------------
-  // Verwaiste Runden (D-022, WP-015)
+  // Verwaiste Runden (D-022)
   // -------------------------------------------------------------------------
 
   /**
@@ -398,7 +398,7 @@ export class Table {
   }
 
   /**
-   * Tisch sofort beenden (verwaiste Runde oder Admin, WP-028): Timer stoppen, eine laufende Runde ohne Punkte
+   * Tisch sofort beenden (verwaiste Runde oder Admin): Timer stoppen, eine laufende Runde ohne Punkte
    * abbrechen (DB: `aborted`, wie D-019) und den Tisch in der DB schließen. Gespeicherte Hände bleiben; eine
    * beendete Runde bleibt `finished` (`abortRound` ändert nur laufende Runden). Benachrichtigen muss der Aufrufer.
    */
@@ -414,7 +414,7 @@ export class Table {
   }
 
   // -------------------------------------------------------------------------
-  // Zug-Timer und Zeitbank (WP-012, D-013)
+  // Zug-Timer und Zeitbank (D-013)
   // -------------------------------------------------------------------------
 
   /**

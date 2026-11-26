@@ -1,4 +1,4 @@
-// Test-Hilfe (WP-019): komplette Freezeout-Runde mit Zufallsaktionen direkt über die Engine, ohne Game-Server.
+// Test-Hilfe: komplette Freezeout-Runde mit Zufallsaktionen direkt über die Engine, ohne Game-Server.
 import {
   applyRoundAction,
   createSeededRng,

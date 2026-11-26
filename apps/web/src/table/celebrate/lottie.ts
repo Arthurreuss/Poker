@@ -1,5 +1,5 @@
 /**
- * Lottie-Player (WP-040, D-034): `lottie-web` in der „light“-Variante (nur SVG-Renderer, ohne Expressions → kein
+ * Lottie-Player (D-034): `lottie-web` in der „light“-Variante (nur SVG-Renderer, ohne Expressions → kein
  * `eval`, mit der CSP vereinbar). Erst beim ersten Abspielen geladen. Eigenes Modul, damit Tests es ersetzen können.
  */
 export interface LottiePlayer {

@@ -1,5 +1,5 @@
-// Auth-Endpunkte als gekapseltes Fastify-Plugin: /api/register, /api/login, /api/logout, /api/me (WP-010, D-011),
-// DELETE /api/me = Konto löschen (WP-022).
+// Auth-Endpunkte als gekapseltes Fastify-Plugin: /api/register, /api/login, /api/logout, /api/me (D-011),
+// DELETE /api/me = Konto löschen.
 // Ablauf, Cookie und Rate-Limit: docs/ARCHITECTURE.md, Abschnitt „Auth“.
 import fastifyCookie from '@fastify/cookie';
 import rateLimit from '@fastify/rate-limit';
@@ -47,7 +47,7 @@ const INVALID_CREDENTIALS: ErrorResponse = {
   error: 'invalid_credentials',
   message: 'Benutzername oder Passwort ist falsch',
 };
-/** Gesperrter Account (WP-028) – nur nach richtigem Passwort, damit Fremde den Sperrstatus nicht erfahren. */
+/** Gesperrter Account – nur nach richtigem Passwort, damit Fremde den Sperrstatus nicht erfahren. */
 export const ACCOUNT_BANNED: ErrorResponse = {
   error: 'account_banned',
   message: 'Dein Konto ist gesperrt. Bei Fragen wende dich an den Admin.',
@@ -192,7 +192,7 @@ export const authRoutes: FastifyPluginAsync<AuthPluginOptions> = async (app, { d
     return { user } satisfies UserResponse;
   });
 
-  // Konto löschen (WP-022, DSGVO): Passwort bestätigen, dann anonymisieren (auth/account.ts). Rate-Limit wie
+  // Konto löschen (DSGVO): Passwort bestätigen, dann anonymisieren (auth/account.ts). Rate-Limit wie
   // Login, weil die Route ein Passwort prüft. 403 statt 401 bei falschem Passwort: die Session bleibt gültig.
   app.delete('/api/me', { config: rateLimitConfig }, async (request, reply) => {
     const token = request.cookies[SESSION_COOKIE];

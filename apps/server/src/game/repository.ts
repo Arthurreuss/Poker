@@ -1,5 +1,5 @@
-// Speicherung der Tische und Runden (WP-011): Schnittstelle + In-Memory-Implementierung (Tests ohne DB).
-// Die Postgres-Implementierung liegt in `pg-repository.ts`. Ausführliche Hand-Historie: WP-013 (Hooks).
+// Speicherung der Tische und Runden: Schnittstelle + In-Memory-Implementierung (Tests ohne DB).
+// Die Postgres-Implementierung liegt in `pg-repository.ts`. Ausführliche Hand-Historie: `history/` über die Game-Hooks.
 import type { TableSettings } from '@poker/engine/protocol';
 
 export interface NewTable {
@@ -15,7 +15,7 @@ export interface RoundSeatRecord {
 
 export interface RoundResultRecord {
   userId: number;
-  /** 1 = Sieger; geteilte Plätze möglich (WP-008). */
+  /** 1 = Sieger; geteilte Plätze möglich. */
   placement: number;
   points: number;
 }

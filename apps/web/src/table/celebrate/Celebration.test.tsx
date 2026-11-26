@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-// Feier nach der Hand und Sieger des Tisches (WP-040): Schriftzug immer, Lottie-Animationen nur mit `animate`.
+// Feier nach der Hand und Sieger des Tisches: Schriftzug immer, Lottie-Animationen nur mit `animate`.
 import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CelebrationView } from '../types';
