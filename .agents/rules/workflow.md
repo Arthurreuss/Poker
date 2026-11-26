@@ -57,11 +57,10 @@ Warteschlange in `testing.md`.
 
 **Prüfung vor dem Einreihen:** nach der letzten Änderung im Worktree
 ```bash
-python3 scripts/pruefung.py static && npm run check
+python3 scripts/pruefung.py static test
 ```
-(`npm run check`: Doku-Check, Format, Typecheck, Lint, Unit- und Komponententests, lokal, solange
-es dafür keine Stufe im Zug gibt), dazu bei Datenbank- oder Oberflächenänderungen die betroffenen
-Tests aus `testing.md` „Tests von poker“ und jede weitere eingerichtete Stufe (`testing.md` „Stufen“), die der Bau berührt. Eingereiht wird
-erst, wenn alle grün sind; Exit 75 heißt Warteschlange nicht nutzbar, dann lokal mit
-`scripts/ci_job.sh <stufe>`. Richtet ein Ticket eine Stufe ein, die jeder Bau berührt (etwa
-`test`), kommt sie hier in den Befehl.
+(`test`: `npm run check`), dazu `db` bei Änderungen an Server oder Datenbank und `e2e` bei
+Änderungen an der Oberfläche (`testing.md` „Stufen“), in einem Aufruf, etwa
+`python3 scripts/pruefung.py static test db e2e`. Eingereiht wird erst, wenn alle grün sind;
+Exit 75 heißt Warteschlange nicht nutzbar, dann lokal mit `scripts/ci_job.sh static test`, für
+`db` und `e2e` gibt es keinen lokalen Ersatz (`testing.md` „Testdatenbanken und App“).

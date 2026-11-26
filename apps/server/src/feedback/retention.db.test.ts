@@ -1,7 +1,6 @@
-// Speicherdauer von Feedback (D-025) gegen die Test-DB (nur mit TEST_DATABASE_URL, sonst übersprungen).
+// Speicherdauer von Feedback (D-025) gegen die Test-DB (Stufe `db`).
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { runMigrations } from '../db/migrate';
-import { createTestSchema, testDatabaseUrl, type TestSchema } from '../db/test-db';
+import { createTestDatabase, type TestDatabase } from '../db/test-db';
 import type { FeedbackRow } from '../db/types';
 import { FEEDBACK_RETENTION, purgeExpiredFeedback, startFeedbackPurgeJob } from './retention';
 import { updateFeedbackStatus } from './store';
@@ -10,12 +9,11 @@ const DAY = 86_400_000;
 const NOW = new Date('2026-10-08T12:00:00Z');
 const daysAgo = (days: number) => new Date(NOW.getTime() - days * DAY);
 
-describe.skipIf(testDatabaseUrl === undefined)('Feedback-Speicherdauer (Test-DB)', () => {
-  let s: TestSchema;
+describe('Feedback-Speicherdauer (Test-DB)', () => {
+  let s: TestDatabase;
 
   beforeAll(async () => {
-    s = await createTestSchema(testDatabaseUrl ?? '');
-    await runMigrations(s.config);
+    s = await createTestDatabase('retention');
   });
 
   afterAll(async () => {

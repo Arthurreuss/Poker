@@ -1,7 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { runMigrations } from './migrate';
-import { createTestSchema, testDatabaseUrl, type TestSchema } from './test-db';
+import { createTestDatabase, type TestDatabase } from './test-db';
 import type { HandActionRow, HandRow, RoundPlayerRow, SessionRow, TableRow, UserRow } from './types';
 
 // Postgres-Fehlercodes
@@ -9,12 +8,11 @@ const UNIQUE_VIOLATION = '23505';
 const FOREIGN_KEY_VIOLATION = '23503';
 const CHECK_VIOLATION = '23514';
 
-describe.skipIf(testDatabaseUrl === undefined)('Schema (Test-DB)', () => {
-  let s: TestSchema;
+describe('Schema (Test-DB)', () => {
+  let s: TestDatabase;
 
   beforeAll(async () => {
-    s = await createTestSchema(testDatabaseUrl ?? '');
-    await runMigrations(s.config);
+    s = await createTestDatabase('schema');
   });
 
   afterAll(async () => {

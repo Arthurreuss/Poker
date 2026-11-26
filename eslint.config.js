@@ -20,6 +20,8 @@ export default tseslint.config(
             'apps/web/vite.config.ts',
             'apps/web/vitest.config.ts',
             'apps/server/build.mjs',
+            'apps/server/vitest.config.ts',
+            'apps/server/vitest.db.config.ts',
           ],
         },
         tsconfigRootDir: import.meta.dirname,

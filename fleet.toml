@@ -7,11 +7,10 @@ projekt = "poker"                  # Eintrag in zug.toml von fleet
 # Prüfbefehle im Checkout des geprüften Stands (Python 3.12 steht im Zug vorn im PATH):
 # Exit 0 grün, 75 Warteschlange nicht nutzbar, sonst rot; scripts/pruefung.py schreibt die
 # Ergebnisdatei nach FLEET_PRUEFUNG_ERGEBNIS. Prüft das Projekt nur Geändertes, gehört das in
-# `pruefen_geaendert` ({basis} wird origin/<Ziel>); bis dahin prüft es immer alles. Anfangs ist nur
-# die Stufe `static` eingerichtet; jede weitere kommt hierher, sobald scripts/ci_job.sh sie prüft
-# (.agents/rules/testing.md „Stufen“).
-pruefen_voll = ["python3", "scripts/pruefung.py", "static"]
-pruefen_geaendert = ["python3", "scripts/pruefung.py", "static"]
+# `pruefen_geaendert` ({basis} wird origin/<Ziel>); bis dahin prüft es immer alles. Jede Stufe von
+# scripts/ci_job.sh steht hier (.agents/rules/testing.md „Stufen“).
+pruefen_voll = ["python3", "scripts/pruefung.py", "static", "test", "db", "e2e"]
+pruefen_geaendert = ["python3", "scripts/pruefung.py", "static", "test", "db", "e2e"]
 pruefen_stufen = ["python3", "scripts/pruefung.py", "{stufen}"]   # rote Stufen, Suche nach dem Schuldigen
 voll_wenn = ["scripts/.*", "fleet\\.toml", "\\.github/workflows/.*"]   # Pfade, bei denen voll geprüft wird
 ticket = "Refs #{ticket}"              # trägt ein Commit `Closes #<nr>`, steht `Closes #<nr>` im PR
