@@ -203,7 +203,7 @@ Tickets mit „WP-NNN“ im Titel.
 - **Konsequenzen:** Umsetzung in WP-022: Request-Logs mit IP schreiben server und nginx in Dateien, die der Dienst `logrotate` täglich rotiert und nach 12 Tagen löscht; Container-Logs enthalten keine IPs und rotieren nach Größe. Ein Server-Job löscht Feedback nach den Fristen, ein zweiter das Admin-Protokoll (WP-028). Der Backup-Ordner wird nicht in Time Machine oder eine Cloud gesichert (sonst gälten längere Fristen).
 
 ## D-026: Spiel-UI-Details (Abnahme WP-018)
-- **Status:** teilw. ersetzt durch ADR XXXX (eine Verbindung für die ganze App)
+- **Status:** teilw. ersetzt durch ADR 0002 (eine Verbindung für die ganze App)
 - **Kontext:** Offene Fragen aus WP-018.
 - **Entscheidung:**
   - „Platz nehmen“, „Aufstehen“ und „Runde starten“ liegen vor dem Start in der Aktionsleiste.
@@ -353,3 +353,4 @@ Tickets mit „WP-NNN“ im Titel.
 | Nr. | Titel | Status | Bereich |
 |---|---|---|---|
 | 0001 | Arbeitsweise und Anbindung an fleet | aktiv | Arbeitsweise |
+| 0002 | Eine WebSocket-Verbindung für die ganze App | aktiv | Frontend |

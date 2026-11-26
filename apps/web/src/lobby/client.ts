@@ -1,4 +1,4 @@
-// Lobby und Einladungsseite über die gemeinsame Verbindung der App (`GameConnection`, ADR XXXX): Lobby-Liste
+// Lobby und Einladungsseite über die gemeinsame Verbindung der App (`GameConnection`, ADR 0002): Lobby-Liste
 // abonnieren, Tisch anlegen, per Einladungscode beitreten. Wiederverbinden, Heartbeat und die Regeln für
 // 4000/4001 liegen in der Verbindung. Verbindungsregeln (D-014, D-022): ARCHITECTURE.md, „Timer und
 // Verbindungsmodell“ → „Was der Client tun muss“.

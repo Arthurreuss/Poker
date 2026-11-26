@@ -1,4 +1,4 @@
-// Eine WebSocket-Verbindung für die ganze App (ADR XXXX): solange jemand angemeldet ist, offen über alle
+// Eine WebSocket-Verbindung für die ganze App (ADR 0002): solange jemand angemeldet ist, offen über alle
 // Seitenwechsel; Lobby, Einladungsseite, Tisch und Zug-Hinweis nutzen sie gemeinsam. Abmelden oder ein
 // anderes Konto beendet sie.
 import { createContext, use, useEffect, useMemo, useState, type ReactNode } from 'react';

@@ -1,6 +1,6 @@
 // WebSocket-Verbindung zum Game-Server: `hello`, Wiederverbinden mit exponentiellem Backoff,
 // Abbruch-Erkennung (Heartbeat auf Anwendungsebene) und erneutes Beitreten zu beobachteten Tischen.
-// Die App hat genau eine davon (`ConnectionProvider`, ADR XXXX); Lobby, Tisch und Zug-Hinweis teilen sie.
+// Die App hat genau eine davon (`ConnectionProvider`, ADR 0002); Lobby, Tisch und Zug-Hinweis teilen sie.
 // Framework-unabhängig und mit injizierbarem Socket testbar. Beschreibung: ARCHITECTURE.md,
 // „Frontend: Spielablauf und Verbindung“.
 import {

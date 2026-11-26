@@ -1,4 +1,4 @@
-# ADR XXXX — Eine WebSocket-Verbindung für die ganze App
+# ADR 0002 — Eine WebSocket-Verbindung für die ganze App
 
 Status: aktiv
 Bereich: Frontend

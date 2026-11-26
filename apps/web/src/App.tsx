@@ -32,7 +32,7 @@ const DevNewTablePage = import.meta.env.DEV
 
 /**
  * Alle Routen ohne Router – Tests betten sie in einen `MemoryRouter`. Die Verbindung zum Game-Server
- * liegt über allen Routen und bleibt bei Seitenwechseln offen (ADR XXXX).
+ * liegt über allen Routen und bleibt bei Seitenwechseln offen (ADR 0002).
  */
 export function AppRoutes({ createConnection }: { createConnection?: () => GameConnection }) {
   return (

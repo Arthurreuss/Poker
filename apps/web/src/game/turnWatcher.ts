@@ -1,4 +1,4 @@
-// „Du bist dran“ überall in der App (ADR XXXX): beobachtet über die gemeinsame Verbindung jeden Tisch, an dem
+// „Du bist dran“ überall in der App (ADR 0002): beobachtet über die gemeinsame Verbindung jeden Tisch, an dem
 // man sitzt, auch wenn die Tischseite zu ist, und meldet, an welchem Tisch man gerade am Zug ist.
 // Ohne React; die Anzeige (Banner, Ton, Vibration, Titel) steckt in `TurnBanner`.
 import type { ServerMessage, TableView } from '@poker/engine/protocol';

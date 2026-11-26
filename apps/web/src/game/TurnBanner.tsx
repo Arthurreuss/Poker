@@ -1,4 +1,4 @@
-// „Du bist dran“ auf allen Seiten der App-Shell (ADR XXXX): Hinweis mit Sprung an den Tisch, dazu Ton und
+// „Du bist dran“ auf allen Seiten der App-Shell (ADR 0002): Hinweis mit Sprung an den Tisch, dazu Ton und
 // Vibration nach den Einstellungen („Ton am Tisch“) und ein blinkender Tab-Titel. Am Tisch selbst zeigt
 // das die Aktionsleiste; die Tischseite liegt außerhalb der App-Shell.
 import { useEffect, useSyncExternalStore } from 'react';
