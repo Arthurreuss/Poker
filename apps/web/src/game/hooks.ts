@@ -1,23 +1,25 @@
 // React-Anbindung des Spielablaufs: Store pro Tisch und tickende Uhr für den Timer-Ring.
 import { useEffect, useState, useSyncExternalStore } from 'react';
-import { GameConnection } from './connection';
+import { useAppConnection } from './ConnectionProvider';
+import type { GameConnection } from './connection';
 import { TableGameStore, type TableGameSnapshot } from './tableGame';
 
 /**
- * Verbindung + Store für einen Tisch, solange die Komponente lebt. `createConnection` ist für Tests;
- * ohne Angabe eine echte Verbindung auf `/ws`.
+ * Store für einen Tisch über der Verbindung der App, solange die Komponente lebt; beim Verlassen wird
+ * nur der Tisch freigegeben, die Verbindung bleibt. `connection` ersetzt sie in Tests.
  */
-export function useTableGame(
-  tableId: number,
-  createConnection: () => GameConnection = () => new GameConnection(),
-): [TableGameSnapshot, TableGameStore] {
+export function useTableGame(tableId: number, connection?: GameConnection): [TableGameSnapshot, TableGameStore] {
+  const app = useAppConnection();
   // Ein Store pro Mount; für einen anderen Tisch neu mounten (`key={tableId}`).
-  const [store] = useState(() => new TableGameStore(createConnection(), tableId));
+  const [store] = useState(() => {
+    const shared = connection ?? app?.connection;
+    if (shared === undefined) throw new Error('useTableGame braucht einen <ConnectionProvider> und eine Anmeldung');
+    return new TableGameStore(shared, tableId);
+  });
   useEffect(() => {
     store.start();
     return () => {
       store.stop();
-      store.connection.stop();
     };
   }, [store]);
   const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);

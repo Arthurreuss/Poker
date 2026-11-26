@@ -4,11 +4,12 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import type { ServerMessage } from '@poker/engine/protocol';
-import { GameConnection, type ConnectionStatus } from '../connection';
+import { useConnection } from '../ConnectionProvider';
+import type { ConnectionStatus } from '../connection';
 
 export function DevNewTablePage() {
   const navigate = useNavigate();
-  const [connection] = useState(() => new GameConnection());
+  const connection = useConnection();
   const [status, setStatus] = useState<ConnectionStatus>(connection.status);
   const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState('Testtisch');
@@ -16,23 +17,22 @@ export function DevNewTablePage() {
   const [turn, setTurn] = useState('20');
 
   useEffect(() => {
+    let created: number | null = null;
     const offStatus = connection.onStatus(setStatus);
     const offMessage = connection.onMessage((m: ServerMessage) => {
-      // Gleich Platz nehmen: ein offener Tisch ohne Spieler und ohne Zuschauer wird vom Server
-      // aufgeräumt – beim Seitenwechsel ist diese Verbindung kurz weg. Weiter erst, wenn man sitzt.
+      // Gleich Platz nehmen und erst dann weiter: so landet man am Tisch auf dem eigenen Sitz.
       if (m.type === 'table.created' && m.requestId === 'dev-create') {
+        created = m.tableId;
         connection.send({ type: 'table.sit', tableId: m.tableId, seat: 0 });
       }
-      if (m.type === 'table.state' && m.table.you.seat !== null) {
+      if (m.type === 'table.state' && m.table.id === created && m.table.you.seat !== null) {
         void navigate(`/table/${String(m.table.id)}`);
       }
       if (m.type === 'error') setError(m.message);
     });
-    connection.start();
     return () => {
       offStatus();
       offMessage();
-      connection.stop();
     };
   }, [connection, navigate]);
 

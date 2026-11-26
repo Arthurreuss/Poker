@@ -1,4 +1,5 @@
-// Einstellungen → „Ton am Tisch“: Ton an/aus, Lautstärke, Probehören, Vibration (wo verfügbar).
+// Einstellungen → „Ton am Tisch“: Ton an/aus, Lautstärke, Probehören, Vibration (wo verfügbar); dieselben
+// Schalter gelten für „Du bist dran“ auf den anderen Seiten (`game/TurnBanner.tsx`).
 import { useId } from 'react';
 import styles from '../pages/Page.module.css';
 import { soundEngine } from '../sound/engine';
@@ -63,7 +64,10 @@ export function SoundSettings() {
           Vibrieren, wenn du dran bist
         </label>
       )}
-      <p className={styles.muted}>Wird nur auf diesem Gerät gespeichert.</p>
+      <p className={styles.muted}>
+        Gilt auch für den Hinweis „Du bist dran“, wenn du gerade nicht am Tisch bist. Wird nur auf diesem Gerät
+        gespeichert.
+      </p>
     </fieldset>
   );
 }

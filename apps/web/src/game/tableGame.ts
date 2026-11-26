@@ -101,6 +101,8 @@ export class TableGameStore {
   private errorId = 0;
   private reactionId = 0;
   private redrawCount = 0;
+  /** Hält dieser Store den Tisch auf der Verbindung? (genau einmal freigeben, die Zählung ist geteilt) */
+  private watching = false;
   private readonly reactionTimers = new Set<ReturnType<typeof setTimeout>>();
 
   constructor(
@@ -150,17 +152,19 @@ export class TableGameStore {
         });
       }),
     ];
+    this.watching = true;
     this.connection.watchTable(this.tableId);
     this.connection.start();
     this.update({ connection: this.connection.status });
   }
 
+  /** Gibt den Tisch frei; die Verbindung bleibt (sie gehört der App). */
   stop(): void {
     for (const off of this.unsubscribe) off();
     this.unsubscribe = [];
     for (const timer of this.reactionTimers) clearTimeout(timer);
     this.reactionTimers.clear();
-    this.connection.unwatchTable(this.tableId);
+    this.release();
   }
 
   // --- Wünsche an den Server ------------------------------------------------
@@ -209,6 +213,7 @@ export class TableGameStore {
 
   /** Tisch verlassen: nicht mehr beobachten (vor dem Start steht man dabei auch auf). */
   leave(): void {
+    this.watching = false;
     this.connection.unwatchTable(this.tableId, true);
   }
 
@@ -278,6 +283,12 @@ export class TableGameStore {
 
   // -------------------------------------------------------------------------
 
+  private release(): void {
+    if (!this.watching) return;
+    this.watching = false;
+    this.connection.unwatchTable(this.tableId);
+  }
+
   private send(message: Parameters<GameConnection['send']>[0]): boolean {
     const sent = this.connection.send(message);
     if (!sent) this.setError('NOT_CONNECTED', 'Keine Verbindung zum Server – bitte kurz warten.');
@@ -344,7 +355,7 @@ export class TableGameStore {
       case 'table.closed':
         if (message.tableId !== this.tableId) return;
         this.pendingKey = null;
-        this.connection.unwatchTable(this.tableId);
+        this.release();
         this.update({
           closed: message.reason,
           table: null,

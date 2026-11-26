@@ -48,6 +48,22 @@ export function toAct(game: Game): number {
   return Number(id);
 }
 
+/** Zug-Uhr für den, der laut Engine am Zug ist (Sitz = Position in `USERS`), wie in `Table.view`. */
+export function turnClockFor(game: Game): TurnClockView {
+  const hand = toClientView(game.round, null, NOW).hand;
+  if (hand === null) throw new Error('keine Hand');
+  const userId = toAct(game);
+  return {
+    playerId: String(userId),
+    seat: USERS.findIndex((u) => u.id === userId),
+    handNumber: hand.handNumber,
+    actionSeq: hand.actionSeq,
+    startedAtMs: NOW,
+    turnEndsAtMs: NOW + 20_000,
+    deadlineMs: NOW + 80_000,
+  };
+}
+
 export function act(game: Game, action: Action): void {
   const update = applyRoundAction(game.round, String(toAct(game)), action);
   if (!update.ok) throw new Error(update.error.message);

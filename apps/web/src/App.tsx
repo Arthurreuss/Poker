@@ -3,6 +3,8 @@ import { lazy, Suspense } from 'react';
 import { BrowserRouter, Route, Routes } from 'react-router';
 import { AuthProvider } from './auth/AuthContext';
 import { RedirectIfAuthenticated, RequireAdmin, RequireAuth } from './auth/guards';
+import { ConnectionProvider } from './game/ConnectionProvider';
+import type { GameConnection } from './game/connection';
 import { AppShell } from './layout/AppShell';
 import { DATENSCHUTZ_PATH, IMPRESSUM_PATH } from './legal/LegalFooter';
 import { DatenschutzPage, ImpressumPage } from './legal/LegalPage';
@@ -28,8 +30,19 @@ const DevNewTablePage = import.meta.env.DEV
   ? lazy(() => import('./game/dev/DevNewTablePage').then((m) => ({ default: m.DevNewTablePage })))
   : null;
 
-/** Alle Routen ohne Router – Tests betten sie in einen `MemoryRouter`. */
-export function AppRoutes() {
+/**
+ * Alle Routen ohne Router – Tests betten sie in einen `MemoryRouter`. Die Verbindung zum Game-Server
+ * liegt über allen Routen und bleibt bei Seitenwechseln offen (ADR 0002).
+ */
+export function AppRoutes({ createConnection }: { createConnection?: () => GameConnection }) {
+  return (
+    <ConnectionProvider createConnection={createConnection}>
+      <AppRouteTable />
+    </ConnectionProvider>
+  );
+}
+
+function AppRouteTable() {
   return (
     <Routes>
       <Route
