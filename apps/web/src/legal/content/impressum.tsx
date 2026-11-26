@@ -1,4 +1,4 @@
-// Impressum (WP-022). Angaben von Arthur (2026-10-08); Änderungen nur in dieser Datei.
+// Impressum. Angaben von Arthur (2026-10-08); Änderungen nur in dieser Datei.
 // Bewusst ohne Telefonnummer und USt-ID: privates, nicht kommerzielles Angebot.
 // Gilt für beide Domains (D-023). Keine Platzhalter – der Test in legal.test.tsx prüft das.
 import { Link } from 'react-router';

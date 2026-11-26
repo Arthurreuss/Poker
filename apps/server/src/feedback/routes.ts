@@ -1,6 +1,6 @@
-// Feedback-Endpunkte als gekapseltes Fastify-Plugin (WP-024): `POST /api/feedback` für eingeloggte Spieler,
+// Feedback-Endpunkte als gekapseltes Fastify-Plugin: `POST /api/feedback` für eingeloggte Spieler,
 // `GET /api/admin/feedback` und `PATCH /api/admin/feedback/:id` nur für Admins (geprüft vom allgemeinen Admin-Guard,
-// admin/guard.ts, WP-028).
+// admin/guard.ts).
 // Formate und Rate-Limit: docs/ARCHITECTURE.md, Abschnitt „Datenmodell“ → „Feedback“.
 import rateLimit from '@fastify/rate-limit';
 import type { FastifyError, FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';

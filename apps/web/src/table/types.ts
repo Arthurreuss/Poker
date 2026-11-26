@@ -1,7 +1,7 @@
 /**
- * View-Model der Tischansicht (WP-016): darstellungsorientierter, bereits gefilterter Tischzustand.
+ * View-Model der Tischansicht: darstellungsorientierter, bereits gefilterter Tischzustand.
  * Der Server schickt nur eigene Karten und den öffentlichen Zustand (D-003); das Mapping
- * Protokoll → `TableView` steht in `src/game/adapter.ts` (WP-018). Hier bewusst keine Server-/Protokolltypen.
+ * Protokoll → `TableView` steht in `src/game/adapter.ts`. Hier bewusst keine Server-/Protokolltypen.
  * Beschreibung: ARCHITECTURE.md, Abschnitt „Frontend: Tischansicht (Layout-Schicht)“.
  */
 import type { Card } from '@poker/engine';
@@ -34,7 +34,7 @@ export type HoleCardsView =
 export type SeatStatus = 'active' | 'folded' | 'allIn' | 'eliminated';
 
 /**
- * Letzte Aktion eines Spielers in der laufenden Straße (WP-037), als Schriftzug am Platz.
+ * Letzte Aktion eines Spielers in der laufenden Straße, als Schriftzug am Platz.
  * `amount` bei Bet/Raise = Gesamteinsatz der Straße danach („Raise auf“), bei Call/All-in = eingezahlte Chips.
  */
 export type LastActionView =
@@ -51,9 +51,9 @@ export interface PlayerSeatView {
   /** `false` = Verbindung getrennt (wird automatisch gecheckt/gefoldet, D-012). */
   readonly connected: boolean;
   readonly holeCards: HoleCardsView;
-  /** Gewählter Avatar (ID, WP-032); fehlt/`null` = keiner. Darstellung: `src/avatars/Avatar.tsx`. */
+  /** Gewählter Avatar (ID); fehlt/`null` = keiner. Darstellung: `src/avatars/Avatar.tsx`. */
   readonly avatar?: string | null;
-  /** Letzte Aktion in der laufenden Straße (WP-037); fehlt = keine (neue Straße/Hand, nach der Hand). */
+  /** Letzte Aktion in der laufenden Straße; fehlt = keine (neue Straße/Hand, nach der Hand). */
   readonly lastAction?: LastActionView;
 }
 
@@ -73,12 +73,12 @@ export interface BlindsView {
   readonly big: number;
   /** Blind-Level (1-basiert), falls die Blinds steigen (D-012). */
   readonly level?: number;
-  /** Blinds steigen nach Händen (WP-036, D-033): Hände, die noch auf diesem Level gespielt werden. */
+  /** Blinds steigen nach Händen (D-033): Hände, die noch auf diesem Level gespielt werden. */
   readonly handsLeft?: number;
   readonly ante?: number;
 }
 
-/** Emoji-Reaktion, die gerade über einem Sitz steht (WP-032). */
+/** Emoji-Reaktion, die gerade über einem Sitz steht. */
 export interface SeatReactionView {
   /** Laufende Nummer: neue Reaktion → neue Einblend-Animation. */
   readonly id: number;
@@ -87,7 +87,7 @@ export interface SeatReactionView {
   readonly label: string;
 }
 
-/** Name der eigenen besten Hand (WP-037). */
+/** Name der eigenen besten Hand. */
 export interface HeroHandView {
   /** Kurz für die Anzeige am Platz, z. B. „Paar Könige“, „Straße“. */
   readonly short: string;
@@ -96,7 +96,7 @@ export interface HeroHandView {
 }
 
 /**
- * Feier nach einer Hand (WP-040): Schriftzug mit der Gewinnerhand, deren fünf Karten in einer Reihe, Konfetti
+ * Feier nach einer Hand: Schriftzug mit der Gewinnerhand, deren fünf Karten in einer Reihe, Konfetti
  * (je Hand ein anderes) und – je nach Größe des Pots – bis zu drei Münz-Animationen. Abgeleitet in `game/celebration.ts`.
  */
 export interface CelebrationView {
@@ -127,23 +127,23 @@ export interface TableView {
   readonly timeRemaining?: number;
   /** Restliche Zeitbank (s) des Spielers am Zug, solange sie läuft (D-013); sonst nicht gesetzt. */
   readonly timeBankSeconds?: number;
-  /** Restsekunden des Spielers am Zug (normale Zugzeit bzw. Zeitbank), für die Sekundenanzeige (WP-037). */
+  /** Restsekunden des Spielers am Zug (normale Zugzeit bzw. Zeitbank), für die Sekundenanzeige. */
   readonly timeSeconds?: number;
   /** 0, 3, 4 oder 5 Karten. */
   readonly board: readonly Card[];
   /** Main Pot zuerst, danach Side Pots. Leer = noch nichts im Pot. */
   readonly pots: readonly PotView[];
   readonly blinds: BlindsView;
-  /** Nummer der laufenden bzw. letzten Hand (WP-031: erkennt neues Austeilen für Animationen/Sounds). */
+  /** Nummer der laufenden bzw. letzten Hand (erkennt neues Austeilen für Animationen/Sounds). */
   readonly handNumber?: number;
-  /** Sitze, die in der beendeten Hand einen Pot gewonnen haben (WP-031: Hervorhebung, Chips zum Gewinner). */
+  /** Sitze, die in der beendeten Hand einen Pot gewonnen haben (Hervorhebung, Chips zum Gewinner). */
   readonly winnerSeats?: readonly number[];
-  /** Die fünf Karten der Gewinnerhand (Main Pot), werden am Tisch hervorgehoben (WP-031). */
+  /** Die fünf Karten der Gewinnerhand (Main Pot), werden am Tisch hervorgehoben. */
   readonly winningCards?: readonly Card[];
-  /** Eingeblendete Emoji-Reaktionen (WP-032); fehlt/leer = keine. */
+  /** Eingeblendete Emoji-Reaktionen; fehlt/leer = keine. */
   readonly reactions?: readonly SeatReactionView[];
-  /** Eigene beste Hand mit dem gezeigten Board (WP-037); fehlt = keine eigenen Karten. */
+  /** Eigene beste Hand mit dem gezeigten Board; fehlt = keine eigenen Karten. */
   readonly heroHand?: HeroHandView;
-  /** Feier nach der Hand (WP-040), sobald das Ergebnis sichtbar ist; fehlt sonst. */
+  /** Feier nach der Hand, sobald das Ergebnis sichtbar ist; fehlt sonst. */
   readonly celebration?: CelebrationView;
 }

@@ -1,4 +1,4 @@
-// Log-Rotation für prod (WP-022, D-025): docker/logrotate/rotate.sh gegen einen temporären Ordner.
+// Log-Rotation für prod (D-025): docker/logrotate/rotate.sh gegen einen temporären Ordner.
 // Das Skript läuft in prod unter busybox (alpine), hier mit der Shell und find des Rechners (macOS/Linux).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

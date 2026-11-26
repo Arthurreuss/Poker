@@ -13,7 +13,7 @@ describe('öffentliche API', () => {
     expect('cryptoRng' in engine).toBe(false);
   });
 
-  it('exportiert die Pot-Berechnung (WP-007)', () => {
+  it('exportiert die Pot-Berechnung', () => {
     const { pots, uncalled } = engine.calculatePots([
       { id: 'A', totalBet: 100, status: 'allIn' },
       { id: 'B', totalBet: 300, status: 'active' },
@@ -22,7 +22,7 @@ describe('öffentliche API', () => {
     expect(uncalled).toEqual({ playerId: 'B', amount: 200 });
   });
 
-  it('exportiert das Rundenmodell (WP-008)', () => {
+  it('exportiert das Rundenmodell', () => {
     const started = engine.startRound(
       {
         startingStack: 1_500,

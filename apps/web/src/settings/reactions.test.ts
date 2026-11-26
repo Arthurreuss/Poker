@@ -2,7 +2,7 @@ import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { REACTIONS_STORAGE_KEY, useReactionsPreference } from './reactions';
 
-describe('useReactionsPreference (WP-032)', () => {
+describe('useReactionsPreference', () => {
   it('Standard ist an', () => {
     expect(renderHook(() => useReactionsPreference()).result.current[0]).toBe(true);
   });

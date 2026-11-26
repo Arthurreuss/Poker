@@ -1,4 +1,4 @@
-// Admin zieht neue eigene Karten (WP-035, D-032) – Regeln ohne Netzwerk und ohne DB: GameServer mit In-Memory-
+// Admin zieht neue eigene Karten (D-032) – Regeln ohne Netzwerk und ohne DB: GameServer mit In-Memory-
 // Verbindungen und ManualClock, Admin-Protokoll als Fake-Senke.
 import { describe, expect, it } from 'vitest';
 import { createSeededRng, type Card } from '@poker/engine';

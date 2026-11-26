@@ -1,4 +1,4 @@
-// Datenschutz der Hand-Historie (WP-019, D-003): fremde Hole Cards nur bei `shown`, nie das Deck.
+// Datenschutz der Hand-Historie (D-003): fremde Hole Cards nur bei `shown`, nie das Deck.
 import { describe, expect, it } from 'vitest';
 import type { Card } from '@poker/engine';
 import { toHandRecord, type HandRecord } from '../history/records';

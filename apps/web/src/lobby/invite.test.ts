@@ -10,7 +10,7 @@ describe('Einladungslink', () => {
     expect(shareUrl(tablePath(7), 'https://poker.example')).toBe('https://poker.example/table/7');
   });
 
-  it('Teilen-Menü nur mit Web Share API auf Touch-Geräten, sonst kopieren (WP-030)', () => {
+  it('Teilen-Menü nur mit Web Share API auf Touch-Geräten, sonst kopieren', () => {
     const media = (coarse: boolean) => ({
       matchMedia: (query: string) => ({ matches: coarse && query === '(pointer: coarse)' }) as MediaQueryList,
     });

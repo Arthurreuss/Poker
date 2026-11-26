@@ -1,5 +1,5 @@
 /**
- * Zustandsmodell einer Hand (WP-006). Alles ist reines, JSON-serialisierbares Datenmodell:
+ * Zustandsmodell einer Hand. Alles ist reines, JSON-serialisierbares Datenmodell:
  * keine Klassen, keine Funktionen, keine `undefined`-Felder (statt dessen `null`).
  * Beschreibung der Felder, Phasen und Aktionssemantik: ARCHITECTURE.md,
  * Abschnitt „Engine: Zustandsmodell einer Hand“.
@@ -12,7 +12,7 @@ export type Street = 'preflop' | 'flop' | 'turn' | 'river';
 /**
  * - `betting`: eine Setzrunde läuft, `toActId` ist gesetzt.
  * - `complete`: Hand beendet, `payouts` gesetzt – entweder haben alle bis auf einen gefoldet
- *   (`showdown === null`) oder der Showdown wurde direkt aufgelöst (`showdown` gesetzt, WP-007).
+ *   (`showdown === null`) oder der Showdown wurde direkt aufgelöst (`showdown` gesetzt).
  */
 export type HandPhase = 'betting' | 'complete';
 
@@ -30,7 +30,7 @@ export interface HandPlayer {
   status: PlayerStatus;
   /** Einsatz in der aktuellen Straße (Blinds zählen preflop mit, Antes nicht). */
   streetBet: number;
-  /** Gesamteinsatz in dieser Hand inkl. Ante und Blinds – Grundlage für Side Pots (WP-007). */
+  /** Gesamteinsatz in dieser Hand inkl. Ante und Blinds – Grundlage für Side Pots. */
   totalBet: number;
   /** Hat in der aktuellen Straße schon freiwillig gehandelt (Blinds/Antes zählen nicht). */
   hasActed: boolean;
@@ -112,7 +112,7 @@ export interface HandState {
   bigBlind: number;
   ante: number;
   buttonSeat: number;
-  /** `null` = kein Small Blind in dieser Hand (Dead Small Blind, WP-008). */
+  /** `null` = kein Small Blind in dieser Hand (Dead Small Blind). */
   smallBlindSeat: number | null;
   bigBlindSeat: number;
   /** Nach Sitz aufsteigend sortiert; „links“ = nächsthöherer Sitz (zyklisch). */

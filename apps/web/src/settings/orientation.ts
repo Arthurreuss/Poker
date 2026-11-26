@@ -49,7 +49,7 @@ function subscribe(listener: () => void): () => void {
   };
 }
 
-/** `[preference, setPreference]` – z. B. für Einstellungen und das Tisch-Menü (WP-017). */
+/** `[preference, setPreference]` – z. B. für Einstellungen und das Tisch-Menü. */
 export function useOrientationPreference(): [OrientationPreference, (value: OrientationPreference) => void] {
   const preference = useSyncExternalStore(subscribe, readOrientationPreference, () => DEFAULT_PREFERENCE);
   const setPreference = useCallback((value: OrientationPreference) => {

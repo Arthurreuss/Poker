@@ -1,7 +1,7 @@
 /**
  * Punkteformel (D-012) – die **einzige** Stelle, an der Punkte berechnet werden.
  * Platz k von n Spielern → (n − k) Punkte, der Sieger (Platz 1) zusätzlich 1 Bonuspunkt.
- * Geteilte Platzierung (gleichzeitiges Ausscheiden mit gleichem Stack, WP-008): Die Punkte der
+ * Geteilte Platzierung (gleichzeitiges Ausscheiden mit gleichem Stack): Die Punkte der
  * belegten Plätze werden gemittelt und abgerundet (TDA: geteilte Plätze teilen sich den Preis).
  */
 

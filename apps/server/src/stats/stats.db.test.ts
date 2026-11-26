@@ -1,5 +1,5 @@
-// Rangliste, Statistiken und Hand-Historie gegen Postgres (WP-019). Hände stammen aus Zufallsrunden der Engine und
-// werden über den Store aus WP-013 gespeichert. Nur mit TEST_DATABASE_URL: `npm run test:db -w @poker/server`.
+// Rangliste, Statistiken und Hand-Historie gegen Postgres. Hände stammen aus Zufallsrunden der Engine und
+// werden über den Store der Hand-Historie gespeichert. Nur mit TEST_DATABASE_URL: `npm run test:db -w @poker/server`.
 import type { FastifyInstance } from 'fastify';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../app';

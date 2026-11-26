@@ -1,4 +1,4 @@
-// Einladungsseite /join/:code (WP-015): tritt per Einladungscode bei und leitet zur Tischseite weiter.
+// Einladungsseite /join/:code: tritt per Einladungscode bei und leitet zur Tischseite weiter.
 // Danach darf der User den privaten Tisch auch per tableId betreten (Server merkt sich den Beitritt).
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';

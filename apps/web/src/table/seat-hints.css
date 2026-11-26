@@ -1,5 +1,5 @@
 /*
- * Hinweise an der Plakette (WP-037): Zug-Timer (Ring + Sekunden, Zeitbank), letzte Aktion als Schriftzug,
+ * Hinweise an der Plakette: Zug-Timer (Ring + Sekunden, Zeitbank), letzte Aktion als Schriftzug,
  * Name der eigenen Hand. Eigene Datei neben table.css, damit parallele Änderungen nicht kollidieren.
  * Farben nur über Design-Tokens (Aliase mit Fallback wie in table.css). Bewegung nur mit „Animationen“
  * an (`.pg-anim` an der Spielseite) und ohne `prefers-reduced-motion: reduce`.
@@ -12,7 +12,7 @@
   --pt-ink: var(--color-card-black, #16181d);
 }
 
-/* ---------- Zug-Timer: der Rahmen der Hervorhebung läuft ab (WP-037) ---------- */
+/* ---------- Zug-Timer: der Rahmen der Hervorhebung läuft ab ---------- */
 /* Farbe je Stufe: gold (wie die Hervorhebung), gegen Ende orange, dann rot; Zeitbank blau. */
 .pt-plate--timed {
   --pt-timer: var(--pt-accent);

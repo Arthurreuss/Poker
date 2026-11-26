@@ -1,4 +1,4 @@
-// Admin deckt verdeckte Karten eines Mitspielers auf (WP-033, D-027). Eigenes Modul, damit `GameServer` nur die
+// Admin deckt verdeckte Karten eines Mitspielers auf (D-027). Eigenes Modul, damit `GameServer` nur die
 // Nachricht weiterreicht. Regeln: nur Admins (Flag aus der Session, zusätzlich beim Protokollieren aus der DB geprüft),
 // nur am Tisch, an dem sie sitzen, nur in einer laufenden Hand, nur Mitspieler mit Karten (nicht gefoldet). Die Karten
 // gehen nur an die anfragende Verbindung (`admin.cards`), nie in `table.state` oder an andere.
@@ -22,7 +22,7 @@ export interface CardRevealAudit {
  */
 export type CardRevealAuditSink = (entry: CardRevealAudit) => Promise<boolean>;
 
-/** Was ins Admin-Protokoll kommt, wenn ein Admin neue eigene Karten zieht (`table.redraw_cards`, WP-035, D-032). */
+/** Was ins Admin-Protokoll kommt, wenn ein Admin neue eigene Karten zieht (`table.redraw_cards`, D-032). */
 export interface CardRedrawAudit {
   adminId: number;
   tableId: number;

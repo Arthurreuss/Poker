@@ -1,4 +1,4 @@
-// Lobby (WP-015): öffentliche Tische live, Tisch erstellen, Einladungslink für private Tische.
+// Lobby: öffentliche Tische live, Tisch erstellen, Einladungslink für private Tische.
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import type { TableSettings } from '@poker/engine/protocol';

@@ -1,4 +1,4 @@
-// Animationen am Tisch an/aus (WP-018). Lokal gespeichert (localStorage), Standard: an.
+// Animationen am Tisch an/aus. Lokal gespeichert (localStorage), Standard: an.
 // Unabhängig davon schaltet `prefers-reduced-motion: reduce` die Animationen per CSS ab.
 import { useCallback, useSyncExternalStore } from 'react';
 

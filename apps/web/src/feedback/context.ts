@@ -1,4 +1,4 @@
-// Kontext, der automatisch mit jedem Feedback mitgeht (WP-024): Seite, Tisch-ID, App-Version, Ausrichtung.
+// Kontext, der automatisch mit jedem Feedback mitgeht: Seite, Tisch-ID, App-Version, Ausrichtung.
 // Den User-Agent liest der Server aus dem Request-Header.
 import type { NewFeedback } from '../api/feedback';
 import type { OrientationPreference } from '../settings/orientation';

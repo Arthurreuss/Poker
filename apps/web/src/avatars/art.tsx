@@ -1,5 +1,5 @@
 /**
- * Avatar-Grafiken (WP-032): selbst gezeichnete, schlichte SVG-Motive im Raster 0–64 auf farbigem Kreis
+ * Avatar-Grafiken: selbst gezeichnete, schlichte SVG-Motive im Raster 0–64 auf farbigem Kreis
  * (D-008: keine fremden Assets). Nur SVG-Attribute, keine Inline-Styles (CSP). Herkunft: src/avatars/ASSETS.md.
  * Die IDs stammen aus `AVATAR_IDS` (@poker/engine/protocol); jede ID braucht hier ein Motiv.
  */

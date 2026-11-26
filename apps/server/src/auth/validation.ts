@@ -61,7 +61,7 @@ export function validateLogin(body: unknown): ValidationResult {
 
 export type PasswordConfirmationResult = { ok: true; password: string } | { ok: false; message: string };
 
-/** Body von `DELETE /api/me` (Konto löschen, WP-022): `{ password }` als Bestätigung. */
+/** Body von `DELETE /api/me` (Konto löschen): `{ password }` als Bestätigung. */
 export function validatePasswordConfirmation(body: unknown): PasswordConfirmationResult {
   const password =
     typeof body === 'object' && body !== null ? (body as Record<string, unknown>)['password'] : undefined;

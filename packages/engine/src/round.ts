@@ -1,5 +1,5 @@
 /**
- * Freezeout-Runde (WP-008, D-012) als reine, JSON-serialisierbare Zustandsmaschine über vielen Händen:
+ * Freezeout-Runde (D-012) als reine, JSON-serialisierbare Zustandsmaschine über vielen Händen:
  * `startRound` → (`startNextHand` → `applyRoundAction`*)* → Phase `finished` mit Platzierungen und Punkten.
  * Zeit kommt nur als Parameter (`nowMs`), Zufall als injiziertes `Rng`. Eingabezustände werden nie verändert.
  * Beschreibung: ARCHITECTURE.md, „Engine: Rundenmodell (Freezeout)“.
@@ -120,7 +120,7 @@ export interface RoundBlindLevel extends BlindLevel {
    */
   nextLevelAtMs: number | null;
   /**
-   * Hände-Variante (WP-036, D-033): Hände, die noch auf diesem Level gespielt werden – die laufende Hand bzw.
+   * Hände-Variante (D-033): Hände, die noch auf diesem Level gespielt werden – die laufende Hand bzw.
    * (zwischen den Händen) die nächste eingeschlossen; `null` = letztes Level bzw. Blinds steigen nicht nach Händen.
    */
   handsLeftInLevel: number | null;
@@ -297,7 +297,7 @@ export function applyRoundAction(round: RoundState, playerId: string, action: Ac
   return { ok: true, round: next };
 }
 
-/** Admin zieht neue Hole Cards in der laufenden Hand (WP-035, D-032); siehe `redrawHoleCards`. */
+/** Admin zieht neue Hole Cards in der laufenden Hand (D-032); siehe `redrawHoleCards`. */
 export function redrawRoundHoleCards(round: RoundState, playerId: string, rng: Rng): RoundUpdate {
   if (round.phase !== 'hand' || round.hand === null) return fail('NO_HAND_IN_PROGRESS', 'Keine laufende Hand');
   const result = redrawHoleCards(round.hand, playerId, rng);

@@ -1,5 +1,5 @@
 /**
- * Reaktions-Knopf am Tisch (WP-032): öffnet eine Leiste mit den festen Emojis; ein Klick sendet die
+ * Reaktions-Knopf am Tisch: öffnet eine Leiste mit den festen Emojis; ein Klick sendet die
  * Reaktion und schließt die Leiste. Danach ist der Knopf für die Sperrzeit des Servers (eine Reaktion
  * je 2 s) gesperrt, damit niemand in den Fehler `RATE_LIMITED` läuft. Nur für Spieler mit Platz.
  */

@@ -5,7 +5,7 @@ import { TableMenu } from './TableMenu';
 import { useTableLayout } from './useTableLayout';
 
 export interface TableScreenProps extends Omit<PokerTableProps, 'layout' | 'menu'> {
-  /** Weitere Einträge im Tisch-Menü (WP-018). */
+  /** Weitere Einträge im Tisch-Menü. */
   readonly menuItems?: ReactNode;
   /**
    * Gesteuerte Präferenz (nur Testseite). Ohne Angabe gilt die gespeicherte Einstellung
@@ -16,7 +16,7 @@ export interface TableScreenProps extends Omit<PokerTableProps, 'layout' | 'menu
 }
 
 /**
- * Tischansicht mit Ausrichtungs-Umschalter (WP-017, D-009): wählt das Layout aus Präferenz und
+ * Tischansicht mit Ausrichtungs-Umschalter (D-009): wählt das Layout aus Präferenz und
  * Viewport und zeigt das Tisch-Menü. Ein Layoutwechsel rendert denselben `PokerTable` mit anderer
  * `layout`-Prop – kein Neu-Mounten, kein Zustandsverlust.
  */

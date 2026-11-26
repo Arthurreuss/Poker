@@ -1,4 +1,4 @@
-// Replay einer gespeicherten Hand (WP-013): Ausgangslage (Spieler, Button, Blind-Sitze, Deck) und Aktionen
+// Replay einer gespeicherten Hand: Ausgangslage (Spieler, Button, Blind-Sitze, Deck) und Aktionen
 // gehen durch die Engine (`replayHand`); das Ergebnis wird wieder in die gespeicherte Form gebracht. Stimmt es
 // mit dem gespeicherten Datensatz überein, ist die Historie vollständig und konsistent.
 import { replayHand, type HandState } from '@poker/engine';

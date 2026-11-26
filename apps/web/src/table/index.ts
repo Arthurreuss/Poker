@@ -1,4 +1,4 @@
-// Öffentliche API der Tischansicht (WP-016/017). Beschreibung: ARCHITECTURE.md, „Frontend: Tischansicht“.
+// Öffentliche API der Tischansicht. Beschreibung: ARCHITECTURE.md, „Frontend: Tischansicht“.
 export { PokerTable, type PokerTableProps } from './PokerTable';
 export { TableScreen, type TableScreenProps } from './TableScreen';
 export { TableMenu, type TableMenuProps } from './TableMenu';

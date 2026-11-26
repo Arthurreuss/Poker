@@ -1,4 +1,4 @@
-// Transport-Tests für `/ws` (WP-011): Upgrade mit Origin- und Session-Prüfung, Handshake, Heartbeat.
+// Transport-Tests für `/ws`: Upgrade mit Origin- und Session-Prüfung, Handshake, Heartbeat.
 // Ohne Datenbank: Sessions über eine Fake-`authenticate`, Tische im In-Memory-Repository.
 import { afterEach, describe, expect, it } from 'vitest';
 import type { AddressInfo } from 'node:net';

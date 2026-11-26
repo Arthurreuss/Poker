@@ -110,7 +110,7 @@ describe('parseClientMessage', () => {
   });
 });
 
-describe('Avatare und Reaktionen (WP-032)', () => {
+describe('Avatare und Reaktionen', () => {
   it('feste Auswahl: 24 Avatare, 8 Reaktionen, eindeutig und URL-tauglich', () => {
     expect(AVATAR_IDS).toHaveLength(24);
     expect(REACTION_IDS).toHaveLength(8);
@@ -161,7 +161,7 @@ describe('validateTableSettings', () => {
     expect(validateTableSettings(settings)).toEqual({ ok: true, value: settings });
   });
 
-  it('steigende Blinds nach Anzahl Hände (WP-036, D-033): 1–1.000 Hände pro Level', () => {
+  it('steigende Blinds nach Anzahl Hände (D-033): 1–1.000 Hände pro Level', () => {
     const levels = [
       { smallBlind: 1, bigBlind: 2 },
       { smallBlind: 2, bigBlind: 4 },

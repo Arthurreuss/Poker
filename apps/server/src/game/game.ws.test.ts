@@ -1,4 +1,4 @@
-// Integrationstests Spielablauf über echte WebSocket-Verbindungen (WP-011), ohne DB:
+// Integrationstests Spielablauf über echte WebSocket-Verbindungen, ohne DB:
 // Sessions per Fake-authenticate, Tische im In-Memory-Repository, Pause nach jeder Hand 0.
 import type { AddressInfo } from 'node:net';
 import type { FastifyInstance } from 'fastify';

@@ -18,9 +18,9 @@ export interface UserRow {
   is_admin: boolean;
   created_at: Date;
   deleted_at: Date | null;
-  /** Gesperrt seit (WP-028); `null` = nicht gesperrt. */
+  /** Gesperrt seit; `null` = nicht gesperrt. */
   banned_at: Date | null;
-  /** Avatar-ID aus `AVATAR_IDS` (WP-032, Migration 0008); `null` = keiner bzw. gelöschter Account. */
+  /** Avatar-ID aus `AVATAR_IDS` (Migration 0008); `null` = keiner bzw. gelöschter Account. */
   avatar: string | null;
 }
 
@@ -83,9 +83,9 @@ export interface HandRow {
   result: Json | null;
   started_at: Date;
   finished_at: Date | null;
-  /** 0003: Sitz des Small Blinds; `null` = kein Small Blind (oder Altzeile vor WP-013). */
+  /** 0003: Sitz des Small Blinds; `null` = kein Small Blind (oder Altzeile von vor 0003). */
   small_blind_seat: number | null;
-  /** 0003: Sitz des Big Blinds; `null` nur bei Altzeilen vor WP-013. */
+  /** 0003: Sitz des Big Blinds; `null` nur bei Altzeilen von vor 0003. */
   big_blind_seat: number | null;
   /** 0003: Deck zu Handbeginn (52 Karten, erstes = oberste); nur serverseitig (D-003). */
   deck: string[] | null;
@@ -110,7 +110,7 @@ export interface SchemaMigrationRow {
   applied_at: Date;
 }
 
-/** 0004 (WP-024): Feedback der Spieler. */
+/** 0004: Feedback der Spieler. */
 export interface FeedbackRow {
   id: number;
   /** `null` = Account gelöscht/anonymisiert. */
@@ -128,11 +128,11 @@ export interface FeedbackRow {
   orientation: 'auto' | 'portrait' | 'landscape' | null;
   status: 'new' | 'read' | 'done';
   created_at: Date;
-  /** 0006 (WP-022): Zeitpunkt des Erledigens, nur bei `status = 'done'` gesetzt (Löschfrist, D-025). */
+  /** 0006: Zeitpunkt des Erledigens, nur bei `status = 'done'` gesetzt (Löschfrist, D-025). */
   done_at: Date | null;
 }
 
-/** Admin-Protokoll (WP-028, Migration 0007). */
+/** Admin-Protokoll (Migration 0007). */
 export interface AdminAuditLogRow {
   /** bigint → von `pg` als String geliefert. */
   id: string;

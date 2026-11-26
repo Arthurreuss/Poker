@@ -1,0 +1,24 @@
+# Stand der gespiegelten Dateien aus fleet (vorlage/GESPIEGELT). Nicht von Hand ändern:
+# erzeugt von fleet.py projekt abgleichen, geprüft von scripts/check_gespiegelt.py.
+ordner .agents/fleet/
+ordner .claude/agents/
+ordner .claude/skills/
+431091c151ed7aa7ea4db1498f557601d7cf3677c48ff54c4d3e90fd8a8329f0  .agents/fleet/anspruch.md
+399e6bfb2e70eb8ebbf505df683dca30f4c50ff807fb85595a8ac99bf33e34ac  .agents/fleet/arbeitsweise.md
+9459b7757feef9107d0b464d349fd1c056e197a966b6699a698cf33d9813f72a  .agents/fleet/baukasten.md
+5bdb03fd35743057d1c5d636fe5e5ec7e6eb00ba72f5285f7b83b8fe07420c69  .agents/fleet/grundsaetze.md
+d14a4d9f3fbd138a5c78d6a4a796c5dcf3b883c602833d564b6d4a44a6ab6f06  .claude/agents/bau-agent.md
+1b3a87ba62133f026ee8b14593bebdf80726cb518235f8472d7f5fc61c2582fd  .claude/agents/lese-agent.md
+6793550f98809559fa009bb792880514b4255b38b3de0f63584dad18251698a0  .claude/agents/rat-sitz.md
+4709782f88bb3db61f98db0b884e1a16951bf08b095a0766a394090f818d19fd  .claude/hooks/befehlssperre.py
+2274b763a1aaa1fa952db7c2658c75491bb1dc2aafd9fd9c3d7c9e48d4b472ee  .claude/hooks/befehlssperre.toml
+b0522b672dfff246109f4114453e83be4db45b9bf6b55f27ceb8b2eef01bb452  .claude/skills/orchestrierer/SKILL.md
+3394b00c233a7f91d5d3a0f80b7dc5fb5a47b531fde6b6e1feb02401e78e4eb3  .claude/skills/planer/SKILL.md
+c6bc499023c80bd09a647e6afdf5cfb2a9ce99d297da2ffbac32a9e3cf0d1afa  .claude/skills/planer/abgleich.md
+e611913805f6fb4a2b2a86c6896e51bb8050743c3d2acd09843d6a47dee1b04c  .claude/skills/planer/befragung.md
+217242c73e55c60256abee5abda32c9a14636d321526a183d8cd968b07391612  .claude/skills/planer/zielklaerung.md
+fff2caeab2c1932d5c95f9deb6ba56b48207cfce18ca165fdcd7022cef896c71  .claude/skills/rat/SKILL.md
+2708db68f42b42a341f86a065d594a347ef842080b343f9595326990acb9f1c2  .claude/skills/rat/weichenstellung.md
+5925eebbb4f80ebe37e398f2c426aa048a46adaa67f638e8380661553b8383b5  scripts/adr.py
+1df2ccec856d857fd4a7f0a9602cafee97dd92b9e61cb5de8819f7cfcea7c672  scripts/check_gespiegelt.py
+b05202f0e2286d954928f1a571903718ac63bb594d42f4150862ce86da689224  scripts/start.sh

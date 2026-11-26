@@ -1,0 +1,123 @@
+# Regeln der Befehlssperre (gespiegelt aus fleet, im Projekt nicht von Hand ändern).
+# Der Haken befehlssperre.py prüft jeden Shell-Befehl einer Sitzung oder eines Unter-Agenten vor
+# der Ausführung und blockiert ihn, wenn eine Regel greift; die Meldung nennt Grund und erlaubten
+# Weg. Sie fängt Fehler ab und ist keine Sicherheitsgrenze gegen Absicht. Ersetzungs-Skripte in
+# Python (python3 -c, Heredoc) erkennt sie nicht, weil ihr Ziel erst beim Ausführen feststeht.
+#
+# Im Projekt (fleet.toml [agenten]): eigene Regeln als [[agenten.befehlssperre]] mit denselben
+# Feldern (ein Name darf nicht doppelt vorkommen), Ziel-Branches als ziel_branches (sonst main,
+# master) und Regeln abschalten nur mit Begründung in [agenten.befehlssperre_aus]. Diese
+# Einstellungen gelten je Teilbefehl aus dem Repo, in dem er wirkt (auch aus seinen Worktrees),
+# im gemergten Stand (Kopf von befehlssperre.py).
+#
+# Felder einer Regel:
+#   name, grund, weg   Name, warum gesperrt, was stattdessen erlaubt ist
+#   muster             regulärer Ausdruck (Python) auf jeden Teilbefehl; Teilbefehle trennen
+#                      ; && || | & Zeilenumbruch und $( ); vor git fallen -C/-c weg; {ziel}
+#                      steht in allen Ausdrücken für die Ziel-Branches
+#   ganz               true: muster auf den ganzen Befehl statt auf Teilbefehle
+#   auch               regulärer Ausdruck, der zusätzlich auf den ganzen Befehl passen muss
+#   ausser             regulärer Ausdruck; passt er auf den Teilbefehl, greift die Regel nicht
+#                      (Programme, deren Argumente nur Text sind: git commit, gh, grep, rg)
+#   hauptcheckout      true: greift nur im Hauptcheckout eines Repos, nicht in einem Worktree
+#   zweig              regulärer Ausdruck auf den ausgecheckten Branch; greift nur dort
+#   befehl, erlaubt_in greift nur, wenn ein vorhandener Pfad nach dem Wort `befehl` außerhalb aller
+#                      Orte liegt: "worktree" (eigener Worktree), "arbeitsordner" (der Sitzung),
+#                      "temp" (echt unter /tmp, /private/tmp, /var/folders/<a>/<b>/<c>, $TMPDIR;
+#                      nie der Ordner selbst, ein Muster direkt darunter, `..` oder eine offene
+#                      Variable; nach ssh nur so, mit absolutem Pfad)
+
+[[regel]]
+name = "loeschen-ausserhalb"
+muster = '(^|\s)(rm\s+(\S+\s+)*(-[a-zA-Z]*[rR][a-zA-Z]*|--recursive)(\s|$)|find\s.*\s-delete\b)'
+ausser = '^(git\s+(commit|tag|notes)|gh|grep|rg)(\s|$)'
+befehl = '^(rm|find)$'
+erlaubt_in = ["worktree", "arbeitsordner", "temp"]
+grund = "rekursives Löschen außerhalb des eigenen Worktrees, des Arbeitsordners und temporärer Ordner"
+weg = "nur im eigenen Worktree, im Arbeitsordner der Sitzung oder unter /tmp, /var/folders, $TMPDIR löschen (benannter Unterordner, per ssh mit absolutem Pfad); Worktrees mit git worktree remove"
+
+[[regel]]
+name = "push-force"
+muster = '^git\s+push\b.*(\s--force(\s|=|$)|\s-[a-zA-Z]*f[a-zA-Z]*(\s|$)|\s\+\S)'
+grund = "git push --force überschreibt fremde Stände"
+weg = "rebasen und normal pushen; auf dem eigenen Branch git push --force-with-lease"
+
+[[regel]]
+name = "push-ziel"
+muster = '^git\s+push\b.*\s(\S*:)?(refs/heads/)?{ziel}(\s|$)'
+grund = "direkter Push auf den Ziel-Branch"
+weg = "den eigenen Branch pushen und über den Merge-Zug einreihen (fleet.py zug enqueue)"
+
+[[regel]]
+name = "push-vom-ziel"
+muster = '^git\s+push(\s+-\S+)*(\s+[^-\s]\S*)?(\s+-\S+)*(\s+HEAD)?(\s+-\S+)*\s*$'
+zweig = '^{ziel}$'
+grund = "git push auf dem ausgecheckten Ziel-Branch schiebt ihn direkt"
+weg = "im eigenen Worktree auf einem eigenen Branch arbeiten und über den Merge-Zug einreihen"
+
+[[regel]]
+name = "reset-hard"
+muster = '^git\s+reset\b.*\s--hard\b'
+hauptcheckout = true
+grund = "git reset --hard im Hauptcheckout verwirft fremde Arbeit"
+weg = "im eigenen Worktree arbeiten; den Hauptcheckout nur mit git pull --ff-only bewegen"
+
+[[regel]]
+name = "git-clean"
+muster = '^git\s+clean\b'
+ausser = '\s(-[a-zA-Z]*n|--dry-run)\b'
+hauptcheckout = true
+grund = "git clean im Hauptcheckout löscht fremde, ungetrackte Dateien"
+weg = "im eigenen Worktree aufräumen oder einzelne eigene Dateien gezielt löschen"
+
+[[regel]]
+name = "no-verify"
+muster = '(^|\s)--no-verify(\s|$)'
+ausser = '^(gh|grep|rg)(\s|$)'
+grund = "--no-verify umgeht die Prüfungen des Commit-Hooks"
+weg = "den Fehler beheben, den der Hook meldet"
+
+[[regel]]
+name = "git-stash"
+muster = '^git\s+stash\b'
+grund = "git stash ist in jeder Form verboten, auch list/show: der Stapel ist mit allen Worktrees geteilt"
+weg = "Zwischenstand ohne Commit im eigenen Worktree lassen oder auf dem eigenen Branch committen"
+
+[[regel]]
+name = "ersetzen-in-dateien"
+muster = '(^|\s)(g?sed|perl|ruby)\s+(\S+\s+)*(-[a-zA-Z]*i|--in-place)'
+ausser = '^(git\s+(commit|tag|notes)|gh|grep|rg)(\s|$)'
+befehl = '^(g?sed|perl|ruby)$'
+erlaubt_in = ["arbeitsordner"]
+grund = "Ersetzungen über Dateien des Repos per Skript treffen ungeprüft zu viel"
+weg = "Dateien einzeln mit dem Werkzeug zum Bearbeiten ändern"
+
+# Ein Teilbefehl spricht eine Datenbank an (Client, ssh, sh -c, exec in Container oder Job) und der
+# Befehl enthält irgendwo (auch über Pipe oder Heredoc) löschendes SQL und ein Prod-Ziel.
+[[regel]]
+name = "sql-prod"
+muster = '^(\S*/)?((ssh|psql|mysql|mariadb|sqlite3|mongosh)(\s|$)|(ba|z)?sh\s+-\w*c\s|(docker|podman)(\s+compose)?\s(.*\s)?(exec|run)\s|kubectl\s(.*\s)?exec\s|nomad\s+alloc\s+exec\s)'
+auch = '(?is)^(?=.*(\b(drop\s+(table|database|schema)|delete\s+from)\b|\btruncate\s+(table\s+)?["\w]))(?=.*((?<![a-z])prod(uction)?(?![a-z])|fleet@))'
+grund = "löschendes SQL gegen Prod"
+weg = "der Mensch führt es aus; vorher Rücksicherung prüfen"
+
+[[regel]]
+name = "volume-prod"
+muster = '(?i)docker\s.*(volume\s+(rm|prune)|\s(down|rm|prune)\s.*(-v|--volumes)\b)'
+ausser = '^(git\s+(commit|tag|notes)|gh|grep|rg)(\s|$)'
+auch = '(?i)(?<![a-z])prod(uction)?(?![a-z])|fleet@'
+grund = "Volumes von Prod löschen vernichtet Daten"
+weg = "der Mensch führt es aus; vorher Rücksicherung prüfen"
+
+[[regel]]
+name = "sudo"
+muster = '^(sudo|doas)(\s|$)|(^|\s)xargs\s+(\S+\s+)*sudo(\s|$)'
+ausser = '^(git\s+(commit|tag|notes)|gh|grep|rg)(\s|$)'
+grund = "Agenten haben keine root-Rechte"
+weg = "den Befehl ins Ticket schreiben; der Mensch führt ihn aus"
+
+[[regel]]
+name = "endlos"
+muster = '^(tail\s+(\S+\s+)*(-[a-zA-Z]*[fF][a-zA-Z0-9]*|--follow)(\s|$)|watch\s|journalctl\s.*(-f|--follow)\b|(docker(\s+compose)?|nomad(\s+alloc)?|kubectl)\s+logs\s.*(-f|--follow)\b)'
+grund = "Endlos-Befehle blockieren die Sitzung"
+weg = "begrenzt lesen (tail -n 50); auf ein Ereignis mit Zeitgrenze warten"

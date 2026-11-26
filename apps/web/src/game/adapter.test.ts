@@ -66,7 +66,7 @@ describe('toTableView – laufende Hand', () => {
     expect(view.pots).toEqual([]);
   });
 
-  it('Blinds nach Händen (WP-036): Restzahl der Hände nur, wenn der Server sie liefert', () => {
+  it('Blinds nach Händen (D-033): Restzahl der Hände nur, wenn der Server sie liefert', () => {
     const server = serverView(startGame(), 1);
     expect(toTableView(server).blinds).not.toHaveProperty('handsLeft');
     const round = server.round;
@@ -176,7 +176,7 @@ describe('heroHandContext', () => {
   });
 });
 
-describe('toTableView – Gewinner und Teil-Aufdecken (WP-031)', () => {
+describe('toTableView – Gewinner und Teil-Aufdecken', () => {
   /** Heads-up: beide All-in preflop → Runout bis zum River, Hand fertig. */
   function allInHeadsUp(): Game {
     const game = startGame(2);
@@ -223,7 +223,7 @@ describe('toTableView – Gewinner und Teil-Aufdecken (WP-031)', () => {
   });
 });
 
-describe('Avatare und Reaktionen (WP-032)', () => {
+describe('Avatare und Reaktionen', () => {
   it('Avatar je Sitz aus der Server-Sicht', () => {
     const view = toTableView(serverView(null, 1));
     expect([0, 1, 2].map((i) => player(view.seats[i]).avatar)).toEqual(['fox', null, null]);
@@ -243,7 +243,7 @@ describe('Avatare und Reaktionen (WP-032)', () => {
   });
 });
 
-describe('Letzte Aktion und eigene Hand (WP-037)', () => {
+describe('Letzte Aktion und eigene Hand', () => {
   it('letzte Aktion der Straße am Sitz, Blinds ohne Schriftzug, neue Straße leert', () => {
     const game = startGame();
     const bb = hand(serverView(game, 1)).bigBlind;

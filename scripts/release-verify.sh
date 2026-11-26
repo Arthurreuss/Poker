@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Letzter Schritt von npm run release (WP-020): prüft das frisch gestartete prod – erst Smoke-Test, dann der
+# Letzter Schritt von npm run release: prüft das frisch gestartete prod – erst Smoke-Test, dann der
 # E2E-Smoke-Test im Browser (zwei Test-Konten spielen eine Runde, D-028). Schlägt etwas fehl, bricht der Release
 # mit Exit-Code 1 ab und nennt den Befehl zum Zurückrollen auf den vorherigen main-Stand (Deploy-Job, D-039).
 #   scripts/release-verify.sh <vorheriger-main-commit> [<neuer-main-commit>]
@@ -25,7 +25,7 @@ rollback_hint() {
   Zurückrollen auf den vorherigen Stand ($prev), über den Deploy-Job auf $POKER_PROD_HOST:
     npm run prod:rollback -- $prev
     npm run prod:smoke
-  Danach den Fehler auf dev beheben; der nächste Release setzt den Studio-Checkout von selbst zurück auf main.
+  Danach den Fehler auf dev beheben; der nächste Release setzt den prod-Checkout von selbst zurück auf main.
   Hat der neue Stand DB-Migrationen ausgeführt, läuft der alte Server auf dem neueren Schema – im Zweifel
   das letzte Backup zurückspielen (npm run prod:restore). Details: docs/OPERATIONS.md, Abschnitt "Release".
 EOF

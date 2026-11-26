@@ -1,4 +1,4 @@
-// Hand-Historie ohne DB (WP-013): Abbildung Handzustand → gespeicherte Form und Replay über die Engine.
+// Hand-Historie ohne DB: Abbildung Handzustand → gespeicherte Form und Replay über die Engine.
 import { describe, expect, it } from 'vitest';
 import {
   applyRoundAction,

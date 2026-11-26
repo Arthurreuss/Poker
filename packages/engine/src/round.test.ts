@@ -361,7 +361,7 @@ describe('Blind-Level', () => {
   });
 });
 
-describe('Blind-Level nach Anzahl Hände (WP-036, D-033)', () => {
+describe('Blind-Level nach Anzahl Hände (D-033)', () => {
   const byHands: BlindStructure = {
     type: 'increasing',
     levels: [

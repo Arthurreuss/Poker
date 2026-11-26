@@ -1,4 +1,4 @@
-// Öffentliche Schnittstelle des Feedback-Moduls (WP-024).
+// Öffentliche Schnittstelle des Feedback-Moduls.
 export {
   FeedbackButton,
   FeedbackDialog,

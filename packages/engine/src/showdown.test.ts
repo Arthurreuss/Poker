@@ -6,7 +6,7 @@ import type { Action, HandState, PlayerStatus } from './hand-state';
 import { clockwiseFrom } from './seats';
 import { calculatePots } from './showdown';
 
-// Tabellarische Tests für Pots und Showdown (WP-007).
+// Tabellarische Tests für Pots und Showdown.
 // Spieler sitzen auf Sitz = Index in der Tabelle; Karten werden über ein präpariertes Deck verteilt.
 
 // ---------------------------------------------------------------------------

@@ -1,4 +1,4 @@
-// Eine Runde (WP-019): Ergebnis mit (geteilten) Plätzen und die Hände zum Nachlesen. D-024: Ergebnis öffentlicher
+// Eine Runde: Ergebnis mit (geteilten) Plätzen und die Hände zum Nachlesen. D-024: Ergebnis öffentlicher
 // Tische für alle Eingeloggten, privater nur für Teilnehmer; Hände nur für Teilnehmer.
 import { Link, useParams } from 'react-router';
 import { fetchRound } from '../api/stats';

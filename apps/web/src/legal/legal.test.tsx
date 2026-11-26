@@ -1,4 +1,4 @@
-// Impressum/Datenschutz (WP-022): ohne Login erreichbar, Footer mit Spielgeld-Hinweis und Links auf allen Seiten.
+// Impressum/Datenschutz: ohne Login erreichbar, Footer mit Spielgeld-Hinweis und Links auf allen Seiten.
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';

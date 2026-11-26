@@ -1,5 +1,5 @@
 /*
- * Hand-Übersicht (WP-038): Knopf unter dem Reaktions-Knopf und Dialog mit allen Pokerhänden.
+ * Hand-Übersicht: Knopf unter dem Reaktions-Knopf und Dialog mit allen Pokerhänden.
  * Farben nur über die Design-Tokens (styles/tokens.css). Der Dialog liegt per Portal in <body>,
  * also außerhalb von .pt-host – die Karten-Aliase (--pt-card-*) und --u setzt deshalb der Hintergrund.
  */

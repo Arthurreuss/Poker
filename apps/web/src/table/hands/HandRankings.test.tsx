@@ -1,4 +1,4 @@
-// Hand-Übersicht am Tisch (WP-038).
+// Hand-Übersicht am Tisch.
 import { HAND_CATEGORIES, HAND_CATEGORY_NAMES, evaluateHand } from '@poker/engine';
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';

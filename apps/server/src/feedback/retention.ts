@@ -1,4 +1,4 @@
-// Speicherdauer von Feedback (WP-022, D-025): erledigtes Feedback 30 Tage nach dem Erledigen löschen, jedes Feedback
+// Speicherdauer von Feedback (D-025): erledigtes Feedback 30 Tage nach dem Erledigen löschen, jedes Feedback
 // spätestens 1 Jahr nach dem Absenden. Läuft im Server beim Start und danach täglich (main.ts).
 import type { FastifyBaseLogger } from 'fastify';
 import type { Queryable } from '../db';

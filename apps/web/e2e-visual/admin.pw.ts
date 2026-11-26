@@ -1,5 +1,5 @@
 /**
- * Mobil-Tests des Admin-Dashboards (WP-029): echte App (index.html) mit gemockter API (`page.route`), Admin
+ * Mobil-Tests des Admin-Dashboards: echte App (index.html) mit gemockter API (`page.route`), Admin
  * eingeloggt. Pro Viewport und Bereich (Übersicht, Spieler, Tische, Protokoll, Dialoge) wird geprüft:
  * - keine horizontale Scrollleiste, nichts ragt rechts aus dem Viewport,
  * - alle Knöpfe und Bereichs-Links sind mindestens 44 px hoch (Touch-Ziel),

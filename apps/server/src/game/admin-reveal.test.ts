@@ -1,4 +1,4 @@
-// Admin deckt verdeckte Karten auf (WP-033, D-027) – Regeln ohne Netzwerk und ohne DB: GameServer mit In-Memory-
+// Admin deckt verdeckte Karten auf (D-027) – Regeln ohne Netzwerk und ohne DB: GameServer mit In-Memory-
 // Verbindungen und ManualClock, Admin-Protokoll als Fake-Senke. Prüft vor allem, dass die Karten nur an die
 // anfragende Admin-Verbindung gehen und Mitspieler/Zuschauer keinerlei Nachricht bekommen.
 import { describe, expect, it } from 'vitest';

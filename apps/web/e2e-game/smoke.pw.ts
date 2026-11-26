@@ -1,4 +1,4 @@
-// WP-020: E2E-Smoke-Test – beweist, dass das Gesamtsystem (Web, Server, DB, WebSocket) zusammen funktioniert.
+// E2E-Smoke-Test – beweist, dass das Gesamtsystem (Web, Server, DB, WebSocket) zusammen funktioniert.
 // Zwei Spieler registrieren sich über die Seite, A erstellt über die Lobby einen privaten Tisch, B tritt über den
 // Einladungslink bei, beide nehmen Platz, A startet, beide gehen All-in, bis der Rundenende-Dialog bei beiden
 // steht. Danach werden beide Test-Konten gelöscht (auch in prod, auch wenn der Test scheitert). Privat, damit in

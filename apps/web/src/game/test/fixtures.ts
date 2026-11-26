@@ -1,4 +1,4 @@
-// Testhilfen (WP-018): echte Server-Sichten über die Engine (Runde starten, Aktionen anwenden, filtern)
+// Testhilfen: echte Server-Sichten über die Engine (Runde starten, Aktionen anwenden, filtern)
 // statt handgebauter Objekte – so passen Testdaten immer zum Protokoll.
 import {
   applyRoundAction,

@@ -1,4 +1,4 @@
-// Admin-Endpunkte (WP-028/WP-029, nur Admins; Formate: docs/ARCHITECTURE.md, „Auth“ → „Admin (WP-028)“).
+// Admin-Endpunkte (nur Admins; Formate: docs/ARCHITECTURE.md, „Auth“ → „Admin“).
 import { apiRequest } from './client';
 
 export interface RoundCounts {
@@ -58,7 +58,7 @@ export interface AdminUser {
 export interface AuditEntry {
   id: number;
   createdAt: string;
-  /** `bereich.aktion`, z. B. `user.ban`; künftige Codes (z. B. WP-033) erscheinen roh. */
+  /** `bereich.aktion`, z. B. `user.ban`; künftige, hier noch unbekannte Codes erscheinen roh. */
   action: string;
   source: 'api' | 'cli' | 'ws';
   admin: { id: number; username: string } | null;

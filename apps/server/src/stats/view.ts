@@ -1,4 +1,4 @@
-// Hand-Historie für Clients (WP-019): rein, ohne DB. Datenschutz (D-003): fremde Hole Cards nur, wenn sie im
+// Hand-Historie für Clients: rein, ohne DB. Datenschutz (D-003): fremde Hole Cards nur, wenn sie im
 // Showdown gezeigt wurden (`shown`), eigene immer; das Deck wird gar nicht erst geladen (`HistoryHand` hat keins)
 // und die Antwort wird Feld für Feld aufgebaut, nie aus dem gespeicherten Datensatz kopiert.
 import type { Card } from '@poker/engine';

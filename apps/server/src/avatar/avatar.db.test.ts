@@ -1,4 +1,4 @@
-// Avatar (WP-032) gegen die Test-DB (nur mit TEST_DATABASE_URL): speichern über PUT /api/me/avatar, Anzeige in
+// Avatar gegen die Test-DB (nur mit TEST_DATABASE_URL): speichern über PUT /api/me/avatar, Anzeige in
 // /api/me, Login, Rangliste, Profil und am Tisch (echter WebSocket), Zurücksetzen beim Löschen des Kontos.
 import type { AddressInfo } from 'node:net';
 import type { FastifyInstance, LightMyRequestResponse } from 'fastify';

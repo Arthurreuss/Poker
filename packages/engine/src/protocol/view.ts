@@ -1,5 +1,5 @@
 /**
- * Filter „Spielzustand → Sicht eines Empfängers“ (D-003, WP-011). Reine Funktionen; der Server ruft sie
+ * Filter „Spielzustand → Sicht eines Empfängers“ (D-003). Reine Funktionen; der Server ruft sie
  * für jeden Empfänger einzeln auf. Regeln:
  * - eigene Hole Cards immer, fremde nie vor dem Showdown, im Showdown nur `shownCards` (gemuckte nie),
  * - Deck und verbrannte Karten nie,

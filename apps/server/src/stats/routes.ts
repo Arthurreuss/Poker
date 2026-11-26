@@ -1,4 +1,4 @@
-// Endpunkte für Rangliste, Statistiken und Hand-Historie (WP-019), nur für eingeloggte Nutzer.
+// Endpunkte für Rangliste, Statistiken und Hand-Historie, nur für eingeloggte Nutzer.
 // Formate: docs/ARCHITECTURE.md, Abschnitt „Statistiken“.
 import type { FastifyError, FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 import { getUserFromCookieHeader, type AuthUser } from '../auth/session';

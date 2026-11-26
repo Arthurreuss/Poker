@@ -1,7 +1,7 @@
 import './showdown.css';
 
 /**
- * Krone am Platz eines Gewinners (WP-039), „aufgesetzt“ auf den Avatar: erscheint, sobald `TableView.winnerSeats`
+ * Krone am Platz eines Gewinners, „aufgesetzt“ auf den Avatar: erscheint, sobald `TableView.winnerSeats`
  * den Sitz enthält – also erst, wenn der Client das Ergebnis zeigt (nach dem Aufdecken bzw. Runout,
  * `game/presentation.ts`). Bei einem Split-Pot tragen alle Gewinner eine. Eingeblendet per CSS (nur mit
  * Animationen), sonst sofort sichtbar.

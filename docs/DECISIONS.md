@@ -1,6 +1,23 @@
 # Entscheidungen
 
-Format: Kontext → Entscheidung → Konsequenzen. Status: `akzeptiert`, `offen`, `ersetzt durch D-00X`.
+Zwei Teile: die Entscheidungen D-001 bis D-039 aus der Zeit vor der Anbindung an fleet (unten, nicht
+mehr fortgeschrieben) und seitdem ADRs in `docs/adr/` mit dem erzeugten Index am Ende dieser Datei
+(ADR 0001). Gezielt suchen statt alles lesen: `grep -n "D-0xx" docs/DECISIONS.md`,
+`grep -ril <stichwort> docs/adr`.
+
+- **Neue ADR:** auf dem Feature-Branch `docs/adr/XXXX-kurzer-slug.md` mit dem Platzhalter `XXXX`,
+  Aufbau `# ADR XXXX — Titel`, Leerzeile, `Status: …`, `Bereich: …`, dann `## Kontext`,
+  `## Entscheidung`, `## Konsequenzen`. Die Nummer vergibt der Merge-Zug (`.agents/rules/ordnung.md`
+  „ADRs“).
+- **Index:** die Tabelle am Ende erzeugt `python3 scripts/adr.py index`; nie von Hand ändern.
+- **Ablösen einer D-Entscheidung:** die neue ADR nennt sie („ersetzt D-026“), der D-Eintrag bekommt
+  in seiner Zeile Status „ersetzt durch ADR NNNN“.
+
+## Entscheidungen vor der Anbindung an fleet (D-001 bis D-039)
+Format: Kontext → Entscheidung → Konsequenzen. Status: `akzeptiert`, `offen`, `ersetzt durch D-00X`
+bzw. `ersetzt durch ADR NNNN`. Ein Verweis `WP-NNN` nennt ein abgelöstes Arbeitspaket; seine Datei
+steht in der Git-Historie (`git log --all -- docs/work-packages/WP-NNN.md`), offene Pakete sind
+Tickets mit „WP-NNN“ im Titel.
 
 ## D-001: Nur Spielgeld
 - **Status:** akzeptiert
@@ -331,3 +348,8 @@ Format: Kontext → Entscheidung → Konsequenzen. Status: `akzeptiert`, `offen`
   - Restore (`prod:restore`), Status, Logs, Smoke und E2E bleiben wie bisher (ssh bzw. Portweiterleitung).
   - Tische bleiben im Server-Container (Entscheidung Arthur, 29.10.2026: Poker ist für Freunde, keine eigenen Tisch-Dienste): poker-prod läuft dauerhaft in der Prod-VM des Verbunds mit Priorität 100 mit, sein Bedarf ist in deren Buchung eingerechnet (fleet `prod.toml`). Ein Node-Prozess hält ohnehin alle Tische im Speicher (`GameServer` → `Table`).
 - **Konsequenzen:** Ein Deploy braucht Tailscale und den fleet-Checkout auf dem MacBook; ohne Nomad geht es per ssh (OPERATIONS.md, „Deploy-Job“). Der erste Release mit `deploy_job.sh` läuft schon über den Job (der Job spult vor dem Aufruf vor). Seit 29.10.2026 führt Nomad die Prod-VM als Job `prod-vm` (vorher LaunchDaemon `com.wingmen.colima`); für den Deploy ändert das nichts (gleicher Docker-Socket).
+
+## ADR-Index
+| Nr. | Titel | Status | Bereich |
+|---|---|---|---|
+| 0001 | Arbeitsweise und Anbindung an fleet | aktiv | Arbeitsweise |

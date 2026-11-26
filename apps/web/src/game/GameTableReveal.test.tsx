@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
-// Admin deckt am Tisch verdeckte Karten auf (WP-033, D-027): Spielseite mit Fake-Verbindung – Anfrage beim ersten
+// Admin deckt am Tisch verdeckte Karten auf (D-027): Spielseite mit Fake-Verbindung – Anfrage beim ersten
 // Tipp, Antwort dreht um, Zurück- und erneutes Umdrehen ohne Anfrage, nach Handende vergessen; Nicht-Admins nie.
-// Außerdem WP-035 (D-032): Tipp auf die eigenen Karten zieht neue.
+// Außerdem D-032: Tipp auf die eigenen Karten zieht neue.
 import type { ServerMessage, TableView as ServerTableView } from '@poker/engine/protocol';
 import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';

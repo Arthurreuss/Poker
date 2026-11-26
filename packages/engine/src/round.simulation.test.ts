@@ -13,7 +13,7 @@ import {
   type RoundUpdate,
 } from './round';
 
-// Simulation (WP-008): komplette Runden mit seeded Zufalls-Bots. Prüft je Runde: genau ein Sieger,
+// Simulation: komplette Runden mit seeded Zufalls-Bots. Prüft je Runde: genau ein Sieger,
 // Chip-Erhaltung über alle Hände, Platzierungen 1..n korrekt (geteilt nur bei gleichem Stack),
 // Punktesumme passend zur Formel, Big Blind rückt genau einen Spieler weiter, Heads-up Button = SB.
 

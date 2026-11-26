@@ -1,4 +1,4 @@
-// Security-Header des Prod-Web-Containers (WP-022): parst docker/nginx/default.conf.template und
+// Security-Header des Prod-Web-Containers: parst docker/nginx/default.conf.template und
 // security-headers.conf und prüft, dass jede location die Header bekommt und die CSP zur App passt.
 // Manueller Lauf gegen ein gebautes Image: docs/OPERATIONS.md, „Security-Checkliste“.
 import { test } from 'node:test';
@@ -67,7 +67,7 @@ test('Grundschutz-Header sind gesetzt', () => {
   for (const feature of ['camera', 'microphone', 'geolocation', 'payment']) {
     assert.match(permissions, new RegExp(`\\b${feature}=\\(\\)`), feature);
   }
-  // Teilen/Kopieren des Einladungslinks (WP-015) darf nicht gesperrt sein.
+  // Teilen/Kopieren des Einladungslinks darf nicht gesperrt sein.
   assert.doesNotMatch(permissions, /web-share|clipboard/);
   // HSTS setzt Cloudflare, nicht nginx (hinter dem Tunnel kommt nur http an).
   assert.equal(h['strict-transport-security'], undefined);

@@ -1,4 +1,4 @@
-// Admin-CLI: setzt (oder mit --revoke entzieht) das Admin-Flag eines Users (WP-010).
+// Admin-CLI: setzt (oder mit --revoke entzieht) das Admin-Flag eines Users.
 // Aufruf: DATABASE_URL=… npm run admin:make-admin -w @poker/server -- <benutzername> [--revoke]
 import { setAdmin } from '../auth/admin';
 import { createPgDatabase } from '../db';

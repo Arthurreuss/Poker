@@ -1,5 +1,5 @@
-// Nur im Dev-Build (`/dev/new-table`, WP-018): Tisch direkt per WebSocket anlegen, solange es die Lobby
-// (WP-015) noch nicht gibt – für manuelle Tests und den Playwright-Test mit mehreren Browsern.
+// Nur im Dev-Build (`/dev/new-table`): Tisch direkt per WebSocket anlegen, ohne den Weg über die Lobby
+// – für manuelle Tests und den Playwright-Test mit mehreren Browsern.
 // Der Ersteller sitzt danach auf Platz 1 (Sitz 0).
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';

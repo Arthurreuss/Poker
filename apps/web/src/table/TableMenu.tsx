@@ -6,12 +6,12 @@ export interface TableMenuProps {
   /** Aktuelle Ausrichtungs-Präferenz (D-009). */
   readonly preference: OrientationPreference;
   readonly onPreferenceChange: (value: OrientationPreference) => void;
-  /** Weitere Einträge (z. B. „Tisch verlassen“, WP-018) unter dem Ausrichtungs-Umschalter. */
+  /** Weitere Einträge (z. B. „Tisch verlassen“) unter dem Ausrichtungs-Umschalter. */
   readonly children?: ReactNode;
 }
 
 /**
- * Tisch-Menü (WP-017): Knopf oben links am Tisch, öffnet ein kleines Panel mit dem Umschalter
+ * Tisch-Menü: Knopf oben links am Tisch, öffnet ein kleines Panel mit dem Umschalter
  * Auto/Hoch/Quer. Schließt bei Escape und Klick außerhalb. Die Auswahl wirkt sofort; der Tisch
  * wird dabei nicht neu aufgebaut (siehe PokerTable).
  */

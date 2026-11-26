@@ -1,4 +1,4 @@
-// Integrationstests der Admin-Rolle (WP-028, D-029) gegen die Test-DB (nur mit TEST_DATABASE_URL, sonst übersprungen):
+// Integrationstests der Admin-Rolle (D-029) gegen die Test-DB (nur mit TEST_DATABASE_URL, sonst übersprungen):
 // Guard für alle /api/admin/*-Routen, Sperre (Sessions, WebSocket, Login), Sessions beenden, Passwort-Reset,
 // Tisch schließen, Admin-Protokoll inkl. Anonymisierung bei Konto-Löschung und Löschfrist.
 import type { AddressInfo } from 'node:net';

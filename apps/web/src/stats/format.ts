@@ -1,4 +1,4 @@
-// Anzeige-Helfer für Rangliste, Profil und Hand-Historie (WP-019).
+// Anzeige-Helfer für Rangliste, Profil und Hand-Historie.
 import type { HandActionType, Rate, RoundPlayerSummary, Street } from '../api/stats';
 
 export const DELETED_PLAYER = 'Gelöschter Spieler';

@@ -1,4 +1,4 @@
-// Teilen-Button (WP-030): Handy → Teilen-Menü des Geräts, Desktop → Link kopieren mit Bestätigung.
+// Teilen-Button: Handy → Teilen-Menü des Geräts, Desktop → Link kopieren mit Bestätigung.
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, onTestFinished, vi } from 'vitest';

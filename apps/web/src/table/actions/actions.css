@@ -1,5 +1,5 @@
 /*
- * Aktionsleiste (WP-018). Liegt im `actionBar`-Bereich der Tischansicht (Hochformat: Zeile unten,
+ * Aktionsleiste. Liegt im `actionBar`-Bereich der Tischansicht (Hochformat: Zeile unten,
  * Querformat: Fläche unten rechts). Farben nur über Design-Tokens; Knöpfe mindestens 44 px hoch.
  */
 .ab-root {

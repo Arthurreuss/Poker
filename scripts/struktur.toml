@@ -1,0 +1,24 @@
+# Struktur von poker (scripts/check_struktur.py, .agents/rules/architektur.md „Datei-Verfassung“):
+# npm-Workspaces nach dem Bestand (docs/ARCHITECTURE.md „Verzeichnisstruktur“).
+#   packages/engine/   @poker/engine: reine Poker-Logik und Protokoll, unten
+#   apps/server/       @poker/server: Game-Server, nutzt die Engine
+#   apps/web/          @poker/web: Frontend, nutzt die Engine
+# Die Reinheit der Engine (keine I/O, keine Uhr) prüft ESLint (eslint.config.js).
+
+ordner = ["packages/engine/src", "apps/server/src", "apps/server/migrations", "apps/web/src"]
+verboten = ["backend", "frontend", "src"]
+
+[[regel]]
+dateien = "packages/engine/src/**/*.ts"
+muster = '''from\s+['"]@poker/(server|web)'''
+grund = "die Engine liegt unten und importiert weder Server noch Frontend"
+
+[[regel]]
+dateien = "apps/server/src/**/*.ts"
+muster = '''from\s+['"]@poker/web'''
+grund = "der Server kennt das Frontend nicht; gemeinsam ist nur @poker/engine"
+
+[[regel]]
+dateien = "apps/web/src/**/*.ts*"
+muster = '''from\s+['"]@poker/server'''
+grund = "das Frontend spricht den Server nur über HTTP und WebSocket an; gemeinsam ist nur @poker/engine"

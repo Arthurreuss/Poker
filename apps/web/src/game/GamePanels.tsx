@@ -1,4 +1,4 @@
-// Bausteine der Spielseite (WP-018): Verbindungshinweis, Fehlermeldung, Inhalte des Aktionsbereichs
+// Bausteine der Spielseite: Verbindungshinweis, Fehlermeldung, Inhalte des Aktionsbereichs
 // (Warten auf Start, Aktionsleiste, Showdown) und Rundenende-Dialog.
 import { useEffect, useId, useRef } from 'react';
 import { Link } from 'react-router';
@@ -208,7 +208,7 @@ export function GameActionArea({
 }: {
   snapshot: TableGameSnapshot;
   store: TableGameStore;
-  /** `false`, solange der Tisch einen Runout noch aufdeckt (WP-031) – das Ergebnis kommt danach. */
+  /** `false`, solange der Tisch einen Runout noch aufdeckt – das Ergebnis kommt danach. */
   showResult?: boolean;
 }) {
   const table = snapshot.table;
@@ -388,7 +388,7 @@ export function RoundResultDialog({
   );
 }
 
-/** Tisch vom Server geschlossen (verwaiste Runde, D-022, oder Admin, WP-028): Hinweis, nach kurzer Zeit zur Lobby. */
+/** Tisch vom Server geschlossen (verwaiste Runde, D-022, oder Admin): Hinweis, nach kurzer Zeit zur Lobby. */
 export function TableClosedNotice({
   reason = 'abandoned',
   onBack,

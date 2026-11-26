@@ -1,4 +1,4 @@
-// Spielseite eines Tisches (WP-018): verbindet Store/Verbindung mit der Tischansicht (WP-016/017),
+// Spielseite eines Tisches: verbindet Store/Verbindung mit der Tischansicht (`src/table/`),
 // Aktionsleiste, Showdown, Rundenende und Verbindungshinweis. Layout (Hoch/Quer) macht `TableScreen`.
 import { useCallback, useMemo } from 'react';
 import { Link } from 'react-router';
@@ -39,7 +39,7 @@ export function GameTable({ snapshot, store, onLeave }: GameTableProps) {
   const table = snapshot.table;
   const turnClock = table === null ? null : readTurnClock(table, snapshot.receivedAtMs);
   const now = useNow(turnClock !== null, 200);
-  // WP-031: Runout Straße für Straße, Ergebnis danach; Showdown vor dem Rundenende-Dialog.
+  // Runout Straße für Straße, Ergebnis danach; Showdown vor dem Rundenende-Dialog.
   const { reveal, resultShown } = useHandReveal(table?.round?.hand ?? null);
   const roundEnd = useRoundEndHold(table?.status ?? null, resultShown);
   const baseView = useMemo(
@@ -48,7 +48,7 @@ export function GameTable({ snapshot, store, onLeave }: GameTableProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [table, snapshot.receivedAtMs, now, reveal],
   );
-  // Reaktionen nur, wenn eingeschaltet (WP-032); senden dürfen nur Spieler mit Platz.
+  // Reaktionen nur, wenn eingeschaltet; senden dürfen nur Spieler mit Platz.
   const view = useMemo(
     () =>
       baseView === null || !reactionsOn
@@ -71,7 +71,7 @@ export function GameTable({ snapshot, store, onLeave }: GameTableProps) {
   }, [store]);
   const react = useCallback((reaction: ReactionId) => store.react(reaction), [store]);
   const feedback = useFeedbackDialog({ tableId: store.tableId });
-  // WP-040: Lottie-Feiern nur mit Animationen und ohne reduzierte Bewegung; Schriftzug und Sieger immer.
+  // Lottie-Feiern nur mit Animationen und ohne reduzierte Bewegung; Schriftzug und Sieger immer.
   const celebrate = animations && !prefersReducedMotion();
   const tableWinners = useMemo(
     () =>
@@ -84,10 +84,10 @@ export function GameTable({ snapshot, store, onLeave }: GameTableProps) {
     [snapshot.standings, table],
   );
   const canReact = reactionsOn && table !== null && table.you.seat !== null;
-  // Admin am Tisch (WP-033, D-027): verdeckte Karten der Mitspieler per Tipp umdrehen.
+  // Admin am Tisch (D-027): verdeckte Karten der Mitspieler per Tipp umdrehen.
   const adminSeated = snapshot.isAdmin && table !== null && table.you.seat !== null;
   const { reveal: revealState } = snapshot;
-  // WP-035 (D-032): solange der Admin in der laufenden Hand ist, zieht ein Tipp auf die eigenen Karten neu.
+  // D-032: solange der Admin in der laufenden Hand ist, zieht ein Tipp auf die eigenen Karten neu.
   const hand = table?.round?.hand ?? null;
   const canRedraw =
     adminSeated &&
@@ -151,7 +151,7 @@ export function GameTable({ snapshot, store, onLeave }: GameTableProps) {
             menuItems={
               <div className="gp-menu-items">
                 <p className="gp-menu-info">{table.settings.name}</p>
-                {/* Öffentlich: Link direkt zum Tisch; privat: Einladungslink (WP-030). */}
+                {/* Öffentlich: Link direkt zum Tisch; privat: Einladungslink. */}
                 <div className="gp-menu-invite" aria-label="Einladen" role="group">
                   <p className="gp-menu-heading">Einladen</p>
                   <InviteShare

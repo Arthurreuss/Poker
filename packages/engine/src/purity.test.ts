@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 // Sichert ab, dass nur crypto-rng.ts Node-Module nutzt und die Engine sonst frei von I/O,
 // Uhr und unkontrolliertem Zufall bleibt – inklusive Unterordnern. Dieselben Regeln prüft ESLint
-// (Block „Engine-Reinheit“ in eslint.config.js, WP-008); dieser Test fängt sie auch ohne Lint-Lauf.
+// (Block „Engine-Reinheit“ in eslint.config.js); dieser Test fängt sie auch ohne Lint-Lauf.
 const ALLOWED_NODE_IMPORT = new Set(['crypto-rng.ts']);
 const srcDir = new URL('.', import.meta.url);
 const sources = readdirSync(srcDir, { recursive: true, encoding: 'utf8' })

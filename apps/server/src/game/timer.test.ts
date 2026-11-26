@@ -1,4 +1,4 @@
-// WP-012 ohne Netzwerk: Zug-Timer, Zeitbank, getrennte Spieler und Ablösung durch eine neuere Verbindung.
+// Ohne Netzwerk: Zug-Timer, Zeitbank, getrennte Spieler und Ablösung durch eine neuere Verbindung.
 // Alle Zeit läuft über `ManualClock` – kein echtes Warten.
 import { describe, expect, it } from 'vitest';
 import { createSeededRng } from '@poker/engine';

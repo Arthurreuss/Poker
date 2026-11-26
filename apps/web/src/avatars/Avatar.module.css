@@ -1,4 +1,4 @@
-/* Avatar (WP-032): Kreis-SVG; Größe setzt der Aufrufer. Platzhalter nur über Design-Tokens. */
+/* Avatar: Kreis-SVG; Größe setzt der Aufrufer. Platzhalter nur über Design-Tokens. */
 .avatar {
   display: block;
   flex: none;

@@ -1,4 +1,4 @@
-// Einstellungen → „Avatar“ (WP-032): eines der festen Motive wählen oder keins. Wird sofort gespeichert
+// Einstellungen → „Avatar“: eines der festen Motive wählen oder keins. Wird sofort gespeichert
 // (`PUT /api/me/avatar`) und ist für alle Mitspieler sichtbar (Tisch, Rangliste, Profil).
 import { AVATAR_IDS, type AvatarId } from '@poker/engine/protocol';
 import { useState } from 'react';

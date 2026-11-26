@@ -1,4 +1,4 @@
-// Eigener, kleiner Migrations-Runner für reine SQL-Dateien (D-010, WP-009).
+// Eigener, kleiner Migrations-Runner für reine SQL-Dateien (D-010).
 // Ablauf und Begründung: docs/ARCHITECTURE.md, Abschnitt „Datenmodell“.
 import { createHash } from 'node:crypto';
 import { readdir, readFile } from 'node:fs/promises';

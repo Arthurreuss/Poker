@@ -51,7 +51,7 @@ describe('CreateTableForm', () => {
     });
   });
 
-  it('Blinds steigen wahlweise nach Zeit oder nach Händen (WP-036)', async () => {
+  it('Blinds steigen wahlweise nach Zeit oder nach Händen (D-033)', async () => {
     const { onSubmit, user } = renderForm();
     expect(screen.getByLabelText('Nach Zeit')).toBeChecked();
     expect(screen.queryByLabelText('Hände pro Level')).not.toBeInTheDocument();

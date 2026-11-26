@@ -1,4 +1,4 @@
-// /admin/players (WP-029): Spielerliste mit Suche; Sperren/Entsperren, Sessions beenden und Passwort zurücksetzen,
+// /admin/players: Spielerliste mit Suche; Sperren/Entsperren, Sessions beenden und Passwort zurücksetzen,
 // jeweils mit Bestätigung. Das neue Passwort steht genau einmal im Dialog (mit Kopier-Knopf) und wird nirgends
 // gespeichert (D-029). Admins und man selbst sind nicht sperrbar – der Server prüft das ebenfalls.
 import { useEffect, useState } from 'react';

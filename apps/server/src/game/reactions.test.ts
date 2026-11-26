@@ -1,4 +1,4 @@
-// Avatare am Tisch und Emoji-Reaktionen (WP-032) ohne Netzwerk und DB: GameServer mit In-Memory-Verbindungen.
+// Avatare am Tisch und Emoji-Reaktionen ohne Netzwerk und DB: GameServer mit In-Memory-Verbindungen.
 import { describe, expect, it } from 'vitest';
 import { createSeededRng } from '@poker/engine';
 import {
@@ -64,7 +64,7 @@ async function table(s: ReturnType<typeof setup>) {
   return { a, b, spectator, id };
 }
 
-describe('Avatare am Tisch (WP-032)', () => {
+describe('Avatare am Tisch', () => {
   it('jeder Sitz zeigt den Avatar seines Spielers, ohne Avatar null', async () => {
     const s = setup();
     await table(s);
@@ -103,7 +103,7 @@ describe('Avatare am Tisch (WP-032)', () => {
   });
 });
 
-describe('Emoji-Reaktionen (WP-032)', () => {
+describe('Emoji-Reaktionen', () => {
   it('erscheint bei allen Beobachtern, auch beim Zuschauer und beim Absender', async () => {
     const s = setup();
     const { b, id } = await table(s);

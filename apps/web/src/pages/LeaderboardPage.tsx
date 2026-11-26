@@ -1,4 +1,4 @@
-// Rangliste (WP-019): Punkte, Runden, Siege. Lädt bei jedem Aufruf und wenn die App wieder in den Vordergrund
+// Rangliste: Punkte, Runden, Siege. Lädt bei jedem Aufruf und wenn die App wieder in den Vordergrund
 // kommt neu – so ist sie nach einem Rundenende aktuell, ohne Push (ARCHITECTURE.md, „Statistiken“).
 // Nur Spieler mit mindestens einer beendeten Runde (D-024); der Server filtert, die Seite zur Sicherheit auch.
 import { Link } from 'react-router';

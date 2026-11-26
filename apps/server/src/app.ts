@@ -30,17 +30,17 @@ export interface AppOptions {
   heartbeatIntervalMs?: number;
   /** Standard: `loadAuthConfig(process.env)`. */
   auth?: AuthConfig;
-  /** Feedback (WP-024), z. B. Rate-Limit. Standard: `loadFeedbackConfig(process.env)`. */
+  /** Feedback, z. B. Rate-Limit. Standard: `loadFeedbackConfig(process.env)`. */
   feedback?: FeedbackConfig;
   /**
-   * Game-Server (WP-011). Standard: Tische in Postgres (`createPgTableRepository(db)`), echte Uhr, `cryptoRng`,
+   * Game-Server. Standard: Tische in Postgres (`createPgTableRepository(db)`), echte Uhr, `cryptoRng`,
    * Pause nach jeder Hand `DEFAULT_HAND_PAUSE_MS`. Tests übergeben z. B. In-Memory-Repository und Pause 0.
    */
   game?: Partial<Omit<GameServerOptions, 'log'>> & {
     /** Standard: Session aus dem Cookie per `getUserFromCookieHeader(db, …)`. */
     authenticate?: Authenticate;
     /**
-     * Hand-Historie (WP-013). Standard: Postgres (`createPgHandHistoryStore(db)`), wenn auch das Repository
+     * Hand-Historie. Standard: Postgres (`createPgHandHistoryStore(db)`), wenn auch das Repository
      * der Standard ist; mit eigenem `repository` (Tests ohne DB) keine Historie. `null` schaltet sie ab.
      * Die Hooks aus `hooks` laufen zusätzlich, nach der Historie.
      */
@@ -55,7 +55,7 @@ const SHUTDOWN_FLUSH_TIMEOUT_MS = 10_000;
 
 declare module 'fastify' {
   interface FastifyInstance {
-    /** Game-Server mit allen Tischen im Speicher (WP-011). */
+    /** Game-Server mit allen Tischen im Speicher. */
     game: GameServer;
   }
 }
@@ -81,9 +81,9 @@ export function buildApp({
     authenticate = (cookie) => getUserFromCookieHeader(db, cookie),
     history = gameOptions.repository === undefined ? createPgHandHistoryStore(db) : null,
     retryDelaysMs = DEFAULT_RETRY_DELAYS_MS,
-    // Aufdecken durch Admins (WP-033): Protokolleintrag + Admin-Prüfung in der DB.
+    // Aufdecken durch Admins: Protokolleintrag + Admin-Prüfung in der DB.
     revealAudit = (entry) => recordCardReveal(db, entry),
-    // Eigene Karten neu ziehen (WP-035): ebenso.
+    // Eigene Karten neu ziehen: ebenso.
     redrawAudit = (entry) => recordCardRedraw(db, entry),
     repository,
     hooks,
@@ -101,7 +101,7 @@ export function buildApp({
   app.decorate('game', game);
 
   app.addHook('onClose', async () => {
-    // Ausstehende Hand-Historie und Rundenergebnisse noch schreiben (WP-013), aber nicht ewig warten.
+    // Ausstehende Hand-Historie und Rundenergebnisse noch schreiben, aber nicht ewig warten.
     let timer: NodeJS.Timeout | undefined;
     const timeout = new Promise<void>((resolve) => {
       timer = setTimeout(resolve, SHUTDOWN_FLUSH_TIMEOUT_MS);
@@ -129,19 +129,19 @@ export function buildApp({
     }
   });
 
-  // Vor allen Routen: Admin-Guard für /api/admin/* (WP-028) – gilt für alle Plugins, auch künftige.
+  // Vor allen Routen: Admin-Guard für /api/admin/* – gilt für alle Plugins, auch künftige.
   registerAdminGuard(app, db);
 
   void app.register(authRoutes, {
     db,
     config: auth,
-    // Konto gelöscht (WP-022): offene Verbindungen schließen. Am Tisch gilt der Spieler damit als getrennt und
+    // Konto gelöscht: offene Verbindungen schließen. Am Tisch gilt der Spieler damit als getrennt und
     // wird automatisch gecheckt/gefoldet (D-022); die laufende Runde läuft für die anderen weiter.
     onAccountDeleted: (userId) => {
       webSocket.closeUserConnections(userId, CLOSE_ACCOUNT_DELETED, 'account deleted');
     },
   });
-  // Avatar geändert (WP-032): Sitze an laufenden Tischen sofort aktualisieren.
+  // Avatar geändert: Sitze an laufenden Tischen sofort aktualisieren.
   void app.register(avatarRoutes, {
     db,
     onAvatarChanged: (userId, avatar) => {

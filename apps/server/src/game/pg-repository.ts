@@ -1,4 +1,4 @@
-// Postgres-Implementierung von `TableRepository` (Tabellen `tables`, `rounds`, `round_players`, WP-009).
+// Postgres-Implementierung von `TableRepository` (Tabellen `tables`, `rounds`, `round_players`).
 // Jede Methode ist genau eine SQL-Anweisung (CTEs) und damit atomar, ohne eigene Transaktion.
 import type { Queryable } from '../db';
 import type { NewTable, RoundResultRecord, RoundSeatRecord, TableRepository } from './repository';

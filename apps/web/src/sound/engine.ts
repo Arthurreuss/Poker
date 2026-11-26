@@ -1,4 +1,4 @@
-// Audio-Ausgabe (WP-031): ein AudioContext für die ganze Seite, erst nach einer Nutzer-Geste erzeugt bzw.
+// Audio-Ausgabe: ein AudioContext für die ganze Seite, erst nach einer Nutzer-Geste erzeugt bzw.
 // fortgesetzt (iOS/Safari spielen sonst nichts; nach Hintergrund kann iOS ihn „unterbrechen“ – jede weitere
 // Geste setzt ihn fort). Ohne Web Audio (alte Browser, Tests) bleibt alles stumm.
 import { playSound, type SoundName } from './synth';

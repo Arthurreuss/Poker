@@ -1,7 +1,7 @@
 # Gemeinsame Helfer für die prod-Skripte (prod.sh, backup-now.sh, restore.sh, status.sh, test-restore.sh).
 # Wird per "." eingebunden (POSIX-sh-kompatibel, auch aus bash).
 #
-# Die Skripte laufen auf dem prod-Host (Mac Studio) im Checkout von main (D-036); vom Entwicklungsrechner
+# Die Skripte laufen auf dem prod-Host (mac-2) im Checkout von main (D-036); vom Entwicklungsrechner
 # aus startet sie scripts/prod-remote.sh per SSH und setzt POKER_PROD_DIR auf den Checkout.
 # Sie wechseln in diesen Ordner und nehmen compose.prod.yml und .env.prod von dort.
 #   POKER_PROD_DIR      Checkout von main (Standard: Ordner "poker-prod" neben dem Haupt-Checkout).

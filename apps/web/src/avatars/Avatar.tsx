@@ -1,5 +1,5 @@
 /**
- * Avatar eines Spielers (WP-032): eines der festen Motive aus `art.tsx` oder – ohne Wahl – der
+ * Avatar eines Spielers: eines der festen Motive aus `art.tsx` oder – ohne Wahl – der
  * Anfangsbuchstabe auf neutralem Kreis. Größe über CSS des Aufrufers (`width`/`height` am Element).
  */
 import { isAvatarId } from '@poker/engine/protocol';

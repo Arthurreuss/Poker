@@ -1,4 +1,4 @@
-// /admin/tables (WP-029): Tische im Speicher mit Spielern und Verbindungsstatus; „Schließen“ mit Bestätigung
+// /admin/tables: Tische im Speicher mit Spielern und Verbindungsstatus; „Schließen“ mit Bestätigung
 // (laufende Runde wird ohne Punkte abgebrochen, D-029). Lädt alle 30 s neu.
 import { useEffect, useState } from 'react';
 import { closeAdminTable, listAdminTables, type AdminTable } from '../api/admin';

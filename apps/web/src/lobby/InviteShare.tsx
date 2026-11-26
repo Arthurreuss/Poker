@@ -1,4 +1,4 @@
-// Link zu einem Tisch anzeigen, teilen oder kopieren (WP-015, WP-030): nach dem Erstellen eines privaten Tisches
+// Link zu einem Tisch anzeigen, teilen oder kopieren: nach dem Erstellen eines privaten Tisches
 // und im Tisch-Menü. Auf Touch-Geräten mit Web Share API öffnet „Link teilen“ das Teilen-Menü des Geräts
 // (WhatsApp, Signal, …), sonst ist „Link kopieren“ die Hauptaktion; die Bestätigung erscheint darunter.
 import { useId, useRef, useState } from 'react';

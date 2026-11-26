@@ -1,4 +1,4 @@
-// Deploy und Rollback über den Deploy-Job des Server-Verbunds (WP-045, D-039). deploy_job.sh läuft in einem
+// Deploy und Rollback über den Deploy-Job des Server-Verbunds (D-039). deploy_job.sh läuft in einem
 // Wegwerf-Repo mit Stub statt prod.sh (kein Docker, prod bleibt unberührt); fleet-deploy.sh mit Stub statt fleet.py.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

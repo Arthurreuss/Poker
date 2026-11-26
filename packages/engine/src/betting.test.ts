@@ -141,7 +141,7 @@ describe('startHand', () => {
     expect(legalActions(s)).toBeNull();
   });
 
-  it('expliziter Dead Small Blind (WP-008): nur Big Blind wird gepostet', () => {
+  it('expliziter Dead Small Blind: nur Big Blind wird gepostet', () => {
     const s = start({
       players: [p('A', 0, 1000), p('B', 2, 1000), p('C', 3, 1000)],
       buttonSeat: 1, // leerer Sitz (Dead Button)
@@ -227,7 +227,7 @@ describe('Heads-up', () => {
     expect(s.deck).toHaveLength(52 - 4 - 8);
     expect(player(s, 'A').totalBet).toBe(200);
     expect(player(s, 'B').totalBet).toBe(200);
-    expect(s.showdown).not.toBeNull(); // Showdown direkt aufgelöst (WP-007)
+    expect(s.showdown).not.toBeNull(); // Showdown direkt aufgelöst
   });
 
   it('Small Blind foldet → Big Blind gewinnt ohne Showdown', () => {

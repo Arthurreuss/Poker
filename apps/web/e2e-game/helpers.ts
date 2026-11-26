@@ -1,4 +1,4 @@
-// Gemeinsame Hilfen der Playwright-Spieltests (WP-018 Runde mit drei Browsern, WP-020 E2E-Smoke-Test).
+// Gemeinsame Hilfen der Playwright-Spieltests (Runde mit drei Browsern, E2E-Smoke-Test).
 import { expect, type Browser, type Page } from '@playwright/test';
 
 export const PASSWORD = 'e2e-passwort-123';
@@ -55,7 +55,7 @@ export async function registerViaUi(browser: Browser, name: string, track: Page[
 }
 
 /**
- * Konto löschen (`DELETE /api/me` mit Passwort, WP-022) – Aufräumen der Test-User, auch in prod.
+ * Konto löschen (`DELETE /api/me` mit Passwort) – Aufräumen der Test-User, auch in prod.
  * Fehler werden zurückgegeben statt geworfen, damit das Aufräumen alle User versucht.
  */
 export async function deleteAccount(page: Page): Promise<string | null> {

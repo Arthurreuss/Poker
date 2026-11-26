@@ -1,4 +1,4 @@
-// Kleine Bausteine für Rangliste, Profil und Hand-Historie (WP-019).
+// Kleine Bausteine für Rangliste, Profil und Hand-Historie.
 import type { ReactNode } from 'react';
 import { Link } from 'react-router';
 import type { Card } from '@poker/engine';

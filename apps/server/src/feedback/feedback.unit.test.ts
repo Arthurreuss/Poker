@@ -1,4 +1,4 @@
-// Feedback ohne DB: Validierung, User-Agent, Konfiguration, CLI-Argumente und -Ausgabe (WP-024).
+// Feedback ohne DB: Validierung, User-Agent, Konfiguration, CLI-Argumente und -Ausgabe.
 import { describe, expect, it } from 'vitest';
 import { formatFeedbackItem, formatFeedbackList, parseFeedbackCliArgs } from './cli';
 import { loadFeedbackConfig } from './config';

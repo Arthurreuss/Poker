@@ -1,4 +1,4 @@
-// Release-Prüfung nach dem prod-Neustart (WP-020): Smoke-Test, dann E2E; schlägt einer fehl, bricht der Release
+// Release-Prüfung nach dem prod-Neustart: Smoke-Test, dann E2E; schlägt einer fehl, bricht der Release
 // mit Rollback-Hinweis über den Deploy-Job ab (D-039). Trocken getestet – Smoke/E2E sind durch Stub-Befehle ersetzt, prod bleibt unberührt.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

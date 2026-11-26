@@ -1,4 +1,4 @@
-// Einstellungen → „Ton am Tisch“ (WP-031): Ton an/aus, Lautstärke, Probehören, Vibration (wo verfügbar).
+// Einstellungen → „Ton am Tisch“: Ton an/aus, Lautstärke, Probehören, Vibration (wo verfügbar).
 import { useId } from 'react';
 import styles from '../pages/Page.module.css';
 import { soundEngine } from '../sound/engine';

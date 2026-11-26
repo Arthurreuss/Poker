@@ -1,4 +1,4 @@
-// Hand-Historie über die Game-Hooks (WP-011 → WP-013): jede Hand wird zu Beginn angelegt (Spieler, Hole Cards,
+// Hand-Historie über die Game-Hooks: jede Hand wird zu Beginn angelegt (Spieler, Hole Cards,
 // Deck, Blinds) und am Ende ergänzt (Board, Aktionen, Ergebnis). Die Hooks laufen pro Tisch nacheinander und
 // bremsen das Spiel nicht; Fehler werden nach den Retries geloggt, der Tisch spielt weiter.
 import type { GameHooks } from '../game/hooks';
