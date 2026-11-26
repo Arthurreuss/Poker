@@ -1,6 +1,6 @@
 # Poker
 
-Texas Hold'em für Freunde – **nur Spielgeld**. Entwickelt wird auf dem MacBook, gehostet per Docker auf einem Mac Studio, öffentlich über einen Cloudflare-Tunnel.
+Texas Hold'em für Freunde – **nur Spielgeld**. Entwickelt wird auf dem MacBook, gehostet per Docker im Server-Verbund (fleet, Prod-VM `prod-spiele` auf mac-2), öffentlich über einen Cloudflare-Tunnel.
 
 ## Setup
 Voraussetzung: Node 22 (`.nvmrc`, z. B. `nvm use`).
@@ -32,17 +32,17 @@ DATABASE_URL=postgres://poker:poker@localhost:4312/poker npm test
 ```
 Nach Änderungen an Abhängigkeiten `npm run dev:up` erneut ausführen (baut das Image neu).
 
-## Prod (Mac Studio)
-prod läuft auf dem Mac Studio (`areuss-studio.local`) als Dienst-Nutzer `fleet` aus einem Checkout von `main` unter `~fleet/poker` (D-036, D-038). Das MacBook ist nur Entwicklungsrechner: Alle Befehle unten laufen dort im Arbeitsordner und steuern den Studio per SSH.
+## Prod (mac-2, Prod-VM `prod-spiele`)
+prod läuft seit 23.11.2026 auf mac-2 als Dienst-Nutzer `fleet` aus einem Checkout von `main` unter `~fleet/poker`, Docker in der Prod-VM `prod-spiele` des Server-Verbunds (Socket `~fleet/.colima/spiele/docker.sock`; fleet-Repo `prod.toml`, `deploy.toml` [poker]). Das MacBook ist nur Entwicklungsrechner: Alle Befehle unten laufen dort im Arbeitsordner; Deploy und Rollback gehen über die Warteschlange, die übrigen `prod:*`-Befehle per SSH auf den prod-Host. Diese zeigen standardmäßig noch auf den Studio und nehmen nicht den Docker der Prod-VM (Umstellung: Poker#20).
 ```sh
-npm run prod:setup               # einmalig: main auf dem Studio (als fleet) klonen, dann dort .env.prod anlegen (npm run prod:ssh)
+npm run prod:setup               # einmalig: main auf dem prod-Host (als fleet) klonen, dann dort .env.prod anlegen (npm run prod:ssh)
 npm run release                  # dev → main mergen, pushen, Deploy über die Warteschlange (D-039), Smoke- und E2E-Test
 npm run prod:rollback -- <commit> # prod aus einem früheren main-Stand bauen (Deploy-Job)
 npm run prod:status              # Container, letztes Backup, Health
 npm run prod:smoke               # Health + WebSocket prüfen (über eine SSH-Portweiterleitung)
 npm run prod:e2e                 # Browser-Test: zwei Test-Konten spielen eine Runde
 npm run prod:logs                # Container-Logs folgen
-npm run prod:compose -- ps       # beliebiger docker-compose-Befehl für poker-prod auf dem Studio
+npm run prod:compose -- ps       # beliebiger docker-compose-Befehl für poker-prod auf dem prod-Host
 npm run prod:tunnel:up / prod:down
 ```
 Release, Tunnel-Einrichtung, Backup/Restore, Betrieb nach Neustart und Fehlersuche: [docs/OPERATIONS.md](docs/OPERATIONS.md).
@@ -50,7 +50,7 @@ Release, Tunnel-Einrichtung, Backup/Restore, Betrieb nach Neustart und Fehlersuc
 | Branch | Umgebung |
 |---|---|
 | `dev` | MacBook, http://localhost:4310 |
-| `main` | Release (`npm run release`), läuft auf dem Mac Studio, öffentlich über Cloudflare Tunnel unter poker.arthur-reuss.de und poker.deinemudda.win |
+| `main` | Release (`npm run release`), läuft in `prod-spiele` auf mac-2, öffentlich über Cloudflare Tunnel unter poker.arthur-reuss.de und poker.deinemudda.win |
 
 ## Admin-Sonderfunktionen am Tisch
 Admins (Flag nur per CLI, siehe unten) haben am Tisch zwei Extras. Die Mitspieler sehen davon nichts, jede Nutzung steht aber im Admin-Protokoll.
@@ -78,7 +78,7 @@ npm run admin:make-admin -w @poker/server -- <benutzername> --revoke
 npm run admin:feedback -w @poker/server -- [--status new|read|done|all] [--limit N]
 ```
 
-In **prod** sind die Skripte mitgebündelt (kein `tsx` nötig) und laufen im Server-Container auf dem Studio (vom MacBook aus):
+In **prod** sind die Skripte mitgebündelt (kein `tsx` nötig) und laufen im Server-Container auf dem prod-Host (vom MacBook aus):
 ```sh
 npm run prod:compose -- exec server node cli/reset-password.mjs <benutzername>
 npm run prod:compose -- exec server node cli/make-admin.mjs <benutzername> [--revoke]
