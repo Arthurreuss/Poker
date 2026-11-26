@@ -45,15 +45,15 @@ Workspaces importieren sich gegenseitig über den Paketnamen; `@poker/engine` ex
 |---|---|
 | `setup` | aktiviert den Pre-Commit-Hook (`core.hooksPath`) |
 | `dev:up` / `dev:down` / `dev:logs` | Docker-Dev-Umgebung starten (mit Build) / stoppen / Logs folgen |
-| `prod:up` / `prod:down` / `prod:logs` | Prod-Umgebung auf dem Mac Studio ohne Tunnel starten (mit Build, wartet auf healthy) / stoppen / Logs folgen (`scripts/prod-remote.sh` → per SSH `scripts/prod.sh`, D-036) |
+| `prod:up` / `prod:down` / `prod:logs` | Prod-Umgebung auf dem prod-Host ohne Tunnel starten (mit Build, wartet auf healthy) / stoppen / Logs folgen (`scripts/prod-remote.sh` → per SSH `scripts/prod.sh`, D-036) |
 | `prod:tunnel:up` | Prod inkl. `cloudflared` (Profil `tunnel`) |
 | `prod:smoke` / `prod:e2e` | Smoke-Test (`scripts/smoke-prod.mjs`) bzw. Browser-E2E gegen prod, vom MacBook über eine SSH-Portweiterleitung (`scripts/prod-remote.sh`) |
-| `prod:compose` / `prod:ssh` | `docker compose -p poker-prod …` bzw. Shell im Checkout auf dem Studio |
-| `prod:setup` | Checkout von `main` auf dem Studio einmalig anlegen (`scripts/prod-host-setup.sh`, D-036) |
-| `prod:backup` / `prod:restore` | sofortiges Backup / Restore aus einem Dump (`scripts/backup-now.sh`, `scripts/restore.sh`, per SSH auf dem Studio) |
-| `prod:status` | Zustandsbericht: Container, letztes Backup, Speicherplatz, Health (`scripts/status.sh`, per SSH auf dem Studio) |
+| `prod:compose` / `prod:ssh` | `docker compose -p poker-prod …` bzw. Shell im Checkout auf dem prod-Host |
+| `prod:setup` | Checkout von `main` auf dem prod-Host einmalig anlegen (`scripts/prod-host-setup.sh`, D-036) |
+| `prod:backup` / `prod:restore` | sofortiges Backup / Restore aus einem Dump (`scripts/backup-now.sh`, `scripts/restore.sh`, per SSH auf dem prod-Host) |
+| `prod:status` | Zustandsbericht: Container, letztes Backup, Speicherplatz, Health (`scripts/status.sh`, per SSH auf dem prod-Host) |
 | `prod:test-restore` | Restore-Test in isolierter prod-Kopie, lokal (`scripts/test-restore.sh`) |
-| `release` | dev → main in temporärem Worktree mergen, pushen, Studio holt main und startet prod neu (`scripts/release.sh`) |
+| `release` | dev → main in temporärem Worktree mergen, pushen, Deploy-Job `deploy-poker` holt main und startet prod neu (`scripts/release.sh`) |
 | `typecheck` | `tsc --noEmit` in allen Workspaces |
 | `lint` | ESLint über das ganze Repo |
 | `format` / `format:check` | Prettier schreiben bzw. prüfen |
@@ -510,7 +510,7 @@ Die Rangliste enthält nur aktive Accounts mit mindestens einer beendeten Runde 
 **Aktualität:** keine Push-Nachricht. Die Rangliste ist nach Rundenende aktuell, weil `finishRound` Platz und Punkte direkt beim Rundenende schreibt und die Seiten bei jedem Aufruf sowie bei `focus`/`visibilitychange` neu laden (`useResource` mit `refetchOnFocus`); wer vom Tisch zur Rangliste wechselt, öffnet sie neu. `/api/` wird weder von nginx (`no-store`) noch vom Service Worker gecacht.
 
 ## Prod-Umgebung
-`compose.prod.yml`, Compose-Projekt `poker-prod` (D-002, D-005, D-014), gebaut und betrieben auf dem Mac Studio aus einem Checkout von `main` (`~fleet/poker`, Dienst-Nutzer `fleet`, Docker über Colima, D-036, D-038); Werte aus dessen `.env.prod` (gitignored, Vorlage `.env.prod.example`). Bedienung, Release, Tunnel, Backup/Restore und Betrieb: [OPERATIONS.md](OPERATIONS.md). Deploy und Rollback laufen als Nomad-Job `deploy-poker` des Server-Verbunds, der `scripts/deploy_job.sh` im Checkout aufruft (D-039, OPERATIONS.md „Deploy-Job“).
+`compose.prod.yml`, Compose-Projekt `poker-prod` (D-002, D-005, D-014), gebaut und betrieben auf mac-2 aus einem Checkout von `main` (`~fleet/poker`, Dienst-Nutzer `fleet`, D-036, D-038), Docker in der Colima-VM `prod-spiele` des Server-Verbunds (Socket `~fleet/.colima/spiele/docker.sock`, fleet-Repo `prod.toml`); Werte aus dessen `.env.prod` (gitignored, Vorlage `.env.prod.example`). Bedienung, Release, Tunnel, Backup/Restore und Betrieb: [OPERATIONS.md](OPERATIONS.md). Deploy und Rollback laufen als Nomad-Job `deploy-poker` des Server-Verbunds, der `scripts/deploy_job.sh` im Checkout aufruft (D-039, OPERATIONS.md „Deploy-Job“).
 
 ```
 Internet ──https──▶ Cloudflare ──Tunnel──▶ cloudflared ──http──▶ web:8080 (nginx)
@@ -529,7 +529,7 @@ Host 127.0.0.1:4321 (Debug) ─────────────────�
 | `backup` | `prodrigestivill/postgres-backup-local:16` | go-cron + `pg_dump`, Hook `secrets-hook.sh`, Health-Port 8080 | – (Bind-Mounts `BACKUP_DIR` → `/backups`, Env-Ordner → `/prod-env:ro`) | Scheduler-Endpunkt (`curl :8080`) | `db` healthy |
 | `logrotate` | `alpine:3.24.2` | `sh /rotate.sh loop` (`docker/logrotate/rotate.sh`, Bind-Mount), kein Netz | – (Volumes `server-logs`, `web-logs`) | letzte Rotation < 26 h | – |
 
-- Alle Dienste `restart: unless-stopped` (geprüft von `scripts/test/compose-prod.test.mjs`), damit poker-prod nach einem Neustart (Colima startet als LaunchDaemon) ohne Eingreifen wieder läuft. DB-Daten im Named Volume `poker-prod-db`.
+- Alle Dienste `restart: unless-stopped` (geprüft von `scripts/test/compose-prod.test.mjs`), damit poker-prod nach einem Neustart (Nomad startet die Prod-VM als Job `prod-spiele`) ohne Eingreifen wieder läuft. DB-Daten im Named Volume `poker-prod-db`.
 - **Logs (WP-022, D-025 – höchstens 14 Tage für Logs mit IP-Adressen):** Docker rotiert Container-Logs nur nach Größe. Deshalb schreiben `server` (`LOG_FILE=/var/log/poker/server.log`, pino-Datei-Ziel) und `web` (`NGINX_ACCESS_LOG=/var/log/poker/access.log`, eigenes Format `poker` mit `$client_ip`, ohne Healthchecks von `127.0.0.1`) ihre Request-Logs in die Volumes `server-logs`/`web-logs` (Name mit Projekt-Präfix, der Restore-Test bekommt eigene). `logrotate` rotiert sie einmal pro Kalendertag (copytruncate, die Dienste öffnen mit `O_APPEND`) und löscht rotierte Dateien nach 12 Tagen; die älteste Zeile ist damit höchstens ~13 Tage alt. Alle Dienste nutzen den Log-Treiber `local` mit 3 × 10 MB (Anker `x-logging`); dort landen nur noch Meldungen ohne Client-IP (Start, nginx-Fehlerlog mit der internen cloudflared-Adresse, Postgres, Backup, cloudflared auf Level `info`). Ohne die Variablen (dev, lokale Tests) loggen server und nginx nach stdout. Bedienung: [OPERATIONS.md](OPERATIONS.md#logs).
   Gewählt statt „IP-Adressen nicht loggen + nur Größen-Rotation“: Größen-Rotation garantiert bei wenig Verkehr keine Höchstdauer, die IP wird für die Missbrauchsabwehr gebraucht, und die Datenschutzerklärung nennt eine feste Frist.
 - **Backup:** `backup` dumpt täglich (`BACKUP_SCHEDULE`, Standard `@daily`, Zeitzone `BACKUP_TZ`) per `pg_dump -Z6` (Plain-SQL, gzip) über das Netz `backend` in einen Host-Ordner außerhalb von Docker (`BACKUP_DIR`, Standard `/Users/Shared/fleet/backups/poker` (D-037), aufgelöst in `scripts/lib/prod-env.sh`; der Server spiegelt den Ordner stündlich auf den Partner-Server); Aufbewahrung 7 täglich / 4 wöchentlich / 6 monatlich (`last/`, `daily/`, `weekly/`, `monthly/`). Nach jedem Lauf legt der Hook `docker/backup/secrets-hook.sh` (eingehängt als `/hooks/10-secrets`) eine mit `SECRETS_BACKUP_PASSPHRASE` verschlüsselte Kopie von `.env.prod` nach `secrets/` (gpg AES256, 30 Tage); dafür ist der Ordner der Env-Datei read-only unter `/prod-env` eingehängt (`PROD_ENV_DIR`/`PROD_ENV_NAME` aus `prod-env.sh`). Restore per `scripts/restore.sh`: Server stoppen → DB neu anlegen → Dump in einer Transaktion einspielen → Server starten. Netz `backend` ist `internal` (kein Zugang nach außen), die DB hat keinen Host-Port.
@@ -813,17 +813,17 @@ scripts/
   ci_job.sh, pruefung.py  Prüfstufen für Commit-Hook und Merge-Zug (static: Wächter)
   check_*.py, adr.py    Wächter der fleet-Vorlage (Drift, Struktur nach struktur.toml, Gespiegeltes, ADRs)
   start.sh              Planer und Orchestrierer im Profil ~/.claude-poker öffnen
-  lib/prod-env.sh       gemeinsame Helfer der prod-Skripte auf dem Studio (Checkout, .env.prod, BACKUP_DIR)
-  lib/prod-host.sh      SSH-Verbindung zum Studio (POKER_PROD_HOST, POKER_PROD_REMOTE_DIR)
-  prod-remote.sh        npm run prod:* – führt die prod-Skripte per SSH auf dem Studio aus; smoke/e2e lokal
-  prod.sh               up/down/logs/tunnel-up (läuft auf dem Studio)
-  prod-host-setup.sh    prod:setup (main auf dem Studio klonen)
+  lib/prod-env.sh       gemeinsame Helfer der prod-Skripte auf dem prod-Host (Checkout, .env.prod, BACKUP_DIR)
+  lib/prod-host.sh      SSH-Verbindung zum prod-Host (POKER_PROD_HOST, POKER_PROD_REMOTE_DIR)
+  prod-remote.sh        npm run prod:* – führt die prod-Skripte per SSH auf dem prod-Host aus; smoke/e2e lokal
+  prod.sh               up/down/logs/tunnel-up (läuft auf dem prod-Host)
+  prod-host-setup.sh    prod:setup (main auf dem prod-Host klonen)
   backup-now.sh         prod:backup
   restore.sh            prod:restore
   status.sh             prod:status
   test-restore.sh       Restore-Test (isolierte prod-Kopie)
   smoke-prod.mjs        Smoke-Test prod (Health + WebSocket)
-  release.sh            Release dev → main, danach Neustart auf dem Studio
+  release.sh            Release dev → main, danach Neustart auf dem prod-Host
   test/                 Tests für die Skripte
 .githooks/pre-commit    blockiert Commits auf main, prüft die Stufe static und npm run check
 package.json            Workspaces und npm-Skripte
