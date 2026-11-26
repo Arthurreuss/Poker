@@ -1,73 +1,140 @@
-// Hilfen für DB-Integrationstests: jeder Testlauf bekommt ein eigenes, frisches Schema in der Test-DB
-// (TEST_DATABASE_URL, z. B. postgres://poker:poker@localhost:4312/poker_test) und löscht es danach wieder.
-import { randomBytes } from 'node:crypto';
+// Test-Postgres nach .agents/rules/testing.md „Testdatenbanken und App“:
+// - Server: FLEET_TEST_POSTGRES_URL (Test-Postgres des Verbunds im Paket der Warteschlange). Fehlt sie oder
+//   antwortet er nicht, ist jeder Test mit Datenbank rot mit Hinweis; einen eigenen Postgres startet die Suite nie.
+// - Vorlage `poker_tpl_<hash>` (Hash über Migrationen und Migrations-Runner), unter einer Advisory-Sperre als
+//   `poker_lauf_<lauf>_vorlage` gebaut und erst fertig umbenannt; sie überlebt Läufe.
+// - Jede Testdatenbank ist eine Kopie der Vorlage, `poker_lauf_<lauf>_<zusatz>_<zufall>`, und wird am Ende
+//   gelöscht. `<lauf>` sind die ersten 8 Zeichen von RUN_ID (scripts/ci_job.sh), sonst zufällig. Nur die
+//   Migrationstests nehmen eine leere Datenbank (`createEmptyDatabase`).
+import { createHash, randomBytes } from 'node:crypto';
+import { readdir, readFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
 import pg from 'pg';
+import { DEFAULT_MIGRATIONS_DIR, runMigrations } from './migrate';
 
-/** Gesetzt → DB-Tests laufen, sonst werden sie übersprungen (`npm run check` ohne Docker bleibt grün). */
-export const testDatabaseUrl = process.env['TEST_DATABASE_URL'];
+const PROJEKT = 'poker';
+/** Advisory-Sperre für den Bau der Vorlagen (auf der Wartungs-Datenbank der Server-URL). */
+const VORLAGE_SPERRE = 4_310_019;
+const MIGRATE_RUNNER = fileURLToPath(new URL('./migrate.ts', import.meta.url));
+const HINWEIS =
+  'Tests mit Datenbank laufen über die Warteschlange: python3 scripts/pruefung.py db ' +
+  '(.agents/rules/testing.md „Testdatenbanken und App“). Einen eigenen Postgres startet die Suite nicht.';
 
-export interface TestSchema {
+export interface TestDatabase {
+  /** Name der Datenbank (`poker_lauf_…`). */
   name: string;
-  /** Client-Konfiguration mit `search_path` auf das Testschema – für `runMigrations` und eigene Pools. */
+  /** Verbindungs-URL der Datenbank. */
+  url: string;
+  /** Client-Konfiguration für `runMigrations` und eigene Pools (`createPgDatabase`). */
   config: pg.ClientConfig;
   pool: pg.Pool;
-  /** Schließt den Pool und löscht das Schema samt Inhalt. */
+  /** Schließt den Pool und löscht die Datenbank. */
   drop(): Promise<void>;
 }
 
-/** Legt die Datenbank aus `url` an, falls sie fehlt (Verbindung über die Wartungs-DB `postgres`). */
-async function ensureDatabase(url: string): Promise<void> {
-  const probe = new pg.Client({ connectionString: url });
+const lauf = (
+  (process.env['RUN_ID'] ?? '').toLowerCase().replace(/[^a-z0-9]/g, '') || randomBytes(4).toString('hex')
+).slice(0, 8);
+
+let serverUrl: Promise<string> | undefined;
+
+/** Adresse des Test-Postgres; wirft mit Hinweis, wenn er fehlt oder nicht antwortet. */
+function server(): Promise<string> {
+  serverUrl ??= (async () => {
+    const url = process.env['FLEET_TEST_POSTGRES_URL']?.trim();
+    if (!url) throw new Error(`FLEET_TEST_POSTGRES_URL ist nicht gesetzt. ${HINWEIS}`);
+    const probe = new pg.Client({ connectionString: url, connectionTimeoutMillis: 3000 });
+    try {
+      await probe.connect();
+    } catch (err) {
+      throw new Error(`FLEET_TEST_POSTGRES_URL antwortet nicht (${String(err)}). ${HINWEIS}`, { cause: err });
+    } finally {
+      await probe.end().catch(() => undefined);
+    }
+    return url;
+  })();
+  return serverUrl;
+}
+
+function urlFor(base: string, database: string): string {
+  const url = new URL(base);
+  url.pathname = `/${encodeURIComponent(database)}`;
+  return url.toString();
+}
+
+async function admin<T>(fn: (client: pg.Client) => Promise<T>): Promise<T> {
+  const client = new pg.Client({ connectionString: await server() });
+  await client.connect();
   try {
-    await probe.connect();
-    return;
-  } catch (err) {
-    if ((err as { code?: string }).code !== '3D000') throw err; // 3D000 = invalid_catalog_name
+    return await fn(client);
   } finally {
-    await probe.end().catch(() => undefined);
-  }
-  const target = new URL(url);
-  const dbName = decodeURIComponent(target.pathname.slice(1));
-  target.pathname = '/postgres';
-  const admin = new pg.Client({ connectionString: target.toString() });
-  await admin.connect();
-  try {
-    await admin.query(`CREATE DATABASE ${pg.escapeIdentifier(dbName)}`);
-  } catch (err) {
-    // Parallel laufende Testdateien: die Datenbank hat inzwischen ein anderer angelegt.
-    const code = (err as { code?: string }).code;
-    if (code !== '42P04' && code !== '23505') throw err;
-  } finally {
-    await admin.end();
+    await client.end();
   }
 }
 
-export async function createTestSchema(url: string): Promise<TestSchema> {
-  await ensureDatabase(url);
-  const name = `test_${String(Date.now())}_${randomBytes(4).toString('hex')}`;
-  const admin = new pg.Client({ connectionString: url });
-  await admin.connect();
-  try {
-    await admin.query(`CREATE SCHEMA ${pg.escapeIdentifier(name)}`);
-  } finally {
-    await admin.end();
+/** Hash über alles, was das Schema bestimmt: die Migrationen und den Runner (`schema_migrations`). */
+export async function schemaHash(migrationsDir: string = DEFAULT_MIGRATIONS_DIR): Promise<string> {
+  const hash = createHash('sha256');
+  for (const file of (await readdir(migrationsDir)).filter((f) => f.endsWith('.sql')).sort()) {
+    hash.update(file).update(await readFile(`${migrationsDir}/${file}`));
   }
-  const config: pg.ClientConfig = { connectionString: url, options: `-c search_path=${name}` };
-  const pool = new pg.Pool({ ...config, max: 3 });
+  hash.update(await readFile(MIGRATE_RUNNER));
+  return hash.digest('hex').slice(0, 12);
+}
+
+/** Name der Vorlage zum aktuellen Schema; baut sie, wenn es sie noch nicht gibt. */
+async function vorlage(): Promise<string> {
+  const name = `${PROJEKT}_tpl_${await schemaHash()}`;
+  const base = await server();
+  return admin(async (client) => {
+    await client.query('SELECT pg_advisory_lock($1)', [VORLAGE_SPERRE]);
+    try {
+      const { rowCount } = await client.query('SELECT 1 FROM pg_database WHERE datname = $1', [name]);
+      if (rowCount) return name;
+      const bau = `${PROJEKT}_lauf_${lauf}_vorlage`;
+      await client.query(`DROP DATABASE IF EXISTS ${pg.escapeIdentifier(bau)} WITH (FORCE)`);
+      await client.query(`CREATE DATABASE ${pg.escapeIdentifier(bau)}`);
+      await runMigrations(urlFor(base, bau));
+      await client.query(`ALTER DATABASE ${pg.escapeIdentifier(bau)} RENAME TO ${pg.escapeIdentifier(name)}`);
+      return name;
+    } finally {
+      await client.query('SELECT pg_advisory_unlock($1)', [VORLAGE_SPERRE]).catch(() => undefined);
+    }
+  });
+}
+
+/** Löscht eine Testdatenbank dieses Projekts (auch mit offenen Verbindungen). */
+export async function dropTestDatabase(name: string): Promise<void> {
+  if (!name.startsWith(`${PROJEKT}_lauf_`)) throw new Error(`keine Testdatenbank: ${name}`);
+  await admin((client) => client.query(`DROP DATABASE IF EXISTS ${pg.escapeIdentifier(name)} WITH (FORCE)`));
+}
+
+async function anlegen(zusatz: string, template: string | null): Promise<TestDatabase> {
+  if (!/^[a-z0-9_]{1,20}$/.test(zusatz)) throw new Error(`ungültiger Zusatz: ${zusatz}`);
+  const name = `${PROJEKT}_lauf_${lauf}_${zusatz}_${randomBytes(4).toString('hex')}`;
+  const vorlageSql = template === null ? '' : ` TEMPLATE ${pg.escapeIdentifier(template)}`;
+  await admin((client) => client.query(`CREATE DATABASE ${pg.escapeIdentifier(name)}${vorlageSql}`));
+  const url = urlFor(await server(), name);
+  const pool = new pg.Pool({ connectionString: url, max: 3 });
   pool.on('error', () => undefined);
   return {
     name,
-    config,
+    url,
+    config: { connectionString: url },
     pool,
     async drop() {
       await pool.end();
-      const client = new pg.Client({ connectionString: url });
-      await client.connect();
-      try {
-        await client.query(`DROP SCHEMA ${pg.escapeIdentifier(name)} CASCADE`);
-      } finally {
-        await client.end();
-      }
+      await dropTestDatabase(name);
     },
   };
+}
+
+/** Neue Testdatenbank als Kopie der Vorlage (Schema auf dem Stand aller Migrationen). */
+export async function createTestDatabase(zusatz: string): Promise<TestDatabase> {
+  return anlegen(zusatz, await vorlage());
+}
+
+/** Leere Datenbank ohne Schema, nur für Migrationstests. */
+export function createEmptyDatabase(zusatz: string): Promise<TestDatabase> {
+  return anlegen(zusatz, null);
 }

@@ -1,4 +1,4 @@
-// Integrationstests „Konto löschen“ gegen die Test-DB (nur mit TEST_DATABASE_URL, sonst übersprungen):
+// Integrationstests „Konto löschen“ gegen die Test-DB (Stufe `db`):
 // DELETE /api/me mit Passwort-Bestätigung, Anonymisierung, Sessions, WebSocket, Hand-Historie anderer Spieler.
 import type { AddressInfo } from 'node:net';
 import type { FastifyInstance, LightMyRequestResponse } from 'fastify';
@@ -7,8 +7,7 @@ import { createSeededRng } from '@poker/engine';
 import type { ServerMessage } from '@poker/engine/protocol';
 import { buildApp } from '../app';
 import { createPgDatabase } from '../db';
-import { runMigrations } from '../db/migrate';
-import { createTestSchema, testDatabaseUrl, type TestSchema } from '../db/test-db';
+import { createTestDatabase, type TestDatabase } from '../db/test-db';
 import type { RoundPlayerRow, UserRow } from '../db/types';
 import { TestClient, attachBot } from '../game/ws-test-client';
 import { CLOSE_ACCOUNT_DELETED } from '../ws';
@@ -31,14 +30,13 @@ interface Account {
   cookie: string;
 }
 
-describe.skipIf(testDatabaseUrl === undefined)('Konto löschen (Test-DB)', () => {
-  let s: TestSchema;
+describe('Konto löschen (Test-DB)', () => {
+  let s: TestDatabase;
   let app: FastifyInstance | undefined;
   let clients: TestClient[] = [];
 
   beforeAll(async () => {
-    s = await createTestSchema(testDatabaseUrl ?? '');
-    await runMigrations(s.config);
+    s = await createTestDatabase('account');
   });
 
   afterAll(async () => {

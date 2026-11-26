@@ -1,16 +1,17 @@
 // Nur im Dev-Build (`/dev/new-table`): Tisch direkt per WebSocket anlegen, ohne den Weg über die Lobby
 // – für manuelle Tests und den Playwright-Test mit mehreren Browsern.
 // Der Ersteller sitzt danach auf Platz 1 (Sitz 0).
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import { useNavigate } from 'react-router';
 import type { ServerMessage } from '@poker/engine/protocol';
 import { useConnection } from '../ConnectionProvider';
-import type { ConnectionStatus } from '../connection';
 
 export function DevNewTablePage() {
   const navigate = useNavigate();
   const connection = useConnection();
-  const [status, setStatus] = useState<ConnectionStatus>(connection.status);
+  // Als externer Zustand gelesen: Die Verbindung kann schon offen sein, bevor die Seite ihre Meldungen abonniert.
+  const subscribe = useCallback((onChange: () => void) => connection.onStatus(onChange), [connection]);
+  const status = useSyncExternalStore(subscribe, () => connection.status);
   const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState('Testtisch');
   const [stack, setStack] = useState('1500');
@@ -18,7 +19,6 @@ export function DevNewTablePage() {
 
   useEffect(() => {
     let created: number | null = null;
-    const offStatus = connection.onStatus(setStatus);
     const offMessage = connection.onMessage((m: ServerMessage) => {
       // Gleich Platz nehmen und erst dann weiter: so landet man am Tisch auf dem eigenen Sitz.
       if (m.type === 'table.created' && m.requestId === 'dev-create') {
@@ -30,10 +30,7 @@ export function DevNewTablePage() {
       }
       if (m.type === 'error') setError(m.message);
     });
-    return () => {
-      offStatus();
-      offMessage();
-    };
+    return offMessage;
   }, [connection, navigate]);
 
   return (

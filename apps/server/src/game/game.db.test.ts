@@ -1,5 +1,5 @@
 // Integration Game-Server + Postgres: echte Sessions im Cookie, Tische/Runden in der Test-DB.
-// Nur mit TEST_DATABASE_URL (sonst übersprungen): `npm run test:db -w @poker/server`.
+// Stufe `db` (.agents/rules/testing.md „Stufen“).
 import type { AddressInfo } from 'node:net';
 import type { FastifyInstance } from 'fastify';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -9,8 +9,7 @@ import { DEFAULT_TABLE_SETTINGS, type ServerMessage } from '@poker/engine/protoc
 import { buildApp } from '../app';
 import { SESSION_COOKIE, createSession } from '../auth/session';
 import { createPgDatabase } from '../db';
-import { runMigrations } from '../db/migrate';
-import { createTestSchema, testDatabaseUrl, type TestSchema } from '../db/test-db';
+import { createTestDatabase, type TestDatabase } from '../db/test-db';
 import type { RoundPlayerRow, RoundRow, TableRow } from '../db/types';
 import { closeOrphanedTables, createPgTableRepository } from './pg-repository';
 import { TestClient, attachBot, findHoleCardLeaks } from './ws-test-client';
@@ -18,14 +17,13 @@ import { TestClient, attachBot, findHoleCardLeaks } from './ws-test-client';
 const ORIGIN = 'http://localhost:4310';
 const DEV_AUTH = { secureCookies: false, trustCfConnectingIp: false, sessionTtlMs: 86_400_000, rateLimit: null };
 
-describe.skipIf(testDatabaseUrl === undefined)('Game-Server mit Postgres', () => {
-  let s: TestSchema;
+describe('Game-Server mit Postgres', () => {
+  let s: TestDatabase;
   let app: FastifyInstance | undefined;
   let clients: TestClient[] = [];
 
   beforeAll(async () => {
-    s = await createTestSchema(testDatabaseUrl ?? '');
-    await runMigrations(s.config);
+    s = await createTestDatabase('game');
   });
 
   afterAll(async () => {

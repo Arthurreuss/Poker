@@ -12,31 +12,52 @@ import { defineConfig, devices } from '@playwright/test';
 //   vor E2E_BASE_URL, der die Origin durch E2E_ORIGIN ersetzt – für prod (localhost:4320, SSH-Weiterleitung zum
 //   prod-Host, D-036), dessen WebSocket nur
 //   PUBLIC_ORIGIN annimmt. `npm run prod:e2e`
+// - zusätzlich GAME_E2E_DATABASE_URL (Stufe `e2e`, scripts/ci_job.sh): Playwright startet auch den Game-Server dieses
+//   Checkouts (dev) auf dem Port von GAME_E2E_API gegen diese Datenbank, eine Kopie der Vorlage.
 // Nicht Teil von `npm run check` (braucht Server und Datenbank). Test-User werden am Ende gelöscht.
 const env = process.env;
 const VITE_PORT = Number(env['PW_PORT'] ?? 4317);
 const target = env['E2E_BASE_URL'];
 const origin = env['E2E_ORIGIN'];
 const proxyPort = Number(env['E2E_PROXY_PORT'] ?? 4318);
+const api = env['GAME_E2E_API'] ?? 'http://localhost:4311';
+const apiOrigin = env['GAME_E2E_ORIGIN'] ?? 'http://localhost:4310';
+const databaseUrl = env['GAME_E2E_DATABASE_URL'];
 
 function setup() {
   if (target === undefined) {
-    return {
-      baseURL: `http://127.0.0.1:${String(VITE_PORT)}`,
-      webServer: {
-        command: 'npx vite',
-        cwd: '..',
-        env: {
-          WEB_DEV_PORT: String(VITE_PORT),
-          WEB_DEV_HOST: '127.0.0.1',
-          API_PROXY_TARGET: env['GAME_E2E_API'] ?? 'http://localhost:4311',
-          API_PROXY_ORIGIN: env['GAME_E2E_ORIGIN'] ?? 'http://localhost:4310',
-        },
-        url: `http://127.0.0.1:${String(VITE_PORT)}/`,
-        reuseExistingServer: false,
-        timeout: 60_000,
+    const baseURL = `http://127.0.0.1:${String(VITE_PORT)}`;
+    const vite = {
+      command: 'npx vite',
+      cwd: '..',
+      env: {
+        WEB_DEV_PORT: String(VITE_PORT),
+        WEB_DEV_HOST: '127.0.0.1',
+        API_PROXY_TARGET: api,
+        API_PROXY_ORIGIN: apiOrigin,
       },
+      url: `${baseURL}/`,
+      reuseExistingServer: false,
+      timeout: 60_000,
     };
+    if (databaseUrl === undefined) return { baseURL, webServer: vite };
+    const server = {
+      command: 'npx tsx src/main.ts',
+      cwd: '../../server',
+      env: {
+        NODE_ENV: 'development',
+        HOST: '127.0.0.1',
+        PORT: new URL(api).port,
+        DATABASE_URL: databaseUrl,
+        PUBLIC_ORIGIN: apiOrigin,
+        // Eigener Server nur für diesen Lauf: kein Rate-Limit, die Tests warten sonst auf 429.
+        AUTH_RATE_LIMIT_MAX: '0',
+      },
+      url: `${api}/api/health`,
+      reuseExistingServer: false,
+      timeout: 60_000,
+    };
+    return { baseURL, webServer: [server, vite] };
   }
   if (origin === undefined) return { baseURL: target, webServer: undefined };
   // `localhost` statt 127.0.0.1: dort nimmt Chromium auch `Secure`-Cookies (prod) über http an.

@@ -1,11 +1,10 @@
 // Integration Hand-Historie + Postgres: ganze Runden über den Game-Server (ohne Netzwerk, ManualClock),
 // danach alles aus der DB laden, mit dem Serverzustand vergleichen und per Engine nachspielen. Außerdem:
-// Speicherfehler und Server-Neustart mitten in der Runde. Nur mit TEST_DATABASE_URL: `npm run test:db -w @poker/server`.
+// Speicherfehler und Server-Neustart mitten in der Runde. Stufe `db`.
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createSeededRng, legalActions, placementPoints, type Action, type HandState, type Rng } from '@poker/engine';
 import { PROTOCOL_VERSION, type TableSettingsInput } from '@poker/engine/protocol';
-import { runMigrations } from '../db/migrate';
-import { createTestSchema, testDatabaseUrl, type TestSchema } from '../db/test-db';
+import { createTestDatabase, type TestDatabase } from '../db/test-db';
 import type { HandRow, RoundPlayerRow, RoundRow, TableRow } from '../db/types';
 import { ManualClock } from '../game/clock';
 import { DEFAULT_ORPHAN_TIMEOUT_MS, GameServer, type GameClient } from '../game/game-server';
@@ -31,12 +30,11 @@ interface Captured {
   rounds: RoundCompleteEvent[];
 }
 
-describe.skipIf(testDatabaseUrl === undefined)('Hand-Historie mit Postgres', () => {
-  let s: TestSchema;
+describe('Hand-Historie mit Postgres', () => {
+  let s: TestDatabase;
 
   beforeAll(async () => {
-    s = await createTestSchema(testDatabaseUrl ?? '');
-    await runMigrations(s.config);
+    s = await createTestDatabase('history');
   });
 
   afterAll(async () => {
