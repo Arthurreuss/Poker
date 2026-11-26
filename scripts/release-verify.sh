@@ -25,7 +25,7 @@ rollback_hint() {
   Zurückrollen auf den vorherigen Stand ($prev), über den Deploy-Job auf $POKER_PROD_HOST:
     npm run prod:rollback -- $prev
     npm run prod:smoke
-  Danach den Fehler auf dev beheben; der nächste Release setzt den Studio-Checkout von selbst zurück auf main.
+  Danach den Fehler auf dev beheben; der nächste Release setzt den prod-Checkout von selbst zurück auf main.
   Hat der neue Stand DB-Migrationen ausgeführt, läuft der alte Server auf dem neueren Schema – im Zweifel
   das letzte Backup zurückspielen (npm run prod:restore). Details: docs/OPERATIONS.md, Abschnitt "Release".
 EOF
