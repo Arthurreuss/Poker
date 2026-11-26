@@ -10,8 +10,8 @@ was das Projekt davon beachtet. Verweise auf die fleet-Doku nur über Datei und 
 - **Grundregel:** Auf den Servern läuft das Projekt nur als Nomad-Job des Verbunds (Prüfung,
   Deploy, Modell, eigener Job im fleet-Repo) und nur bei Bedarf; keine eigenen Daemons.
   fleet-README „Grundregel“.
-- **Zugang:** Die Server holen den Code über einen Deploy-Key (nur lesen), Host
-  `github-poker`; Remote `git@github-poker:Arthurreuss/Poker.git`. fleet-Repo
+- **Zugang:** Die Server holen den Code über https mit einem Lese-Token der GitHub-App des
+  Verbunds; Remote `https://github.com/Arthurreuss/Poker.git`. fleet-Repo
   docs/maschinen.md „Zugang zum Repo“.
 - **Prod:** Checkout von `main` unter `~fleet/poker`, Dienste als `docker compose`-Projekt
   `poker-prod` in der Prod-VM `prod-spiele` auf mac-2 (`prod.toml`, `deploy.toml` [poker]) mit

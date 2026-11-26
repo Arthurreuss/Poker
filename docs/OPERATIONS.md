@@ -33,9 +33,9 @@ prod läuft seit 23.11.2026 auf **mac-2** (vorher Mac Studio, D-036) als Dienst-
 
 ### prod-Host einrichten (Arthur, einmalig)
 ```sh
-npm run prod:setup   # klont main nach ~fleet/poker auf mac-2 (per SSH über den Host-Alias github-poker)
+npm run prod:setup   # klont main nach ~fleet/poker auf mac-2 (über https)
 ```
-Voraussetzung auf mac-2: ein schreibgeschützter Deploy-Key für das Repo und in `~fleet/.ssh/config` der Eintrag `Host github-poker` (HostName github.com, IdentityFile = Deploy-Key). Ein anderer Quell-Link geht über `POKER_PROD_REPO_URL`.
+Der Checkout holt über https (`https://github.com/Arthurreuss/Poker.git`); einen Deploy-Key braucht mac-2 nicht, den Zugang der Deploys stellt fleet über die GitHub-App (fleet-Repo docs/maschinen.md „Zugang zum Repo“). Ein anderer Quell-Link geht über `POKER_PROD_REPO_URL`.
 Danach `.env.prod` im Checkout auf mac-2 anlegen (gitignored, nie committen, liegt nur dort):
 ```sh
 npm run prod:ssh     # Shell im Checkout auf mac-2

@@ -51,6 +51,10 @@ Lade sie nur, wenn sie gebraucht werden:
 ## Zusammenarbeit
 - Der Stand liegt in Tickets und Labels, nie nur in dieser Sitzung. Nach einem Neustart liest du ihn
   von dort: offene Tickets mit `blocked:mensch` oder Status `Wartet auf Mensch` zuerst.
+- **Board prüfen** bei jedem Start und jedem Wecken: `python3 scripts/board.py --beheben` setzt
+  geschlossene Tickets auf `Fertig`. Jedes offene Ticket ohne Status bekommt einen; für jedes im
+  `Backlog`, dessen Vorgänger alle geschlossen sind, entscheidest du, ob der Vertrag `Bereit` ist,
+  und machst ihn sonst vollständig.
 - Ist ein Ticket `Bereit`, weckst du den Orchestrierer mit einer Nachricht an seine Sitzung (Name
   aus `scripts/start.sh`), die nur die Nummer nennt. Weckt er dich, weil er den Menschen braucht,
   liest du das Ticket und legst es dem Menschen vor; weckt er dich mit „Vorrat“, gilt „Vorrat halten“.

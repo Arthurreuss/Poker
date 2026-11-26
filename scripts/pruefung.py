@@ -75,7 +75,7 @@ def main(stufen: list[str], out: IO[str] = sys.stdout, **testhilfen: Any) -> int
             say(f"Dauern nicht gespeichert ({problem})")
         return []
 
-    projekt = Projekt("poker", REPO, "git@github-poker:Arthurreuss/poker.git", "PRUEFUNG",
+    projekt = Projekt("poker", REPO, "https://github.com/Arthurreuss/Poker.git", "PRUEFUNG",
                       "http://100.116.114.9:4646")
     # Quelle commit (Commit-Hook): genau der Index wird geprüft und jedes Log ausgegeben.
     modus = "commit" if os.environ.get("PRUEFUNG_QUELLE") == "commit" else "verify"

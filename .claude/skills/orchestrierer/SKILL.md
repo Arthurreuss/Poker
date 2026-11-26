@@ -16,26 +16,38 @@ Setzt `scripts/start.sh` eine geschlossene Sitzung fort, ist das ein Start: Der 
 ihr verloren, du läufst den Ablauf ganz und richtest ihn neu ein.
 1. **Leit-Ticket zuerst:** die neuesten Kommentare der offenen Tickets mit Label `leit` lesen; dort
    legt der Auftraggeber Entscheidungen ab, die vor allem anderen gelten.
-2. **Stand einsammeln:** laufende Bau-Agenten, ihre Berichte, der Zug (`zug status`, Befehl wie
+2. **Board prüfen:** `python3 scripts/board.py --beheben` setzt geschlossene Tickets auf `Fertig`
+   und meldet offene ohne Status und Tickets im `Backlog`, deren Vorgänger (`Nach #<nr>`) alle
+   geschlossen sind. Diese Befunde löst der Planer; meldet die Prüfung welche (Exit 1) oder
+   scheitert sie (Exit 2), weckst du ihn mit „Vorrat“, sobald zu wenig `Bereit` ist (unten).
+3. **fleet-Checkout nachziehen:** `git -C <fleet> pull --ff-only` (Pfad und Regel in
+   `.agents/fleet/arbeitsweise.md` „Ablauf eines Baus“). Scheitert das (nicht auf `main` oder
+   geändert), fasst du ihn nicht weiter an und hältst es als Reibung im fleet-Repo fest.
+4. **Stand einsammeln:** laufende Bau-Agenten, ihre Berichte, der Zug (`zug status`, Befehl wie
    in `.agents/rules/workflow.md`), Rückläufer.
-3. **Ergebnisse prüfen,** bevor die nächste Einheit startet: Ist der Branch eingereiht, sind die
+5. **Ergebnisse prüfen,** bevor die nächste Einheit startet: Ist der Branch eingereiht, sind die
    Kriterien belegt, sind Reste eigene Tickets geworden? Fehlt etwas, geht es an einen Bau-Agenten
    zurück. Die Zeile „Reibung“ geht in den Rückblick (unten).
-4. **Freie Bau-Plätze füllen** (unten).
-5. **Vorrat prüfen** (unten).
-6. **Weckruf** anpassen (unten).
+6. **Freie Bau-Plätze füllen** (unten).
+7. **Vorrat prüfen** (unten).
+8. **Weckruf** anpassen (unten).
 
 ## Bau-Agenten starten
 - Infrage kommen offene Tickets mit Status `Bereit` und `owner:agent`, deren `Nach #<nr>` erledigt
   sind. Gleichzeitig laufen höchstens so viele Bau-Agenten, wie `fleet.toml` `[agenten]`
   `bau_agenten` erlaubt; freie Plätze füllst du, statt zu warten.
 - Abhängiges und Tickets, die dieselben Dateien ändern, laufen nacheinander, nie parallel.
+- **Datenbank-Migrationen:** Laufen zwei Baue parallel, die beide eine Migration bringen, legst du
+  die Reihenfolge fest: Der Auftrag des zweiten nennt „Einreihen nach #<nr>“ mit dem Ticket des
+  ersten. Der zweite reiht erst nach dem Merge des ersten ein; danach gibst du seinen Branch an
+  ihn zurück, solange er läuft, sonst an einen frischen Bau-Agenten, der auf den Ziel-Branch
+  rebased, seine Migration hinter die neue hängt und einreiht.
 - **Direkt vor jedem Start** die Nummer im Auftrag gegen den Titel des Tickets prüfen und seine
   neuesten Kommentare lesen: Ist es schon besetzt (ein Agent arbeitet daran, ein Branch ist
   eingereiht), startest du nichts. Sonst setzt du den Status `In Arbeit` und kommentierst
   `[Claude] Orchestrierer: Bau-Agent gestartet, Branch <branch>`.
 - Je PR ein frischer Bau-Agent (`.claude/agents/bau-agent.md`) im Hintergrund. Der Auftrag nennt
-  nur Ticket, Branch und gesperrte Pfade; die Regeln kennt der Agent aus seiner Definition.
+  nur Ticket, Branch, gesperrte Pfade und, wenn nötig, „Einreihen nach #<nr>“; die Regeln kennt der Agent aus seiner Definition.
 - Ein Bau-Agent startet keine bauenden Agenten, höchstens zwei Lese-Agenten. Braucht ein Ticket
   parallele Arbeit, teilst du es in Tickets und verteilst sie.
 
