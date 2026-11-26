@@ -1,8 +1,8 @@
 # Regeln der Befehlssperre (gespiegelt aus fleet, im Projekt nicht von Hand ändern).
 # Der Haken befehlssperre.py prüft jeden Shell-Befehl einer Sitzung oder eines Unter-Agenten vor
-# der Ausführung und blockiert ihn, wenn eine Regel greift; die Meldung nennt Grund und erlaubten
-# Weg. Sie fängt Fehler ab und ist keine Sicherheitsgrenze gegen Absicht. Ersetzungs-Skripte in
-# Python (python3 -c, Heredoc) erkennt sie nicht, weil ihr Ziel erst beim Ausführen feststeht.
+# der Ausführung und blockiert ihn, wenn eine Regel greift; die Meldung nennt Grund, betroffenes
+# Ziel und erlaubten Weg. Sie fängt Fehler ab und ist keine Sicherheitsgrenze gegen Absicht: Text
+# in Anführungszeichen ("$(…)" eingeschlossen) prüft sie nicht, Heredoc-Körper sind nie Befehle.
 #
 # Im Projekt (fleet.toml [agenten]): eigene Regeln als [[agenten.befehlssperre]] mit denselben
 # Feldern (ein Name darf nicht doppelt vorkommen), Ziel-Branches als ziel_branches (sonst main,
@@ -13,8 +13,12 @@
 # Felder einer Regel:
 #   name, grund, weg   Name, warum gesperrt, was stattdessen erlaubt ist
 #   muster             regulärer Ausdruck (Python) auf jeden Teilbefehl; Teilbefehle trennen
-#                      ; && || | & Zeilenumbruch und $( ); vor git fallen -C/-c weg; {ziel}
-#                      steht in allen Ausdrücken für die Ziel-Branches
+#                      ; && || | & Zeilenumbruch und $( ); vor git fallen -C/-c weg; Text in
+#                      Anführungszeichen mit Leerraum und Werte von --body, --title, --message,
+#                      --notes (nach git, gh auch -m, -b, -t) stehen als «text» da, außer der
+#                      Teilbefehl startet eine Shell (ssh, sh, bash, zsh, eval); Umleitungen
+#                      stehen hinten (">> ziel"); {ziel} steht in allen Ausdrücken für die
+#                      Ziel-Branches
 #   ganz               true: muster auf den ganzen Befehl statt auf Teilbefehle
 #   auch               regulärer Ausdruck, der zusätzlich auf den ganzen Befehl passen muss
 #   ausser             regulärer Ausdruck; passt er auf den Teilbefehl, greift die Regel nicht
@@ -22,10 +26,12 @@
 #   hauptcheckout      true: greift nur im Hauptcheckout eines Repos, nicht in einem Worktree
 #   zweig              regulärer Ausdruck auf den ausgecheckten Branch; greift nur dort
 #   befehl, erlaubt_in greift nur, wenn ein vorhandener Pfad nach dem Wort `befehl` außerhalb aller
-#                      Orte liegt: "worktree" (eigener Worktree), "arbeitsordner" (der Sitzung),
-#                      "temp" (echt unter /tmp, /private/tmp, /var/folders/<a>/<b>/<c>, $TMPDIR;
-#                      nie der Ordner selbst, ein Muster direkt darunter, `..` oder eine offene
-#                      Variable; nach ssh nur so, mit absolutem Pfad)
+#                      Orte liegt: "worktree" (der am Arbeitsort oder echt unter der Wurzel eines
+#                      Worktrees), "arbeitsordner" (der Sitzung), "temp" (echt unter /tmp,
+#                      /private/tmp, /var/folders/<a>/<b>/<c>, $TMPDIR; nie der Ordner selbst). Ein
+#                      Muster (*, ?, [) gilt nur im Worktree, `..` nie; Variablen gelten, wenn der
+#                      Befehl sie vorher setzt (X=…, export, for … in), sonst sperren sie; nach ssh
+#                      zählt nur "temp", mit absolutem Pfad
 
 [[regel]]
 name = "loeschen-ausserhalb"
@@ -34,7 +40,7 @@ ausser = '^(git\s+(commit|tag|notes)|gh|grep|rg)(\s|$)'
 befehl = '^(rm|find)$'
 erlaubt_in = ["worktree", "arbeitsordner", "temp"]
 grund = "rekursives Löschen außerhalb des eigenen Worktrees, des Arbeitsordners und temporärer Ordner"
-weg = "nur im eigenen Worktree, im Arbeitsordner der Sitzung oder unter /tmp, /var/folders, $TMPDIR löschen (benannter Unterordner, per ssh mit absolutem Pfad); Worktrees mit git worktree remove"
+weg = "nur im eigenen Worktree, im Arbeitsordner der Sitzung oder unter /tmp, /var/folders, $TMPDIR löschen: jeden eigenen Ordner mit festem Pfad (ausgeschrieben oder als Variable, die der Befehl vorher setzt), ohne * oder ? außerhalb des Worktrees (Arbeitsordner und /tmp sind geteilt), per ssh absolut; Worktrees mit git worktree remove"
 
 [[regel]]
 name = "push-force"
@@ -82,15 +88,6 @@ name = "git-stash"
 muster = '^git\s+stash\b'
 grund = "git stash ist in jeder Form verboten, auch list/show: der Stapel ist mit allen Worktrees geteilt"
 weg = "Zwischenstand ohne Commit im eigenen Worktree lassen oder auf dem eigenen Branch committen"
-
-[[regel]]
-name = "ersetzen-in-dateien"
-muster = '(^|\s)(g?sed|perl|ruby)\s+(\S+\s+)*(-[a-zA-Z]*i|--in-place)'
-ausser = '^(git\s+(commit|tag|notes)|gh|grep|rg)(\s|$)'
-befehl = '^(g?sed|perl|ruby)$'
-erlaubt_in = ["arbeitsordner"]
-grund = "Ersetzungen über Dateien des Repos per Skript treffen ungeprüft zu viel"
-weg = "Dateien einzeln mit dem Werkzeug zum Bearbeiten ändern"
 
 # Ein Teilbefehl spricht eine Datenbank an (Client, ssh, sh -c, exec in Container oder Job) und der
 # Befehl enthält irgendwo (auch über Pipe oder Heredoc) löschendes SQL und ein Prod-Ziel.

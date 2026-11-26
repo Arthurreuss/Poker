@@ -163,6 +163,7 @@ static_stufe() {
     "${py[@]}" scripts/check_drift.py || rot=1
     "${py[@]}" scripts/adr.py || rot=1
     "${py[@]}" scripts/check_gespiegelt.py || rot=1
+    "${py[@]}" scripts/check_wegwerf.py || rot=1
     return "$rot"
 }
 test_stufe() {

@@ -23,7 +23,8 @@ die Warteschlange `python3 scripts/pruefung.py <stufe…>`.
   `scripts/check_drift.py` (ADR-Status und abgelöste Begriffe in der Doku, Regel „Doku aktuell
   halten“ in `ordnung.md`), `scripts/adr.py` (Namen und Kopf der ADRs, Index gleich dem
   erzeugten, „ADRs“ in `ordnung.md`), `scripts/check_gespiegelt.py` (rot, wenn eine gespiegelte Datei von
-  Hand geändert ist) und `scripts/check_struktur.py` (Ordner und Schichten nach
+  Hand geändert ist), `scripts/check_wegwerf.py` (rot bei Wegwerf-Dateien wie `tmp_*`, `*.bak` oder
+  Skripten in der Wurzel außer `*.config.*`, gespiegelt) und `scripts/check_struktur.py` (Ordner und Schichten nach
   `scripts/struktur.toml`). Der Commit-Hook prüft sie bei jedem Commit.
 - **`test`:** `npm run check` (Doku-Check, Format, Typecheck, Lint, Skript-, Unit- und
   Komponententests ohne Datenbank); Vitest-Worker nach `FLEET_EINHEITEN`.

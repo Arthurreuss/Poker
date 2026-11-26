@@ -3,9 +3,10 @@
 
 Liest die Eingabe des Hakens als JSON von stdin (`tool_input.command`, `cwd`, `scratchpad_dir`),
 prüft den Befehl gegen die Regeln aus `befehlssperre.toml` neben dieser Datei und gibt bei einem
-Treffer `permissionDecision: deny` mit Regel, Grund und erlaubtem Weg aus. Ohne Treffer keine
-Ausgabe, Exit 0. Sind die Regeln nicht lesbar, blockiert Exit 2 jeden Befehl (die Meldung sagt warum).
-Felder der Regeln: Kopf von `befehlssperre.toml`.
+Treffer `permissionDecision: deny` mit Regel, Grund, betroffenem Ziel und erlaubtem Weg aus. Ohne
+Treffer keine Ausgabe, Exit 0. Sind die Regeln nicht lesbar, blockiert Exit 2 jeden Befehl (die
+Meldung sagt warum). Felder der Regeln: Kopf von `befehlssperre.toml`; die Zerlegung des Befehls
+steht in `befehlssperre_zerlegen.py`.
 
 Die Einstellungen eines Projekts (`fleet.toml` [agenten]: Ziel-Branches, abgeschaltete und eigene
 Regeln) gelten je Teilbefehl aus dem Repo, in dem er wirkt (auch aus einem Worktree heraus), im
@@ -24,7 +25,6 @@ import glob
 import json
 import os
 import re
-import shlex
 import shutil
 import subprocess
 import sys
@@ -32,15 +32,17 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 HIER = Path(__file__).resolve().parent
-TRENNER = {";", "&&", "||", "|", "&", "\n", "(", ")", ";;", "|&"}
-GIT_OPTIONEN_MIT_WERT = {"-C", "-c", "--git-dir", "--work-tree", "--namespace"}
+sys.dont_write_bytecode = True  # kein __pycache__ neben dem Haken
+if str(HIER) not in sys.path:
+    sys.path.insert(0, str(HIER))
+from befehlssperre_zerlegen import Teil, ausdehnen, ort_von, ssh_befehl, teilbefehle  # noqa: E402
+
 FELDER = {"name", "grund", "weg", "muster", "ganz", "auch", "ausser", "hauptcheckout", "zweig", "befehl",
           "erlaubt_in"}
 ORTE = {"worktree", "arbeitsordner", "temp"}
 TEMP = ("/tmp", "/private/tmp")  # dazu $TMPDIR, wenn er darunter oder unter /var/folders liegt
 TEMP_JE_NUTZER = ("/var/folders", "/private/var/folders")  # der Ordner je Nutzer: drei Ebenen tiefer
 MUSTER = re.compile(r"[*?\[]")
-SSH_MIT_WERT = set("BbcDEeFIiJLlmOoPpQRSWw")  # Optionen von ssh, die einen Wert nehmen
 ZIELE = ["main", "master"]  # Ziel-Branches, wenn fleet.toml [agenten] ziel_branches fehlt
 UV = ("/opt/homebrew/bin/uv", "/usr/local/bin/uv", "~/.local/bin/uv", "~/.cargo/bin/uv")
 NEU_GESTARTET = "BEFEHLSSPERRE_NEU_GESTARTET"
@@ -72,17 +74,6 @@ class Regel:
                  for k in ("muster", "auch", "ausser", "zweig", "befehl") if k in roh}
         return cls(roh["name"], roh["grund"], roh["weg"], ganz=bool(roh.get("ganz")),
                    hauptcheckout=bool(roh.get("hauptcheckout")), erlaubt_in=list(roh.get("erlaubt_in", [])), **regex)
-
-
-@dataclass
-class Teil:
-    """Ein Teilbefehl: Wörter (vor git ohne -C/-c) und das Verzeichnis, in dem er läuft."""
-    woerter: list[str]
-    ort: Path
-
-    @property
-    def text(self) -> str:
-        return " ".join(self.woerter)
 
 
 def projekt_ordner() -> Path:
@@ -138,11 +129,15 @@ def laden(projekt: Path, arbeitsbaum: bool = False) -> tuple[list[Regel], dict[s
     return [r for r in regeln if r.name not in aus], aus
 
 
+def ordner_von(ort: Path) -> Path:
+    while not ort.is_dir() and ort != ort.parent:
+        ort = ort.parent
+    return ort
+
+
 def repo_von(ort: Path) -> Path | None:
     """Der Hauptcheckout des Git-Repos am Ort (auch aus einem Worktree), None außerhalb eines Repos."""
-    while not ort.exists() and ort != ort.parent:
-        ort = ort.parent
-    gemeinsam = git(ort, "rev-parse", "--path-format=absolute", "--git-common-dir")
+    gemeinsam = git(ordner_von(ort), "rev-parse", "--path-format=absolute", "--git-common-dir")
     if not gemeinsam:
         return None
     pfad = Path(gemeinsam).resolve()
@@ -175,49 +170,6 @@ def neu_starten() -> None:
     os.execv(uv, [uv, "run", "--quiet", "--no-project", "--python", "3.12", str(Path(__file__).resolve())])
 
 
-def woerter(befehl: str) -> list[str]:
-    lex = shlex.shlex(befehl, posix=True, punctuation_chars=";&|()\n")
-    lex.whitespace = " \t\r"
-    lex.whitespace_split = True
-    try:
-        return list(lex)
-    except ValueError:  # offene Anführungszeichen: grob nach Leerraum
-        return [w for w in re.split(r"[ \t]+|(\n|;|&&|\|\||\|)", befehl) if w]
-
-
-def teilbefehle(befehl: str, cwd: Path) -> list[Teil]:
-    """Zerlegt in Teilbefehle; `cd <ort>` gilt für die folgenden Teile."""
-    teile, aktuell, ort = [], [], cwd
-    for wort in [*woerter(befehl), ";"]:
-        if wort not in TRENNER:
-            if wort != "$":
-                aktuell.append(wort)
-            continue
-        while aktuell and re.fullmatch(r"[A-Za-z_]\w*=.*", aktuell[0]):
-            aktuell.pop(0)
-        if aktuell[:1] == ["cd"] and len(aktuell) > 1:
-            ort = ort_von(ort, aktuell[1])
-        elif aktuell:
-            teile.append(git_ohne_optionen(aktuell, ort))
-        aktuell = []
-    return teile
-
-
-def ort_von(basis: Path, pfad: str) -> Path:
-    return Path(os.path.normpath(basis / os.path.expanduser(os.path.expandvars(pfad))))
-
-
-def git_ohne_optionen(w: list[str], ort: Path) -> Teil:
-    if w[0] != "git":
-        return Teil(w, ort)
-    rest, i = ["git"], 1
-    while i < len(w) and w[i].startswith("-"):
-        if w[i] == "-C" and i + 1 < len(w):
-            ort = ort_von(ort, w[i + 1])
-        i += 2 if w[i] in GIT_OPTIONEN_MIT_WERT else 1
-    return Teil(rest + w[i:], ort)
-
-
 def git(ort: Path, *args: str) -> str:
     try:
         lauf = subprocess.run(["git", "-C", str(ort), *args], capture_output=True, text=True, timeout=5)
@@ -231,13 +183,21 @@ def im_hauptcheckout(ort: Path) -> bool:
     return len(zeilen) == 2 and Path(zeilen[0]).resolve() == Path(zeilen[1]).resolve()
 
 
-def erlaubte_orte(regel: Regel, ort: Path, eingabe: dict) -> list[Path]:
-    orte = []
+def in_einem_worktree(pfad: Path) -> bool:
+    """Liegt `pfad` echt unter der Wurzel eines Worktrees (nicht des Hauptcheckouts)?"""
+    ort = ordner_von(pfad)
+    oben = git(ort, "rev-parse", "--show-toplevel")
+    return bool(oben) and Path(oben).resolve() in pfad.parents and not im_hauptcheckout(ort)
+
+
+def erlaubte_orte(regel: Regel, ort: Path, eingabe: dict) -> tuple[list[Path], list[Path]]:
+    """Der eigene Worktree (der des Arbeitsorts) und der Arbeitsordner der Sitzung, soweit erlaubt."""
+    worktrees, arbeit = [], []
     if "worktree" in regel.erlaubt_in and not im_hauptcheckout(ort) and (oben := git(ort, "rev-parse", "--show-toplevel")):
-        orte.append(Path(oben).resolve())
+        worktrees.append(Path(oben).resolve())
     if "arbeitsordner" in regel.erlaubt_in and eingabe.get("scratchpad_dir"):
-        orte.append(Path(eingabe["scratchpad_dir"]).resolve())
-    return orte
+        arbeit.append(Path(eingabe["scratchpad_dir"]).resolve())
+    return worktrees, arbeit
 
 
 def temp_wurzel(pfad: Path) -> Path | None:
@@ -260,87 +220,83 @@ def temp_wurzel(pfad: Path) -> Path | None:
 
 def im_temp(wort: str) -> bool:
     """Ist `wort` (aufgelöst, absolut) ein Pfad echt unter einem temporären Ordner, ohne `..`, ohne
-    offene Variable und ohne Muster direkt unter dem Ordner?"""
-    if "$" in wort or not os.path.isabs(wort) or ".." in Path(wort).parts:
+    offene Variable und ohne Muster (*, ?, [) darin?"""
+    if "$" in wort or not os.path.isabs(wort) or ".." in Path(wort).parts or MUSTER.search(wort):
         return False
-    pfad = Path(os.path.normpath(wort))
-    wurzel = temp_wurzel(pfad)
-    return wurzel is not None and not MUSTER.search(pfad.parts[len(wurzel.parts)])
+    return temp_wurzel(Path(os.path.normpath(wort))) is not None
 
 
-def ssh_befehl(woerter: list[str], bis: int | None) -> list[str] | None:
-    """Die Wörter, die ein ssh vor Index `bis` auf dem anderen Rechner ausführt; None ohne ssh."""
-    i = next((i for i, w in enumerate(woerter[:bis]) if Path(w).name == "ssh"), None)
-    if i is None:
-        return None
-    i += 1
-    while i < len(woerter) and woerter[i].startswith("-"):
-        wort, i = woerter[i], i + 1
-        wert = next((j for j, c in enumerate(wort[1:], 1) if c in SSH_MIT_WERT), None)
-        if wert == len(wort) - 1:  # der Wert ist das nächste Wort
-            i += 1
-    return woerter[i + 1:]
-
-
-def ziele_ausserhalb(regel: Regel, teil: Teil, eingabe: dict, fern: bool = False) -> bool:
-    """Liegt ein vorhandener Pfad nach dem Wort `befehl` außerhalb der erlaubten Orte? Kommen die
-    Ziele aus xargs oder einer offenen Variable, sind sie unbekannt und zählen als außerhalb. Über ssh
-    (`fern`) zählt nur "temp", mit absolutem Pfad ohne Variable, Symlinks bleiben ungeprüft."""
+def ziel_ausserhalb(regel: Regel, teil: Teil, eingabe: dict, fern: bool = False) -> str | None:
+    """Das erste Ziel (Pfad nach dem Wort `befehl`) außerhalb der erlaubten Orte, für die Meldung;
+    sonst None. Ziele aus xargs oder einer unbekannten Variable zählen als außerhalb. Über ssh
+    (`fern`) zählt nur "temp", mit absolutem Pfad ohne Variable; Symlinks bleiben dort ungeprüft."""
     assert regel.befehl
     start = next((i for i, w in enumerate(teil.woerter) if regel.befehl.search(w)), None)
-    if (anderswo := ssh_befehl(teil.woerter, start)) is not None:
+    if not fern and (anderswo := ssh_befehl(teil.woerter, start)) is not None:
         innen = [t for t in teilbefehle(" ".join(anderswo), Path("/"))
                  if regel.muster.search(t.text) and not (regel.ausser and regel.ausser.search(t.text))]
-        return "temp" not in regel.erlaubt_in or not innen or any(
-            ziele_ausserhalb(regel, t, eingabe, fern=True) for t in innen)
+        if "temp" not in regel.erlaubt_in or not innen:
+            return "auf dem anderen Rechner"
+        return next((f"per ssh {z}" for t in innen if (z := ziel_ausserhalb(regel, t, eingabe, fern=True))), None)
     if start is None or "xargs" in teil.woerter[:start]:
+        return "nicht bestimmbar, etwa aus xargs oder in einer Shell"
+    ziele = [w for w in teil.woerter[start + 1:] if not w.startswith("-") and w not in ("{}", "\\;", ";", "+")]
+    if fern:
+        return next((w for w in ziele if not ("temp" in regel.erlaubt_in and im_temp(w))), None)
+    orte = erlaubte_orte(regel, teil.ort, eingabe)
+    for wort in ziele:
+        for roh in ausdehnen(wort, teil.variablen):
+            if "$" in roh:
+                return f"{wort} (Variable unbekannt)"
+            pfad = ort_von(teil.ort, roh)
+            lexikalisch = ".." not in Path(roh).parts and im_temp(str(pfad))
+            for treffer in glob.glob(str(pfad)) or ([str(pfad)] if pfad.parent.exists() else []):
+                if not erlaubt(regel, Path(treffer).resolve(), orte, lexikalisch, bool(MUSTER.search(roh))):
+                    return str(pfad)
+    return None
+
+
+def erlaubt(regel: Regel, echt: Path, orte: tuple[list[Path], list[Path]], lexikalisch: bool, muster: bool) -> bool:
+    """Liegt der echte Pfad an einem erlaubten Ort? Ein Muster (*, ?, [) zählt nur im Worktree, nie
+    im geteilten Arbeitsordner oder unter /tmp (dort lägen fremde Reste)."""
+    worktrees, arbeit = orte
+    if any(echt == o or o in echt.parents for o in worktrees) or "worktree" in regel.erlaubt_in and in_einem_worktree(echt):
         return True
-    orte = [] if fern else erlaubte_orte(regel, teil.ort, eingabe)
-    temp = "temp" in regel.erlaubt_in
-    for wort in teil.woerter[start + 1:]:
-        if wort.startswith("-") or wort in ("{}", "\\;", "+"):
-            continue
-        if fern:
-            if not (temp and im_temp(wort)):
-                return True
-            continue
-        roh = os.path.expanduser(os.path.expandvars(wort))
-        if "$" in roh:
-            return True
-        pfad = ort_von(teil.ort, wort)
-        lexikalisch = temp and ".." not in Path(roh).parts and im_temp(str(pfad))
-        for treffer in glob.glob(str(pfad)) or ([str(pfad)] if pfad.parent.exists() else []):
-            echt = Path(treffer).resolve()
-            if not (any(echt == o or o in echt.parents for o in orte) or lexikalisch and im_temp(str(echt))):
-                return True
-    return False
+    if muster:
+        return False
+    return any(echt == o or o in echt.parents for o in arbeit) or (
+        "temp" in regel.erlaubt_in and lexikalisch and im_temp(str(echt)))
 
 
-def greift(regel: Regel, befehl: str, teil: Teil | None, eingabe: dict) -> bool:
+def greift(regel: Regel, befehl: str, teil: Teil | None, eingabe: dict) -> str | None:
+    """None, wenn die Regel nicht greift, sonst das betroffene Ziel ("" ohne Ziel)."""
     text = befehl if teil is None else teil.text
     if not regel.muster.search(text) or (regel.ausser and regel.ausser.search(text)):
-        return False
+        return None
     if regel.auch and not regel.auch.search(befehl):
-        return False
+        return None
     ort = teil.ort if teil else Path(eingabe.get("cwd") or ".")
     if regel.hauptcheckout and not im_hauptcheckout(ort):
-        return False
+        return None
     if regel.zweig and not regel.zweig.search(git(ort, "branch", "--show-current")):
-        return False
-    return not (regel.befehl and teil and not ziele_ausserhalb(regel, teil, eingabe))
+        return None
+    if regel.befehl and teil:
+        return ziel_ausserhalb(regel, teil, eingabe)
+    return ""
 
 
-def pruefen(befehl: str, eingabe: dict, regelwerk: Regelwerk) -> Regel | None:
-    """Die erste Regel, die den Befehl sperrt, sonst None. Regeln auf den ganzen Befehl gelten nach
-    dem Repo am Arbeitsort, die übrigen je Teilbefehl nach dem Repo, in dem er wirkt."""
+def pruefen(befehl: str, eingabe: dict, regelwerk: Regelwerk) -> tuple[Regel, str] | None:
+    """Die erste Regel, die den Befehl sperrt, mit dem betroffenen Ziel, sonst None. Regeln auf den
+    ganzen Befehl gelten nach dem Repo am Arbeitsort, die übrigen je Teilbefehl nach dem Repo, in dem
+    er wirkt."""
     cwd = Path(eingabe.get("cwd") or os.getcwd())
     for regel in regelwerk.fuer(cwd):
-        if regel.ganz and greift(regel, befehl, None, eingabe):
-            return regel
+        if regel.ganz and (ziel := greift(regel, befehl, None, eingabe)) is not None:
+            return regel, ziel
     for teil in teilbefehle(befehl, cwd):
         for regel in regelwerk.fuer(teil.ort):
-            if not regel.ganz and greift(regel, befehl, teil, eingabe):
-                return regel
+            if not regel.ganz and (ziel := greift(regel, befehl, teil, eingabe)) is not None:
+                return regel, ziel
     return None
 
 
@@ -352,13 +308,14 @@ def main() -> int:
         befehl = (eingabe.get("tool_input") or {}).get("command") or ""
         if eingabe.get("tool_name", "Bash") != "Bash" or not befehl.strip():
             return 0
-        regel = pruefen(befehl, eingabe, Regelwerk(projekt_ordner()))
+        treffer = pruefen(befehl, eingabe, Regelwerk(projekt_ordner()))
     except Exception as e:  # noqa: BLE001 -- was sich nicht prüfen lässt, wird nicht ausgeführt
         print(f"Befehlssperre: nicht prüfbar ({type(e).__name__}: {e}); Regeln in "
               ".claude/hooks/befehlssperre.toml und fleet.toml [agenten] prüfen", file=sys.stderr)
         return 2
-    if regel:
-        grund = f"Befehlssperre „{regel.name}“: {regel.grund}. Erlaubt: {regel.weg}."
+    if treffer:
+        regel, ziel = treffer
+        grund = f"Befehlssperre „{regel.name}“: {regel.grund}{f' (Ziel: {ziel})' if ziel else ''}. Erlaubt: {regel.weg}."
         print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny",
                                                  "permissionDecisionReason": grund}}, ensure_ascii=False))
     return 0

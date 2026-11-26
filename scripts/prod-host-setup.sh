@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Richtet einmalig den prod-Checkout auf dem prod-Host (mac-2) ein (D-036). Aufruf auf dem Entwicklungsrechner: npm run prod:setup
-# Klont main per SSH (Deploy-Key, nur lesend, D-038) nach ~/$POKER_PROD_REMOTE_DIR und prüft git, Docker der
+# Klont main über https (POKER_PROD_REPO_URL, #24) nach ~/$POKER_PROD_REMOTE_DIR und prüft git, Docker der
 # Prod-VM und .env.prod.
 # Doku: docs/OPERATIONS.md, Abschnitt "prod-Host einrichten".
 set -euo pipefail
