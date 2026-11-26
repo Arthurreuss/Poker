@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Release dev → main (D-005) und Neustart von prod auf dem Mac Studio (D-036). Aufruf: npm run release
+# Release dev → main (D-005) und Neustart von prod auf dem prod-Host (mac-2, D-036). Aufruf: npm run release
 # Der Arbeitsordner bleibt auf dev; gemergt wird in einem temporären Worktree, danach baut der Deploy-Job des
-# Server-Verbunds (D-039) prod auf dem Studio aus dem neuen main. Ablauf: docs/OPERATIONS.md, Abschnitt "Release".
+# Server-Verbunds (D-039) prod auf dem prod-Host aus dem neuen main. Ablauf: docs/OPERATIONS.md, Abschnitt "Release".
 set -euo pipefail
 cd "$(dirname "$0")/.."
 . scripts/lib/prod-host.sh
@@ -15,7 +15,7 @@ fail() {
 [ "$(git symbolic-ref --short HEAD 2>/dev/null)" = dev ] || fail "Release nur von dev aus (git checkout dev)."
 [ -z "$(git status --porcelain)" ] || fail "Arbeitsverzeichnis nicht sauber – erst committen oder stashen."
 
-# 2. prod-Checkout auf dem Studio: erreichbar, ohne lokale Änderungen (.env.prod ist gitignored). Auf main muss er
+# 2. prod-Checkout auf dem prod-Host: erreichbar, ohne lokale Änderungen (.env.prod ist gitignored). Auf main muss er
 #    nicht stehen: Nach einem Rollback ist er detached, der Deploy-Job setzt ihn zurück auf main.
 echo "→ prod-Host $POKER_PROD_HOST prüfen"
 remote_state="$(prod_remote "git status --porcelain | wc -l | tr -d ' '; test -f .env.prod && echo env" 2>/dev/null)" ||
@@ -47,7 +47,7 @@ NEW_MAIN="$(git rev-parse --short main)"
 echo "→ push main und dev"
 git push origin main dev
 
-# 4. Deploy über die Warteschlange (D-039): Der Job deploy-poker spult den Checkout auf dem Studio auf main vor und
+# 4. Deploy über die Warteschlange (D-039): Der Job deploy-poker spult den Checkout auf dem prod-Host auf main vor und
 #    baut prod aus $NEW_MAIN neu (scripts/deploy_job.sh, mit Tunnel, wenn TUNNEL_TOKEN gesetzt ist).
 echo "→ Deploy $NEW_MAIN auf $POKER_PROD_HOST (Nomad-Job deploy-poker)"
 bash scripts/fleet-deploy.sh deploy "$NEW_MAIN" ||

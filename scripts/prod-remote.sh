@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# Steuert prod auf dem Mac Studio vom Entwicklungsrechner aus (D-036). Aufruf über npm run prod:*.
-#   up | tunnel-up | down | logs | status | backup | restore <dump> [--yes]   → Skript läuft per SSH auf dem Studio
+# Steuert prod auf dem prod-Host (mac-2, Prod-VM prod-spiele) vom Entwicklungsrechner aus (D-036). Aufruf über
+# npm run prod:*. Host, Checkout und Docker der Prod-VM: scripts/lib/prod-host.sh.
+#   up | tunnel-up | down | logs | status | backup | restore <dump> [--yes]   → Skript läuft per SSH auf dem Host
 #   compose <args…>                                                         → docker compose -p poker-prod <args> dort
-#   ssh                                                                      → Shell im Checkout auf dem Studio
+#   ssh                                                                      → Shell im Checkout auf dem Host
 #   smoke | e2e                                                              → läuft hier, über eine SSH-Portweiterleitung
 # Doku: docs/OPERATIONS.md
 set -euo pipefail
@@ -16,8 +17,8 @@ fail() {
 
 port_open() { nc -z 127.0.0.1 "$1" >/dev/null 2>&1; }
 
-# Startet eine SSH-Portweiterleitung 127.0.0.1:<WEB_PORT> → Web-Port des Studios und setzt FORWARD_URL/FORWARD_ORIGIN.
-# Die prod-Ports sind auf dem Studio nur an 127.0.0.1 gebunden, deshalb kein direkter Zugriff übers Netz.
+# Startet eine SSH-Portweiterleitung 127.0.0.1:<WEB_PORT> → Web-Port des prod-Hosts und setzt FORWARD_URL/FORWARD_ORIGIN.
+# Die prod-Ports sind auf dem Host nur an 127.0.0.1 gebunden, deshalb kein direkter Zugriff übers Netz.
 start_forward() {
   local remote_port
   remote_port="$(prod_remote_env_value WEB_PORT)"
@@ -51,7 +52,7 @@ case "$action" in
     [ $# -gt 0 ] && args="$(printf ' %q' "$@")"
     prod_remote "docker compose -p poker-prod$args"
     ;;
-  ssh) $POKER_PROD_SSH -t "$POKER_PROD_HOST" "$PROD_REMOTE_PATH; cd ~/$POKER_PROD_REMOTE_DIR && exec \$SHELL -l" ;;
+  ssh) $POKER_PROD_SSH -t "$POKER_PROD_HOST" "$PROD_REMOTE_ENV; cd ~/$POKER_PROD_REMOTE_DIR && exec \$SHELL -l" ;;
   smoke)
     # Smoke-Test (scripts/smoke-prod.mjs) mit der ersten PUBLIC_ORIGIN; anderes Ziel per SMOKE_URL/SMOKE_ORIGIN.
     if [ -n "${SMOKE_URL:-}" ]; then

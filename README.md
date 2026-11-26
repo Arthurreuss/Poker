@@ -33,7 +33,7 @@ DATABASE_URL=postgres://poker:poker@localhost:4312/poker npm test
 Nach Änderungen an Abhängigkeiten `npm run dev:up` erneut ausführen (baut das Image neu).
 
 ## Prod (mac-2, Prod-VM `prod-spiele`)
-prod läuft seit 23.11.2026 auf mac-2 als Dienst-Nutzer `fleet` aus einem Checkout von `main` unter `~fleet/poker`, Docker in der Prod-VM `prod-spiele` des Server-Verbunds (Socket `~fleet/.colima/spiele/docker.sock`; fleet-Repo `prod.toml`, `deploy.toml` [poker]). Das MacBook ist nur Entwicklungsrechner: Alle Befehle unten laufen dort im Arbeitsordner; Deploy und Rollback gehen über die Warteschlange, die übrigen `prod:*`-Befehle per SSH auf den prod-Host. Diese zeigen standardmäßig noch auf den Studio und nehmen nicht den Docker der Prod-VM (Umstellung: Poker#20).
+prod läuft seit 23.11.2026 auf mac-2 als Dienst-Nutzer `fleet` aus einem Checkout von `main` unter `~fleet/poker`, Docker in der Prod-VM `prod-spiele` des Server-Verbunds (Socket `~fleet/.colima/spiele/docker.sock`; fleet-Repo `prod.toml`, `deploy.toml` [poker]). Das MacBook ist nur Entwicklungsrechner: Alle Befehle unten laufen dort im Arbeitsordner; Deploy und Rollback gehen über die Warteschlange, die übrigen `prod:*`-Befehle per SSH auf den prod-Host (`fleet@mac-2`, Docker der Prod-VM; Ziel änderbar, docs/OPERATIONS.md „prod“).
 ```sh
 npm run prod:setup               # einmalig: main auf dem prod-Host (als fleet) klonen, dann dort .env.prod anlegen (npm run prod:ssh)
 npm run release                  # dev → main mergen, pushen, Deploy über die Warteschlange (D-039), Smoke- und E2E-Test

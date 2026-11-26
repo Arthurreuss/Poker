@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Deploy oder Rollback von prod über die Warteschlange des Server-Verbunds (D-039): startet den Nomad-Job
-# deploy-poker auf dem Studio (fleet.py deploy) und zeigt sein Log bis zum Ende. Dort läuft scripts/deploy_job.sh.
+# deploy-poker auf dem prod-Host (fleet.py deploy) und zeigt sein Log bis zum Ende. Dort läuft scripts/deploy_job.sh.
 #   scripts/fleet-deploy.sh deploy [<ref>]    npm run prod:deploy [-- <ref>]
 #   scripts/fleet-deploy.sh rollback <ref>    npm run prod:rollback -- <ref>
 # Exit = Exit des Laufs (0 gut, 1 fehlgeschlagen, 2 Aufruf ungültig, 75 nicht gestartet: schon ein Lauf offen,
-# Nomad nicht erreichbar oder Voraussetzung auf dem Studio fehlt).
+# Nomad nicht erreichbar oder Voraussetzung auf dem prod-Host fehlt).
 #   POKER_FLEET_DIR   Checkout des fleet-Repos (Standard: ~/code/Arthurreuss/fleet)
 #   POKER_FLEET_CMD   Befehl statt "uv run … fleet.py" (Tests)
 set -uo pipefail
