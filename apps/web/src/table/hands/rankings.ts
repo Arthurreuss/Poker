@@ -1,5 +1,5 @@
 /**
- * Inhalt der Hand-Übersicht (WP-038): alle Pokerhände von der besten zur schwächsten, mit Erklärung
+ * Inhalt der Hand-Übersicht: alle Pokerhände von der besten zur schwächsten, mit Erklärung
  * und Beispielkarten. Namen und Rangfolge kommen aus der Engine (`HAND_CATEGORIES`,
  * `HAND_CATEGORY_NAMES`); der Royal Flush ist dort keine eigene Kategorie, sondern der höchste
  * Straight Flush, und wird hier nur als eigene Zeile gezeigt. Tests prüfen jede Beispielhand mit

@@ -1,4 +1,4 @@
-// /admin/audit (WP-029): Admin-Protokoll (D-029), neueste zuerst, „Ältere laden“ blättert per `before`.
+// /admin/audit: Admin-Protokoll (D-029), neueste zuerst, „Ältere laden“ blättert per `before`.
 import { useState } from 'react';
 import { AUDIT_PAGE_SIZE, listAudit, type AuditEntry } from '../api/admin';
 import { LoadState, errorText, formatDateTime, useLoad } from './common';

@@ -1,4 +1,4 @@
-// Texte für Showdown und Rundenende (WP-018): rein, aus der gefilterten Server-Sicht.
+// Texte für Showdown und Rundenende: rein, aus der gefilterten Server-Sicht.
 import type { StandingView, TableView as ServerTableView } from '@poker/engine/protocol';
 import { formatChips } from '../table/format';
 

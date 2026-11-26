@@ -1,6 +1,6 @@
-// Drift-Schutz für compose.prod.yml (WP-021): Nach einem Mac-Neustart startet Docker nur Container mit
+// Drift-Schutz für compose.prod.yml: Nach einem Mac-Neustart startet Docker nur Container mit
 // passender Restart-Policy neu, und das Backup muss Aufbewahrung und Host-Ordner behalten.
-// WP-022 (D-025): Logs mit IP-Adressen höchstens 14 Tage – Größen-Rotation aller Container-Logs, Request-Logs von
+// D-025: Logs mit IP-Adressen höchstens 14 Tage – Größen-Rotation aller Container-Logs, Request-Logs von
 // server und web in Dateien, die logrotate täglich rotiert und nach 12 Tagen löscht.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

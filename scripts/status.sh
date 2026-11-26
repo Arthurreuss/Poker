@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Kurzer Zustandsbericht der prod-Umgebung (WP-021). Aufruf: npm run prod:status
+# Kurzer Zustandsbericht der prod-Umgebung. Aufruf: npm run prod:status
 # Zeigt Container-Status/Health, letztes Backup (Zeitpunkt, Größe, Alter), das verschlüsselte Secrets-Backup (D-037),
 # Speicherplatz des Backup-Ordners und den Health-Endpoint (lokal und – falls erreichbar – öffentlich). Exit-Code 1, wenn etwas nicht stimmt.
 # Doku: docs/OPERATIONS.md, Abschnitt "Status".

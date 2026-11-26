@@ -1,4 +1,4 @@
-// Profil eines Spielers (WP-019): Punkte, Platz, Spielstil-Statistiken und letzte Runden.
+// Profil eines Spielers: Punkte, Platz, Spielstil-Statistiken und letzte Runden.
 import { Link, useParams } from 'react-router';
 import { fetchPlayerStats, fetchRecentRounds, type RoundSummary } from '../api/stats';
 import { useAuth } from '../auth/AuthContext';

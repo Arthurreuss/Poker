@@ -1,4 +1,4 @@
-// Showdown vor dem Rundenende-Dialog (WP-031, WP-040): Endet die Runde live (Status `running` → `finished`),
+// Showdown vor dem Rundenende-Dialog: Endet die Runde live (Status `running` → `finished`),
 // bleibt erst der Tisch mit Board, aufgedeckten Karten, Gewinner und Feier der letzten Hand sichtbar
 // (`ROUND_END_HAND_MS` nach dem Ergebnis, bei einem Runout erst nach dem Aufdecken), dann kommt der Sieger des
 // Tisches (`ROUND_END_WINNER_MS`), dann der Dialog. Ein Tipp springt zum nächsten Schritt.

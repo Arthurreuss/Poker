@@ -1,4 +1,4 @@
-// Admin-Protokoll (WP-028, D-029): jede Admin-Aktion landet in `admin_audit_log` (Migration 0007).
+// Admin-Protokoll (D-029): jede Admin-Aktion landet in `admin_audit_log` (Migration 0007).
 // Schreiben: `writeAudit` (eigene Anweisung) oder – wenn Aktion und Protokoll atomar sein sollen – als CTE in der
 // Anweisung der Aktion (siehe admin/users.ts, auth/admin.ts). Speicherdauer 1 Jahr (D-025), Löschjob unten.
 import type { FastifyBaseLogger } from 'fastify';
@@ -9,8 +9,8 @@ import { startPeriodicJob, type PeriodicJob } from '../periodic-job';
 
 /**
  * Erlaubte Aktionen (Format `bereich.aktion`, DB-Check in 0007). Neue Admin-Aktionen ergänzen hier ihren Code.
- * `table.reveal_cards` (WP-033, D-027): Quelle `ws`, Ziel = Tisch und Spieler, Details `{ roundId, handNumber, seat }`
- * (geschrieben von `admin/reveal.ts`). `table.redraw_cards` (WP-035, D-032): ebenso, Ziel = der Admin selbst.
+ * `table.reveal_cards` (D-027): Quelle `ws`, Ziel = Tisch und Spieler, Details `{ roundId, handNumber, seat }`
+ * (geschrieben von `admin/reveal.ts`). `table.redraw_cards` (D-032): ebenso, Ziel = der Admin selbst.
  */
 export type AuditAction =
   | 'user.ban'

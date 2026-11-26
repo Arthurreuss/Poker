@@ -1,4 +1,4 @@
-// Einstellungen → Avatar und Reaktionen (WP-032).
+// Einstellungen → Avatar und Reaktionen.
 import { AVATAR_IDS } from '@poker/engine/protocol';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';

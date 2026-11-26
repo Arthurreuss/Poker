@@ -1,4 +1,4 @@
-// Admin zieht neue eigene Karten (WP-035, D-032) über echte WebSockets, ohne DB (Fake-Sessions, In-Memory-Repository).
+// Admin zieht neue eigene Karten (D-032) über echte WebSockets, ohne DB (Fake-Sessions, In-Memory-Repository).
 import type { AddressInfo } from 'node:net';
 import type { FastifyInstance } from 'fastify';
 import { afterEach, describe, expect, it } from 'vitest';

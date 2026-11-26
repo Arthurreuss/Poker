@@ -1,4 +1,4 @@
-// Feedback-Endpunkte (WP-024, Formate: docs/ARCHITECTURE.md, „Datenmodell“ → „Feedback“).
+// Feedback-Endpunkte (Formate: docs/ARCHITECTURE.md, „Datenmodell“ → „Feedback“).
 import type { OrientationPreference } from '../settings/orientation';
 import { apiRequest } from './client';
 

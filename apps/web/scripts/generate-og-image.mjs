@@ -1,4 +1,4 @@
-// Erzeugt das Vorschaubild für Link-Vorschauen in Messengern (WP-030, Open Graph, 1200×630) aus einem eigenen,
+// Erzeugt das Vorschaubild für Link-Vorschauen in Messengern (Open Graph, 1200×630) aus einem eigenen,
 // hier definierten SVG – keine fremden Assets (D-008). Aufruf: npm run og-image -w @poker/web.
 // Das Ergebnis liegt eingecheckt in public/og-image.png, der Prod-Build braucht dieses Skript nicht.
 // Farben = Tokens aus src/styles/tokens.css, Pik-Symbol wie in scripts/generate-icons.mjs.

@@ -10,7 +10,7 @@ export interface LottieClipProps {
 }
 
 /**
- * Spielt eine Lottie-Animation einmal ab und verschwindet danach (WP-040). Rein dekorativ, nimmt keine Eingaben an.
+ * Spielt eine Lottie-Animation einmal ab und verschwindet danach. Rein dekorativ, nimmt keine Eingaben an.
  * Schlägt das Laden fehl (offline, alter Browser), bleibt es still – die Feier funktioniert auch ohne.
  */
 export function LottieClip({ clip, className, delayMs = 0 }: LottieClipProps) {

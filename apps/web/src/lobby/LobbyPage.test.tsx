@@ -1,4 +1,4 @@
-// Lobby- und Einladungsseite mit gefälschtem WebSocket (WP-015): der Test spielt den Server.
+// Lobby- und Einladungsseite mit gefälschtem WebSocket: der Test spielt den Server.
 import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router';
@@ -160,7 +160,7 @@ describe('Lobby', () => {
   it('Teilen über das Teilen-Menü des Geräts (Web Share API)', async () => {
     const share = vi.fn(() => Promise.resolve());
     Object.defineProperty(navigator, 'share', { value: share, configurable: true });
-    // Touch-Gerät: nur dort wird das Teilen-Menü angeboten (WP-030).
+    // Touch-Gerät: nur dort wird das Teilen-Menü angeboten.
     vi.stubGlobal('matchMedia', (query: string) => ({ matches: query === '(pointer: coarse)', media: query }));
     onTestFinished(() => {
       Reflect.deleteProperty(navigator, 'share');

@@ -1,4 +1,4 @@
-// Feedback in Postgres (Tabelle `feedback`, migrations/0004_feedback.sql) – genutzt von API und CLI (WP-024).
+// Feedback in Postgres (Tabelle `feedback`, migrations/0004_feedback.sql) – genutzt von API und CLI.
 import type { Queryable } from '../db';
 import type { FeedbackRow } from '../db/types';
 import type { FeedbackCategory, FeedbackInput, FeedbackOrientation, FeedbackStatus } from './validation';

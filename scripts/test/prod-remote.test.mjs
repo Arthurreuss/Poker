@@ -1,4 +1,4 @@
-// prod-Befehle an den Mac Studio (WP-042, D-036): scripts/prod-remote.sh setzt die SSH-Aufrufe richtig zusammen.
+// prod-Befehle an den Mac Studio (D-036): scripts/prod-remote.sh setzt die SSH-Aufrufe richtig zusammen.
 // Trocken getestet – ssh ist durch ein Stub-Skript ersetzt, das seine Argumente protokolliert.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

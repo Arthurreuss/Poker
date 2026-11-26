@@ -1,5 +1,5 @@
 // Admin-Operationen für die CLI-Skripte in src/cli/ (D-011: kein Passwort-Reset per Mail, Reset über Admin).
-// Jede Änderung steht im Admin-Protokoll (WP-028, D-029) mit `source = 'cli'` und ohne Admin (`admin_id` NULL),
+// Jede Änderung steht im Admin-Protokoll (D-029) mit `source = 'cli'` und ohne Admin (`admin_id` NULL),
 // geschrieben in derselben SQL-Anweisung wie die Änderung.
 import { randomBytes } from 'node:crypto';
 import type { Queryable } from '../db';

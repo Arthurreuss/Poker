@@ -1,4 +1,4 @@
-# Prod-Image des Game-Servers (WP-003). Build: compose.prod.yml.
+# Prod-Image des Game-Servers. Build: compose.prod.yml.
 # Stage 1 baut ein ESM-Bundle (esbuild, @poker/engine eingebettet, keine Source-Maps),
 # Stage 2 installiert nur die Laufzeit-Abhängigkeiten des Servers, Stage 3 ist das schlanke Runtime-Image.
 FROM node:22-alpine AS build

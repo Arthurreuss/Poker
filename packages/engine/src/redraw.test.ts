@@ -1,4 +1,4 @@
-// Admin zieht neue Hole Cards (WP-035, D-032): Karten kommen nur aus dem Restdeck, nichts geht verloren oder doppelt.
+// Admin zieht neue Hole Cards (D-032): Karten kommen nur aus dem Restdeck, nichts geht verloren oder doppelt.
 import { describe, expect, it } from 'vitest';
 import { applyAction, legalActions, redrawHoleCards, startHand } from './betting';
 import type { HandState } from './hand-state';

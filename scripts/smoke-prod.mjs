@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-// Smoke-Test der Prod-Umgebung über den Web-Container (WP-003), ohne Abhängigkeiten.
+// Smoke-Test der Prod-Umgebung über den Web-Container, ohne Abhängigkeiten.
 // Prüft: GET /api/health, WS-Upgrade auf /ws mit gültiger Origin, aber ohne Session → 401 (Anfrage kommt
-// durch den Proxy beim Server an, WP-011), fremde Origin → 403. Mit SMOKE_COOKIE (z. B.
+// durch den Proxy beim Server an), fremde Origin → 403. Mit SMOKE_COOKIE (z. B.
 // `poker_session=<token>` aus dem Browser) zusätzlich der volle Handshake: 101, hello → welcome.
 //   npm run prod:smoke
 //   SMOKE_URL=http://localhost:4320 SMOKE_ORIGIN=https://poker.arthur-reuss.de node scripts/smoke-prod.mjs

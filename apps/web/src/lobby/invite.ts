@@ -1,4 +1,4 @@
-// Tisch-Links teilen (WP-015, WP-030): private Tische per `/join/<inviteCode>`, öffentliche per `/table/<id>`,
+// Tisch-Links teilen: private Tische per `/join/<inviteCode>`, öffentliche per `/table/<id>`,
 // immer unter derselben Origin (D-014). Die Link-Vorschau im Messenger (Open Graph) ist allgemein und verrät
 // keine Tischdaten (apps/web/index.html, docker/nginx/default.conf.template).
 

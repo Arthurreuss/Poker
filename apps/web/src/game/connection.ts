@@ -1,4 +1,4 @@
-// WebSocket-Verbindung zum Game-Server (WP-018): `hello`, Wiederverbinden mit exponentiellem Backoff,
+// WebSocket-Verbindung zum Game-Server: `hello`, Wiederverbinden mit exponentiellem Backoff,
 // Abbruch-Erkennung (Heartbeat auf Anwendungsebene) und erneutes Beitreten zu beobachteten Tischen.
 // Framework-unabhängig und mit injizierbarem Socket testbar. Beschreibung: ARCHITECTURE.md,
 // „Frontend: Spielablauf und Verbindung“.
@@ -89,7 +89,7 @@ export interface GameConnectionOptions {
 }
 
 export const DEFAULT_BACKOFF: BackoffOptions = { initialMs: 500, factor: 2, maxMs: 10_000, jitter: 0.2 };
-/** `ping` nach 20 s ohne eingehende Nachricht, tot nach weiteren 10 s ohne Antwort (WP-012). */
+/** `ping` nach 20 s ohne eingehende Nachricht, tot nach weiteren 10 s ohne Antwort. */
 export const DEFAULT_HEARTBEAT: HeartbeatOptions = { idleMs: 20_000, timeoutMs: 10_000 };
 export const DEFAULT_SESSION_CHECK_AFTER = 3;
 
@@ -175,7 +175,7 @@ export class GameConnection {
     return this.userValue;
   }
 
-  /** Admin-Flag der Session laut `welcome` (WP-033; fehlt beim Server → `false`). */
+  /** Admin-Flag der Session laut `welcome` (fehlt beim Server → `false`). */
   get isAdmin(): boolean {
     return this.isAdminValue;
   }

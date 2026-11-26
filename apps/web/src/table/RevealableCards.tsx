@@ -3,7 +3,7 @@ import './reveal.css';
 import type { Card as CardValue } from './types';
 
 /**
- * Aufdecken verdeckter Karten durch einen Admin (WP-033, D-027): Die Tischansicht bekommt die aufgedeckten Karten je
+ * Aufdecken verdeckter Karten durch einen Admin (D-027): Die Tischansicht bekommt die aufgedeckten Karten je
  * Platz und meldet Tipps. Nur im Client des Admins gesetzt; ohne diese Prop bleibt die Ansicht unverändert.
  */
 export interface CardReveal {
@@ -13,7 +13,7 @@ export interface CardReveal {
   readonly faceUp: ReadonlySet<number>;
   readonly onToggle: (seat: number) => void;
   /**
-   * Eigene Karten neu ziehen (WP-035, D-032): gesetzt, solange der Admin in der laufenden Hand ist; die eigenen Karten
+   * Eigene Karten neu ziehen (D-032): gesetzt, solange der Admin in der laufenden Hand ist; die eigenen Karten
    * werden dann zum Schalter.
    */
   readonly onRedraw?: (() => void) | undefined;

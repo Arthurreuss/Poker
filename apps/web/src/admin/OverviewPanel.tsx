@@ -1,5 +1,5 @@
-// /admin (Übersicht, WP-029): Tische, Spieler online, Runden heute/7 Tage, offenes Feedback, Server-Health.
-// Lädt alle 30 s neu. Das letzte Backup sieht der Server nicht (ARCHITECTURE.md, „Admin-Dashboard (WP-029)“) –
+// /admin (Übersicht): Tische, Spieler online, Runden heute/7 Tage, offenes Feedback, Server-Health.
+// Lädt alle 30 s neu. Das letzte Backup sieht der Server nicht (ARCHITECTURE.md, „Admin-Dashboard“) –
 // Hinweis auf `npm run prod:status`.
 import { useEffect } from 'react';
 import { Link } from 'react-router';

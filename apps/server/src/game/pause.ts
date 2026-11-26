@@ -1,4 +1,4 @@
-// Pause nach einer Hand (WP-031, WP-039): Grundpause für die Ergebnis-Anzeige, bei einem Showdown zusätzlich
+// Pause nach einer Hand: Grundpause für die Ergebnis-Anzeige, bei einem Showdown zusätzlich
 // Zeit für das Umdrehen der Karten und die Gewinneranzeige (Krone), plus Zeit für einen All-in-Runout, den der
 // Client Straße für Straße aufdeckt (Flop, Turn, River nacheinander, siehe ARCHITECTURE.md
 // „Frontend: Animationen und Sounds“). Rein, damit sie ohne Uhr testbar ist.

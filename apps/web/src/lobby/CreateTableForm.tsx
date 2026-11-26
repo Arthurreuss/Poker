@@ -1,4 +1,4 @@
-// Formular „Tisch erstellen“ (WP-015). Prüft clientseitig mit den Server-Regeln (`tableSettingsForm.ts`).
+// Formular „Tisch erstellen“. Prüft clientseitig mit den Server-Regeln (`tableSettingsForm.ts`).
 import { useId, useState, type ReactNode, type SyntheticEvent } from 'react';
 import type { TableSettings } from '@poker/engine/protocol';
 import {

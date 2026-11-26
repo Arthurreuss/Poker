@@ -12,7 +12,7 @@ export interface CelebrationProps {
 }
 
 /**
- * Feier nach einer Hand (WP-040), als Ebene über der Tischfläche: Konfetti (je Hand ein anderes), in der Mitte ein
+ * Feier nach einer Hand, als Ebene über der Tischfläche: Konfetti (je Hand ein anderes), in der Mitte ein
  * Schriftzug mit der Gewinnerhand und deren fünf Karten in einer Reihe, darunter Münzen nach Pot-Größe.
  * Der Schriftzug kommt auch ohne Animationen; Lottie-Animationen nur mit `animate`.
  */

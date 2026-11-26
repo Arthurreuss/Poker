@@ -9,7 +9,7 @@ import { VitePWA } from 'vite-plugin-pwa';
 // WEB_DEV_PORT / WEB_DEV_HOST: Port und Bind-Adresse des Dev-Servers.
 // VITE_USE_POLLING=true: Datei-Polling, falls Bind-Mount-Events (Docker Desktop) nicht ankommen.
 // API_PROXY_ORIGIN (optional): Origin-Header für /api und /ws überschreiben – nur für einen zweiten
-// Dev-Server gegen einen laufenden Game-Server mit anderer PUBLIC_ORIGIN (z. B. Playwright, WP-018).
+// Dev-Server gegen einen laufenden Game-Server mit anderer PUBLIC_ORIGIN (z. B. Playwright).
 const env = process.env;
 const proxyTarget = env['API_PROXY_TARGET'];
 const proxyOrigin = env['API_PROXY_ORIGIN'];
@@ -22,7 +22,7 @@ const bgMatch = /--color-bg:\s*(#[0-9a-fA-F]{6})/.exec(tokens);
 if (bgMatch?.[1] === undefined) throw new Error('--color-bg fehlt in src/styles/tokens.css');
 const themeColor = bgMatch[1];
 
-// App-Version für das Feedback (WP-024): APP_VERSION (Docker-Build, gesetzt von scripts/prod.sh), sonst der
+// App-Version für das Feedback: APP_VERSION (Docker-Build, gesetzt von scripts/prod.sh), sonst der
 // aktuelle Commit (git), sonst „unbekannt“ (z. B. im dev-Container ohne git). Im Code: __APP_VERSION__.
 function gitCommit(): string | undefined {
   try {
@@ -45,7 +45,7 @@ function themeColorHtml(): Plugin {
 }
 
 /**
- * Platzhalter der Open-Graph-Tags in index.html (WP-030). Im Build bleibt er stehen – nginx ersetzt ihn pro Anfrage
+ * Platzhalter der Open-Graph-Tags in index.html. Im Build bleibt er stehen – nginx ersetzt ihn pro Anfrage
  * durch die aufgerufene Origin (beide Domains, D-023); der Dev-Server setzt relative URLs ein.
  */
 const OG_ORIGIN_PLACEHOLDER = '__POKER_ORIGIN__';
@@ -63,7 +63,7 @@ export default defineConfig({
     react(),
     themeColorHtml(),
     ogOriginDevHtml(),
-    // PWA (WP-014): Service Worker nur für statische Assets, nie für /api oder /ws.
+    // PWA: Service Worker nur für statische Assets, nie für /api oder /ws.
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: 'script-defer',
@@ -89,7 +89,7 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,webmanifest}'],
-        // Vorschaubild nur für Messenger-Crawler (WP-030), nicht in den Offline-Cache.
+        // Vorschaubild nur für Messenger-Crawler, nicht in den Offline-Cache.
         globIgnores: ['**/og-image.png'],
         cleanupOutdatedCaches: true,
         // SPA-Navigation offline aus dem Precache – aber nie für API und WebSocket.

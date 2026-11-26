@@ -1,4 +1,4 @@
-// Feier nach einer Hand (WP-040): rein, aus der gefilterten Server-Sicht. Was gezeigt wird, hängt nur von der Hand ab
+// Feier nach einer Hand: rein, aus der gefilterten Server-Sicht. Was gezeigt wird, hängt nur von der Hand ab
 // (Nummer, Gewinner, Pot) – alle am Tisch sehen dasselbe Konfetti und dieselben Münzen.
 import { calculatePots, HAND_CATEGORY_NAMES, type Card } from '@poker/engine';
 import type { HandView, TableView as ServerTableView } from '@poker/engine/protocol';

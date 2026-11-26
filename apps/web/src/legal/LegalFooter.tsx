@@ -1,4 +1,4 @@
-// Fußzeile mit Spielgeld-Hinweis (D-001) und Links auf Impressum und Datenschutz (WP-022).
+// Fußzeile mit Spielgeld-Hinweis (D-001) und Links auf Impressum und Datenschutz.
 // Auf allen Seiten: App-Shell, Login/Registrierung, Rechtstexte. Am Tisch über das Tisch-Menü.
 import { Link } from 'react-router';
 import { cx } from '../styles/cx';

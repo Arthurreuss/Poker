@@ -1,4 +1,4 @@
-// Reine Logik der Aktionsleiste (WP-018): Einsatzgrenzen ausschließlich aus `legalActions` (D-003),
+// Reine Logik der Aktionsleiste: Einsatzgrenzen ausschließlich aus `legalActions` (D-003),
 // Schnellwahl-Beträge und Vorab-Aktionen. Unit-getestet in `logic.test.ts`.
 import type { Action, LegalAction, LegalActions, Street } from '@poker/engine';
 

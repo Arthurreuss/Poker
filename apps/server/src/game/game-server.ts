@@ -1,4 +1,4 @@
-// Game-Server (WP-011): verwaltet Verbindungen, Lobby und Tische im Speicher eines Prozesses und setzt
+// Game-Server: verwaltet Verbindungen, Lobby und Tische im Speicher eines Prozesses und setzt
 // Client-Nachrichten in Tisch-Operationen um. Unabhängig vom Transport (WebSocket in `ws.ts`), damit das
 // Tischmodell ohne Netzwerk und ohne DB testbar ist. Protokoll: `@poker/engine/protocol`.
 import { randomBytes } from 'node:crypto';
@@ -29,20 +29,20 @@ import { Table, type Logger, type TableResult } from './table';
 export const DEFAULT_HAND_PAUSE_MS = 4000;
 
 /**
- * Zusätzliche Pause nach einem Showdown (WP-039): Der Client dreht die Karten der Mitspieler erst ca. 1 s lang um
+ * Zusätzliche Pause nach einem Showdown: Der Client dreht die Karten der Mitspieler erst ca. 1 s lang um
  * (`SHOWDOWN_FLIP_MS` = 1,2 s) und zeigt dann Gewinner mit Krone; die Gewinneranzeige bleibt so gut 4 s stehen.
  * Eine Showdown-Hand ohne Runout dauert damit insgesamt 5,5 s, eine durch Fold beendete weiter 4 s.
  */
 export const DEFAULT_SHOWDOWN_PAUSE_MS = 1500;
 
 /**
- * Zusätzliche Pause je Straße eines All-in-Runouts (WP-031): Der Client deckt Flop, Turn und River dann
+ * Zusätzliche Pause je Straße eines All-in-Runouts: Der Client deckt Flop, Turn und River dann
  * nacheinander auf (ca. 0,9 s Abstand), damit bleibt die Showdown-Anzeige trotzdem ein paar Sekunden stehen.
  */
 export const DEFAULT_RUNOUT_PAUSE_MS = 1000;
 
 /**
- * Gnadenfrist für getrennte Spieler am Zug (WP-012): Ein Reload oder kurzer Netzwechsel kostet so keine Hand,
+ * Gnadenfrist für getrennte Spieler am Zug: Ein Reload oder kurzer Netzwechsel kostet so keine Hand,
  * der Tisch wartet aber höchstens so lange (nie länger als Zugzeit + Zeitbank).
  */
 export const DEFAULT_DISCONNECT_GRACE_MS = 3000;
@@ -51,7 +51,7 @@ export const DEFAULT_DISCONNECT_GRACE_MS = 3000;
 export const DEFAULT_ORPHAN_TIMEOUT_MS = 10 * 60_000;
 
 /**
- * Offene oder beendete Tische ohne Beobachter bleiben so lange im Speicher (WP-015), damit ein Reload, der
+ * Offene oder beendete Tische ohne Beobachter bleiben so lange im Speicher, damit ein Reload, der
  * Wechsel Lobby → Tisch (neue WebSocket-Verbindung) oder das Teilen des Einladungslinks den Tisch nicht schließt.
  * Ein explizites `table.leave` des letzten Beobachters räumt einen leeren offenen bzw. beendeten Tisch sofort auf.
  */
@@ -85,17 +85,17 @@ export interface GameServerOptions {
   orphanTimeoutMs?: number;
   /** Standard: {@link DEFAULT_IDLE_TABLE_TIMEOUT_MS}. */
   idleTableTimeoutMs?: number;
-  /** Erweiterungspunkte für WP-013 (Hand-Historie). */
+  /** Erweiterungspunkte, z. B. für die Hand-Historie. */
   hooks?: GameHooks;
   /** Standard: 12 Zeichen base64url aus 9 Zufallsbytes. */
   generateInviteCode?: () => string;
   /**
-   * Admin-Protokoll für `admin.revealCards` (WP-033, D-027): schreibt den Eintrag und bestätigt das Admin-Recht.
+   * Admin-Protokoll für `admin.revealCards` (D-027): schreibt den Eintrag und bestätigt das Admin-Recht.
    * Ohne Angabe ist Aufdecken abgeschaltet (`FORBIDDEN`). Betrieb: `recordCardReveal(db, …)` (siehe `buildApp`).
    */
   revealAudit?: CardRevealAuditSink;
   /**
-   * Admin-Protokoll für `admin.redrawCards` (WP-035, D-032), wie `revealAudit`. Ohne Angabe ist Neuziehen
+   * Admin-Protokoll für `admin.redrawCards` (D-032), wie `revealAudit`. Ohne Angabe ist Neuziehen
    * abgeschaltet (`FORBIDDEN`). Betrieb: `recordCardRedraw(db, …)` (siehe `buildApp`).
    */
   redrawAudit?: CardRedrawAuditSink;
@@ -103,7 +103,7 @@ export interface GameServerOptions {
 
 /** Zusätzliche Angaben zur Verbindung aus der Session (nie vom Client). */
 export interface ConnectOptions {
-  /** Admin-Flag der Session (WP-028/WP-033). */
+  /** Admin-Flag der Session. */
   isAdmin?: boolean;
 }
 
@@ -125,15 +125,15 @@ export interface GameClient {
 }
 
 interface Client extends GameClient {
-  /** Avatar des Users (WP-032); wird beim Hinsetzen an den Tisch übergeben. */
+  /** Avatar des Users; wird beim Hinsetzen an den Tisch übergeben. */
   avatar: AvatarId | null;
   conn: Connection;
-  /** Admin-Flag aus der Session beim Verbinden (WP-033). */
+  /** Admin-Flag aus der Session beim Verbinden. */
   isAdmin: boolean;
   hello: boolean;
   lobby: boolean;
   tables: Set<number>;
-  /** Von einer neueren Verbindung desselben Users abgelöst (WP-012) – Nachrichten werden ignoriert. */
+  /** Von einer neueren Verbindung desselben Users abgelöst – Nachrichten werden ignoriert. */
   replaced: boolean;
 }
 
@@ -146,15 +146,15 @@ export class GameServer {
   /** Verbindungen, die einen Tisch beobachten. */
   private readonly tableClients = new Map<number, Set<Client>>();
   private readonly lobbyClients = new Set<Client>();
-  /** Aktive Verbindung (nach `hello`) je User – höchstens eine (WP-012: die neuere übernimmt). */
+  /** Aktive Verbindung (nach `hello`) je User – höchstens eine (die neuere übernimmt). */
   private readonly activeByUser = new Map<number, Client>();
-  /** Alle offenen Verbindungen (für Avatar-Änderungen, WP-032). */
+  /** Alle offenen Verbindungen (für Avatar-Änderungen). */
   private readonly clients = new Set<Client>();
-  /** Zeitpunkt der letzten Emoji-Reaktion je User (Rate-Limit, WP-032). */
+  /** Zeitpunkt der letzten Emoji-Reaktion je User (Rate-Limit). */
   private readonly lastReactionAt = new Map<number, number>();
   /** Zuletzt an die Lobby gesendeter Eintrag je Tisch (JSON), um nur Änderungen zu schicken. */
   private readonly lobbyCache = new Map<number, string>();
-  /** Geplantes Aufräumen von Tischen ohne Beobachter (WP-015). */
+  /** Geplantes Aufräumen von Tischen ohne Beobachter. */
   private readonly pendingDispose = new Map<number, Cancel>();
   /** Ausstehende Schreibvorgänge entfernter Tische (z. B. `abortRound`), damit `idle()` auch auf sie wartet. */
   private readonly retiring = new Set<Promise<void>>();
@@ -206,7 +206,7 @@ export class GameServer {
   }
 
   /**
-   * Avatar eines Users geändert (WP-032, `PUT /api/me/avatar`): gilt ab sofort für seine Verbindungen und an
+   * Avatar eines Users geändert (`PUT /api/me/avatar`): gilt ab sofort für seine Verbindungen und an
    * allen Tischen, an denen er sitzt (neuer `table.state` an deren Beobachter).
    */
   setAvatar(userId: number, avatar: AvatarId | null): void {
@@ -248,13 +248,13 @@ export class GameServer {
     }
   }
 
-  /** Tisch im Speicher (für WP-012/WP-013 und Tests). */
+  /** Tisch im Speicher (für Zug-Timer, Hand-Historie und Tests). */
   getTable(tableId: number): Table | undefined {
     return this.tables.get(tableId);
   }
 
   /**
-   * Admin schließt einen Tisch (WP-028): laufende Runde ohne Punkte abbrechen (wie D-019), Tisch in der DB schließen,
+   * Admin schließt einen Tisch: laufende Runde ohne Punkte abbrechen (wie D-019), Tisch in der DB schließen,
    * alle Beobachter mit `table.closed` (`reason: 'admin'`) informieren und den Tisch aus Speicher und Lobby nehmen.
    * `null`, wenn der Tisch nicht (mehr) im Speicher ist. Liefert den Zustand vor dem Schließen (fürs Protokoll).
    */
@@ -365,7 +365,7 @@ export class GameServer {
     }
   }
 
-  /** WP-033 (D-027): Karten nur an genau diese Verbindung; Mitspieler bekommen keine Nachricht. */
+  /** D-027: Karten nur an genau diese Verbindung; Mitspieler bekommen keine Nachricht. */
   private async revealCards(
     client: Client,
     table: Table,
@@ -387,7 +387,7 @@ export class GameServer {
   }
 
   /**
-   * WP-035 (D-032): Admin zieht neue eigene Karten. Erst prüfen, dann protokollieren (mit Admin-Prüfung aus der DB),
+   * D-032: Admin zieht neue eigene Karten. Erst prüfen, dann protokollieren (mit Admin-Prüfung aus der DB),
    * dann tauschen. Die neue Sicht geht nur an diese Verbindung; Mitspieler bekommen keine Nachricht.
    */
   private async redrawCards(client: Client, table: Table): Promise<TableResult> {
@@ -411,7 +411,7 @@ export class GameServer {
   }
 
   /**
-   * Emoji-Reaktion (WP-032): nur Spieler mit Sitz, höchstens eine pro {@link REACTION_COOLDOWN_MS} und User
+   * Emoji-Reaktion: nur Spieler mit Sitz, höchstens eine pro {@link REACTION_COOLDOWN_MS} und User
    * (abgelehnte Versuche zählen nicht). Geht an alle Beobachter des Tisches, auch den Absender.
    */
   private react(client: Client, table: Table, reaction: ReactionId): TableResult {
@@ -428,7 +428,7 @@ export class GameServer {
   }
 
   /**
-   * Zwei Verbindungen desselben Users (WP-012): die neuere (zuletzt `hello`) übernimmt. Die ältere wird sofort
+   * Zwei Verbindungen desselben Users: die neuere (zuletzt `hello`) übernimmt. Die ältere wird sofort
    * von Lobby und Tischen abgemeldet und mit {@link CLOSE_REPLACED} geschlossen; Tische, die die neue Verbindung
    * per `table.join` wieder beobachtet, sehen den Spieler danach wieder als verbunden.
    */
@@ -495,7 +495,7 @@ export class GameServer {
   private join(client: Client, target: { tableId: number } | { inviteCode: string }): TableResult {
     const table = 'tableId' in target ? this.tables.get(target.tableId) : this.byInviteCode.get(target.inviteCode);
     // Private Tische nur per Code – außer für Ersteller, Spieler am Tisch und wer schon per Code beigetreten
-    // ist (Reload, Wechsel Einladungsseite → Tischseite, WP-015); sonst wie „nicht vorhanden“.
+    // ist (Reload, Wechsel Einladungsseite → Tischseite); sonst wie „nicht vorhanden“.
     const allowed =
       table !== undefined &&
       ('inviteCode' in target ||

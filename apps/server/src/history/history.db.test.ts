@@ -1,4 +1,4 @@
-// Integration Hand-Historie + Postgres (WP-013): ganze Runden über den Game-Server (ohne Netzwerk, ManualClock),
+// Integration Hand-Historie + Postgres: ganze Runden über den Game-Server (ohne Netzwerk, ManualClock),
 // danach alles aus der DB laden, mit dem Serverzustand vergleichen und per Engine nachspielen. Außerdem:
 // Speicherfehler und Server-Neustart mitten in der Runde. Nur mit TEST_DATABASE_URL: `npm run test:db -w @poker/server`.
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -138,7 +138,7 @@ describe.skipIf(testDatabaseUrl === undefined)('Hand-Historie mit Postgres', () 
       }
     }
 
-    /** Alle Verbindungen trennen (Spieler weg, WP-015/D-022). */
+    /** Alle Verbindungen trennen (Spieler weg, D-022). */
     function disconnectAll(): void {
       for (const c of clients.values()) game.disconnect(c);
     }

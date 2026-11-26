@@ -1,4 +1,4 @@
-// Admin deckt Karten auf (WP-033, D-027) über echte WebSockets, ohne DB (Fake-Sessions, In-Memory-Repository):
+// Admin deckt Karten auf (D-027) über echte WebSockets, ohne DB (Fake-Sessions, In-Memory-Repository):
 // Eine ganze Runde lang fordert der Admin in jeder Hand die Karten aller Mitspieler an, ein Nicht-Admin versucht es
 // ebenfalls. Danach werden alle empfangenen Nachrichten aller anderen Verbindungen auf fremde Karten geprüft.
 import type { AddressInfo } from 'node:net';

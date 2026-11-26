@@ -1,5 +1,5 @@
 // Rahmen für alle eingeloggten Seiten außer dem Tisch: Kopfzeile mit App-Name, Menü, Feedback-Slot;
-// Fußzeile mit Spielgeld-Hinweis und Rechtstexten (WP-022).
+// Fußzeile mit Spielgeld-Hinweis und Rechtstexten.
 import { useState } from 'react';
 import { Link, NavLink, Outlet } from 'react-router';
 import { useAuth } from '../auth/AuthContext';

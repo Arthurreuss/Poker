@@ -1,4 +1,4 @@
-// Auth-Endpunkte des Servers (WP-010, Formate: docs/ARCHITECTURE.md „Auth“).
+// Auth-Endpunkte des Servers (Formate: docs/ARCHITECTURE.md „Auth“).
 import type { AvatarId } from '@poker/engine/protocol';
 import { apiRequest } from './client';
 
@@ -6,7 +6,7 @@ export interface User {
   id: number;
   username: string;
   isAdmin: boolean;
-  /** Gewählter Avatar (WP-032); `null` = keiner. */
+  /** Gewählter Avatar; `null` = keiner. */
   avatar: AvatarId | null;
 }
 
@@ -37,12 +37,12 @@ export async function me(signal?: AbortSignal): Promise<User> {
   return (await apiRequest<UserResponse>('/api/me', signal === undefined ? {} : { signal })).user;
 }
 
-/** Löscht das eigene Konto (WP-022, Passwort als Bestätigung). Der Server anonymisiert es und beendet alle Sessions. */
+/** Löscht das eigene Konto (Passwort als Bestätigung). Der Server anonymisiert es und beendet alle Sessions. */
 export async function deleteAccount(password: string): Promise<void> {
   await apiRequest<undefined>('/api/me', { method: 'DELETE', body: { password } });
 }
 
-/** Eigenen Avatar setzen bzw. mit `null` entfernen (WP-032); liefert den aktualisierten User. */
+/** Eigenen Avatar setzen bzw. mit `null` entfernen; liefert den aktualisierten User. */
 export async function updateAvatar(avatar: AvatarId | null): Promise<User> {
   return (await apiRequest<UserResponse>('/api/me/avatar', { method: 'PUT', body: { avatar } })).user;
 }

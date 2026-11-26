@@ -1,5 +1,5 @@
 /**
- * Button- und Blind-Wanderung über die Hände einer Runde (WP-008), Dead-Button-Regel nach TDA:
+ * Button- und Blind-Wanderung über die Hände einer Runde, Dead-Button-Regel nach TDA:
  * Der Big Blind rückt immer genau einen (noch spielenden) Spieler weiter. Small Blind ist der Sitz des
  * vorigen Big Blinds, der Button der Sitz des vorigen Small Blinds – auch wenn diese Sitze inzwischen
  * leer sind (dann kein Small Blind bzw. Button auf leerem Sitz). Heads-up: Button = Small Blind, und

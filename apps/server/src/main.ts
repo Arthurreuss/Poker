@@ -17,7 +17,7 @@ const app = buildApp({
   // prod: in eine Datei, die der Dienst logrotate täglich rotiert und nach spätestens 14 Tagen löscht (D-025).
   logger: config.logFile === null ? true : { file: config.logFile },
 });
-// Schema aktualisieren, bevor Anfragen angenommen werden (WP-009); bei Fehler startet der Server nicht.
+// Schema aktualisieren, bevor Anfragen angenommen werden; bei Fehler startet der Server nicht.
 // MIGRATIONS_DIR setzt das Prod-Image (gebündelter Server, D-015); in dev gilt der Standardpfad.
 const migrationsDir = process.env.MIGRATIONS_DIR;
 await runMigrations(config.databaseUrl, {
@@ -27,7 +27,7 @@ await runMigrations(config.databaseUrl, {
   },
 });
 
-// Tische leben nur im Speicher (WP-011): was vor dem Neustart offen war oder lief, ist verloren.
+// Tische leben nur im Speicher: was vor dem Neustart offen war oder lief, ist verloren.
 // Laufende Runden → aborted (ohne Punkte), offene/laufende Tische → closed; gespeicherte Hände bleiben (D-019).
 const orphaned = await closeOrphanedTables(db);
 if (orphaned.rounds > 0 || orphaned.tables > 0) {
@@ -36,7 +36,7 @@ if (orphaned.rounds > 0 || orphaned.tables > 0) {
 
 // Speicherdauer von Feedback (D-025): jetzt und dann täglich abgelaufene Einträge löschen.
 const feedbackPurge = startFeedbackPurgeJob({ db, log: app.log });
-// Admin-Protokoll (D-025, WP-028): Einträge nach 1 Jahr löschen.
+// Admin-Protokoll (D-025): Einträge nach 1 Jahr löschen.
 const auditPurge = startAuditPurgeJob({ db, log: app.log });
 
 async function shutdown(): Promise<void> {

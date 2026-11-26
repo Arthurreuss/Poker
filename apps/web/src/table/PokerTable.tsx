@@ -17,17 +17,17 @@ export interface PokerTableProps {
   readonly view: TableView;
   /** Vier-Farben-Deck (Karo blau, Kreuz grün). */
   readonly fourColor?: boolean;
-  /** Inhalt des unteren Bereichs (Aktionsleiste, WP-018). Ohne Inhalt bleibt der Platz frei. */
+  /** Inhalt des unteren Bereichs (Aktionsleiste). Ohne Inhalt bleibt der Platz frei. */
   readonly actionBar?: ReactNode;
   /** Hoch- oder Querformat (D-009). Standard: Hochformat. */
   readonly layout?: TableLayout;
-  /** Tisch-Menü oben links (z. B. `TableMenu`, WP-017). */
+  /** Tisch-Menü oben links (z. B. `TableMenu`). */
   readonly menu?: ReactNode;
-  /** Ebene über der Tischfläche, z. B. Animationen (`TableFx`, WP-031); nimmt keine Eingaben an. */
+  /** Ebene über der Tischfläche, z. B. Animationen (`TableFx`); nimmt keine Eingaben an. */
   readonly overlay?: ReactNode;
-  /** Reaktions-Knopf oben rechts (WP-032); ohne Inhalt bleibt die Ecke frei. */
+  /** Reaktions-Knopf oben rechts; ohne Inhalt bleibt die Ecke frei. */
   readonly reactionPicker?: ReactNode;
-  /** Nur für Admins (WP-033, D-027): verdeckte Karten der Mitspieler per Tipp umdrehen. */
+  /** Nur für Admins (D-027): verdeckte Karten der Mitspieler per Tipp umdrehen. */
   readonly reveal?: CardReveal | undefined;
 }
 
@@ -71,7 +71,7 @@ function SeatCards({
   ));
   const onRedraw = reveal?.onRedraw;
   if (placed.isHero && holeCards.kind === 'visible' && onRedraw !== undefined) {
-    // Admin (WP-035, D-032): Tipp auf die eigenen Karten zieht zwei neue.
+    // Admin (D-032): Tipp auf die eigenen Karten zieht zwei neue.
     return (
       <button
         type="button"
@@ -168,7 +168,7 @@ function TableSeat({
 }
 
 /**
- * Tischansicht (WP-016 Hochformat, WP-017 Querformat): reine Funktion des gefilterten
+ * Tischansicht (Hoch- und Querformat): reine Funktion des gefilterten
  * Tischzustands. Eigener Sitz unten mittig, übrige Sitze im Uhrzeigersinn; skaliert mit der
  * Containergröße. Beide Layouts haben denselben Elementbaum – ein Wechsel ändert nur Klassen und
  * Positionen, nichts wird neu gemountet (Aktionsleiste und Menü behalten ihren Zustand).
@@ -224,7 +224,7 @@ export function PokerTable({
             {reactionPicker}
           </div>
         )}
-        {/* Hand-Übersicht (WP-038): für alle am Tisch, auch Zuschauer; unter dem Reaktions-Knopf. */}
+        {/* Hand-Übersicht: für alle am Tisch, auch Zuschauer; unter dem Reaktions-Knopf. */}
         <div
           className={hasReactionPicker ? 'pt-hands-slot pt-hands-slot--below' : 'pt-hands-slot'}
           data-testid="hands-slot"

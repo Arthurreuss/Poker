@@ -1,4 +1,4 @@
-// Test-Helfer (WP-015): WebSocket-Double für den Lobby-Client. Der Test spielt den Server.
+// Test-Helfer: WebSocket-Double für den Lobby-Client. Der Test spielt den Server.
 import type { ClientMessage, ServerMessage } from '@poker/engine/protocol';
 import type { SocketFactory, SocketLike } from './client';
 

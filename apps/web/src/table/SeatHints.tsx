@@ -1,4 +1,4 @@
-// Hinweise an der Sitz-Plakette (WP-037): Zug-Timer (Ring + Sekunden), letzte Aktion als Schriftzug und
+// Hinweise an der Sitz-Plakette: Zug-Timer (Ring + Sekunden), letzte Aktion als Schriftzug und
 // der Name der eigenen besten Hand. Reine Darstellung; Stile in `seat-hints.css`.
 import type { CSSProperties } from 'react';
 import { formatChips } from './format';
@@ -47,7 +47,7 @@ export function ActionTag({ action }: { action: LastActionView }) {
 }
 
 /**
- * Zug-Timer als Rahmen der Plakette (WP-018, seit WP-037 die Hervorhebung selbst): der farbige Rahmen des Spielers
+ * Zug-Timer als Rahmen der Plakette (er ist die Hervorhebung selbst): der farbige Rahmen des Spielers
  * am Zug läuft im Uhrzeigersinn ab 12 Uhr ab; der abgelaufene Teil sieht aus wie ein normaler Rahmen. Liegt genau
  * auf dem Rahmen der Plakette (kein zweiter Ring); gezeichnet per CSS (`--pt-remaining` 0–1, `seat-hints.css`).
  */

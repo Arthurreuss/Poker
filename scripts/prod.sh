@@ -4,7 +4,7 @@
 set -eu
 . "$(dirname "$0")/lib/prod-env.sh"
 
-# App-Version für das Web-Image (Feedback-Kontext, WP-024): Commit des prod-Checkouts.
+# App-Version für das Web-Image (Feedback-Kontext): Commit des prod-Checkouts.
 APP_VERSION="${APP_VERSION:-$(git -C "$POKER_PROD_DIR" rev-parse --short HEAD 2>/dev/null || true)}"
 export APP_VERSION
 

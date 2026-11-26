@@ -1,5 +1,5 @@
-// Kleiner WebSocket-Client für Lobby und Einladungsseite (WP-015). Bewusst eigenständig und ohne React,
-// damit er später mit dem Spiel-Client aus WP-018 (`src/game/`) zusammengeführt werden kann.
+// Kleiner WebSocket-Client für Lobby und Einladungsseite. Bewusst eigenständig und ohne React,
+// damit er später mit dem Spiel-Client (`src/game/`) zusammengeführt werden kann (#8).
 // Verbindungsregeln (D-014, D-022): ARCHITECTURE.md, „Timer und Verbindungsmodell“ → „Was der Client tun muss“.
 import {
   CLOSE_REPLACED,

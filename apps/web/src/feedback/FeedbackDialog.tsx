@@ -1,4 +1,4 @@
-// Feedback-Dialog (WP-024) und wiederverwendbare Einstiege: `useFeedbackDialog` (z. B. Tisch-Menü) und
+// Feedback-Dialog und wiederverwendbare Einstiege: `useFeedbackDialog` (z. B. Tisch-Menü) und
 // `FeedbackButton` (App-Shell). Der Dialog wird per Portal in `document.body` gerendert, damit er unabhängig
 // davon offen bleibt, ob z. B. ein Menü, aus dem er geöffnet wurde, sich schließt.
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
@@ -63,7 +63,7 @@ export interface FeedbackDialogHandle {
 }
 
 /**
- * Feedback-Formular aus beliebigen Komponenten öffnen. Beispiel Tisch-Menü (WP-018):
+ * Feedback-Formular aus beliebigen Komponenten öffnen. Beispiel Tisch-Menü:
  * `const feedback = useFeedbackDialog({ tableId });` → Menüeintrag `onClick={feedback.open}`,
  * `{feedback.dialog}` neben dem Menü rendern.
  */

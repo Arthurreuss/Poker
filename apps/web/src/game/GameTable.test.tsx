@@ -178,7 +178,7 @@ describe('GameTable', () => {
     expect(onLeave).toHaveBeenCalled();
   });
 
-  it('table.closed durch Admin (WP-028): eigener Hinweis', () => {
+  it('table.closed durch Admin: eigener Hinweis', () => {
     const { state, last } = renderGame(1);
     state(serverView(startGame(), 1));
     act(() => {
@@ -197,7 +197,7 @@ describe('GameTable', () => {
     await user.click(screen.getByRole('button', { name: 'Tisch-Menü' }));
     expect(screen.getByRole('link', { name: 'Impressum' })).toHaveAttribute('target', '_blank');
     expect(screen.getByRole('link', { name: 'Datenschutz' })).toHaveAttribute('href', '/datenschutz');
-    // Öffentlich: Link direkt zum Tisch (WP-030).
+    // Öffentlich: Link direkt zum Tisch.
     const invite = () => within(screen.getByRole('group', { name: 'Einladen' }));
     expect(invite().getByLabelText('Einladungslink')).toHaveValue(`${window.location.origin}/table/${String(view.id)}`);
     state({ ...view, settings: { ...view.settings, isPublic: false } });
@@ -206,7 +206,7 @@ describe('GameTable', () => {
     expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
 
-  describe('Showdown vor dem Rundenende (WP-031)', () => {
+  describe('Showdown vor dem Rundenende', () => {
     /** Heads-up, beide All-in preflop: Runout, einer scheidet aus → Runde beendet. */
     function finalHand() {
       // Erster Seed ohne Split (bei Split ginge die Runde weiter).
@@ -240,7 +240,7 @@ describe('GameTable', () => {
           standings: standings.map((s) => ({ ...s, user: { id: Number(s.playerId), username: 'x' } })),
         });
       });
-      // WP-039: erst drehen sich die Karten um, dann folgt der Runout.
+      // Erst drehen sich die Karten um, dann folgt der Runout.
       expect(boardCards()).toBe(0);
       expect(screen.queryByTestId('hand-result')).toBeNull();
       expect(screen.queryByRole('dialog')).toBeNull();
@@ -257,7 +257,7 @@ describe('GameTable', () => {
       expect(document.querySelector('[data-winner="true"]')).not.toBeNull();
       expect(screen.getAllByTestId('winner-crown')).toHaveLength(1);
       expect(screen.queryByRole('dialog')).toBeNull();
-      // WP-040: Feier der letzten Hand, dann der Sieger des Tisches, dann der Dialog.
+      // Feier der letzten Hand, dann der Sieger des Tisches, dann der Dialog.
       expect(screen.getByTestId('celebration-banner')).toBeInTheDocument();
       tick(ROUND_END_HAND_MS - 1);
       expect(screen.queryByTestId('table-winner')).toBeNull();
@@ -278,7 +278,7 @@ describe('GameTable', () => {
       g.state(before);
       g.state(after);
       expect(screen.queryByRole('dialog')).toBeNull();
-      // Erster Tipp: zum Sieger des Tisches, zweiter: zum Dialog (WP-040).
+      // Erster Tipp: zum Sieger des Tisches, zweiter: zum Dialog.
       fireEvent.pointerDown(screen.getByTestId('poker-table'));
       expect(screen.getByTestId('table-winner')).toBeInTheDocument();
       expect(screen.queryByRole('dialog')).toBeNull();
@@ -289,7 +289,7 @@ describe('GameTable', () => {
   });
 });
 
-describe('GameTable – Avatare und Reaktionen (WP-032)', () => {
+describe('GameTable – Avatare und Reaktionen', () => {
   afterEach(() => {
     window.localStorage.clear();
   });

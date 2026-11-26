@@ -1,4 +1,4 @@
-// Integrationstests der Feedback-API gegen die Test-DB (nur mit TEST_DATABASE_URL, sonst übersprungen), WP-024.
+// Integrationstests der Feedback-API gegen die Test-DB (nur mit TEST_DATABASE_URL, sonst übersprungen).
 import type { FastifyInstance } from 'fastify';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../app';
@@ -263,7 +263,7 @@ describe.skipIf(testDatabaseUrl === undefined)('Feedback-API (Test-DB)', () => {
     });
   });
 
-  describe('Account-Löschung (WP-022)', () => {
+  describe('Account-Löschung', () => {
     it('harte Löschung der User-Zeile: Feedback bleibt, User und User-Agent sind weg', async () => {
       const a = start();
       const alice = await login(a, 'alice');

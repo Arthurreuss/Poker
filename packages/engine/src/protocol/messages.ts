@@ -1,5 +1,5 @@
 /**
- * WebSocket-Protokoll zwischen Game-Server und Web-Client (WP-011): Nachrichtentypen als diskriminierte
+ * WebSocket-Protokoll zwischen Game-Server und Web-Client: Nachrichtentypen als diskriminierte
  * Unions über `type`. Rein (keine I/O), damit Server und Browser dieselben Typen und Validatoren nutzen.
  * Ablauf und Regeln: ARCHITECTURE.md, Abschnitt „Game-Server: Protokoll und Tische“.
  */
@@ -29,7 +29,7 @@ export const MAX_MESSAGE_BYTES = 64 * 1024;
 export const MAX_REQUEST_ID_LENGTH = 64;
 
 /**
- * WebSocket-Schließcodes des Servers (WP-011/WP-012). Der Client verbindet sich nach 4000 und 4001 **nicht**
+ * WebSocket-Schließcodes des Servers. Der Client verbindet sich nach 4000 und 4001 **nicht**
  * automatisch neu; nach allen anderen Codes (z. B. 1006 bei Netzabbruch, 1001 beim Herunterfahren) schon.
  */
 /** Andere Protokollversion (`hello`) – Seite neu laden. */
@@ -37,7 +37,7 @@ export const CLOSE_UNSUPPORTED_VERSION = 4000;
 /** Eine neuere Verbindung desselben Users hat `hello` gesendet und übernimmt (anderer Tab/Gerät). */
 export const CLOSE_REPLACED = 4001;
 /**
- * Ein Admin hat das Konto gesperrt (WP-028). Ein Reconnect scheitert mit 401 (Sessions sind gelöscht); der Client
+ * Ein Admin hat das Konto gesperrt. Ein Reconnect scheitert mit 401 (Sessions sind gelöscht); der Client
  * sollte nicht erneut verbinden, sondern zur Anmeldung führen (Login meldet dann die Sperre).
  */
 export const CLOSE_ACCOUNT_BANNED = 4002;
@@ -90,7 +90,7 @@ export interface HelloMessage extends ClientBase {
   protocolVersion: number;
 }
 /**
- * Anwendungs-Heartbeat (WP-012): Browser sehen WebSocket-Pings nicht, also fragt der Client selbst nach.
+ * Anwendungs-Heartbeat: Browser sehen WebSocket-Pings nicht, also fragt der Client selbst nach.
  * Erlaubt auch vor `hello`. Antwort: `pong` mit derselben `requestId` und der Server-Uhr.
  */
 export interface PingMessage extends ClientBase {
@@ -128,7 +128,7 @@ export interface TableStartMessage extends ClientBase {
   tableId: number;
 }
 /**
- * „Nochmal“ (D-020, WP-015): Nur der Ersteller, nur im Status `finished`. Startet eine neue Runde am selben
+ * „Nochmal“ (D-020): Nur der Ersteller, nur im Status `finished`. Startet eine neue Runde am selben
  * Tisch mit denselben Sitzen (wer saß, spielt wieder mit – auch Getrennte) und frischen Stacks/Zeitbanken.
  */
 export interface TableRematchMessage extends ClientBase {
@@ -147,7 +147,7 @@ export interface TableActionMessage extends ClientBase {
   action: Action;
 }
 /**
- * Emoji-Reaktion (WP-032): nur Spieler mit Sitz an diesem Tisch, höchstens eine pro `REACTION_COOLDOWN_MS`
+ * Emoji-Reaktion: nur Spieler mit Sitz an diesem Tisch, höchstens eine pro `REACTION_COOLDOWN_MS`
  * (sonst `RATE_LIMITED`). Der Server verteilt sie als `table.reaction` an alle Beobachter des Tisches.
  */
 export interface TableReactMessage extends ClientBase {
@@ -157,7 +157,7 @@ export interface TableReactMessage extends ClientBase {
 }
 
 /**
- * Admin deckt die verdeckten Karten eines Mitspielers auf (WP-033, D-027). Nur Admins (Flag aus der Session), nur am
+ * Admin deckt die verdeckten Karten eines Mitspielers auf (D-027). Nur Admins (Flag aus der Session), nur am
  * Tisch, an dem sie sitzen, nur während einer laufenden Hand. Antwort `admin.cards` geht nur an diese Verbindung;
  * die Mitspieler erfahren nichts. Jedes erste Aufdecken eines Platzes pro Hand wird im Admin-Protokoll vermerkt.
  */
@@ -169,7 +169,7 @@ export interface AdminRevealCardsMessage extends ClientBase {
 }
 
 /**
- * Admin zieht neue eigene Karten (WP-035, D-032): tauscht die eigenen Hole Cards gegen zwei zufällige Karten aus dem
+ * Admin zieht neue eigene Karten (D-032): tauscht die eigenen Hole Cards gegen zwei zufällige Karten aus dem
  * Restdeck, beliebig oft. Nur Admins, nur am eigenen Platz, nur während einer laufenden Hand und nicht gefoldet. Der
  * neue Stand kommt als `table.state` nur an diese Verbindung; die Mitspieler erfahren nichts. Jedes Neuziehen wird im
  * Admin-Protokoll vermerkt.
@@ -261,7 +261,7 @@ export interface BlindLevelView extends BlindLevel {
   /** Zeitpunkt (ms seit Epoche, Server-Uhr), ab dem das nächste Level gilt; `null` = keins bzw. nicht nach Zeit. */
   nextLevelAtMs: number | null;
   /**
-   * Blinds nach Händen (WP-036, D-033): Hände, die noch auf diesem Level gespielt werden (laufende bzw. nächste
+   * Blinds nach Händen (D-033): Hände, die noch auf diesem Level gespielt werden (laufende bzw. nächste
    * Hand eingeschlossen); `null` = letztes Level bzw. nicht nach Händen.
    */
   handsLeftInLevel: number | null;
@@ -281,12 +281,12 @@ export interface RoundView {
 export interface SeatView {
   seat: number;
   user: PublicUser;
-  /** Gewählter Avatar (WP-032); `null` = keiner (Client zeigt den Anfangsbuchstaben). */
+  /** Gewählter Avatar; `null` = keiner (Client zeigt den Anfangsbuchstaben). */
   avatar: AvatarId | null;
   /** Hat der Spieler gerade mindestens eine offene Verbindung zu diesem Tisch? */
   connected: boolean;
   /**
-   * Verbleibende Zeitbank in ms zum Zeitpunkt `TableView.serverNowMs` (WP-012, pro Spieler und Runde).
+   * Verbleibende Zeitbank in ms zum Zeitpunkt `TableView.serverNowMs` (pro Spieler und Runde).
    * Vor dem Start: `settings.timeBankSeconds × 1000`. Läuft gerade die Zeitbank dieses Spielers, ist das
    * der Stand bei `serverNowMs`; der Client rechnet selbst weiter (siehe `TurnClockView`).
    */
@@ -294,7 +294,7 @@ export interface SeatView {
 }
 
 /**
- * Zug-Uhr des Spielers am Zug (WP-012, D-013). Alle Zeitpunkte in ms seit Epoche nach **Server-Uhr**;
+ * Zug-Uhr des Spielers am Zug (D-013). Alle Zeitpunkte in ms seit Epoche nach **Server-Uhr**;
  * der Client gleicht seine Uhr über `TableView.serverNowMs` ab (Versatz = serverNowMs − lokale Zeit beim Empfang).
  * Phase 1 (normale Zugzeit): bis `turnEndsAtMs`. Phase 2 (Zeitbank): von `turnEndsAtMs` bis `deadlineMs`.
  * Ist `deadlineMs` ≤ `turnEndsAtMs`, gibt es keine Zeitbank-Phase (Zeitbank leer oder Spieler getrennt).
@@ -328,9 +328,9 @@ export interface TableView {
   /** Anzahl Beobachter ohne Sitz. */
   spectators: number;
   round: RoundView | null;
-  /** Zug-Uhr, solange in einer laufenden Hand jemand am Zug ist; sonst `null` (WP-012). */
+  /** Zug-Uhr, solange in einer laufenden Hand jemand am Zug ist; sonst `null`. */
   turnClock: TurnClockView | null;
-  /** Server-Uhr beim Erstellen dieser Sicht (ms seit Epoche) – Bezug für alle Zeitpunkte (WP-012). */
+  /** Server-Uhr beim Erstellen dieser Sicht (ms seit Epoche) – Bezug für alle Zeitpunkte. */
   serverNowMs: number;
   /** Wer diese Sicht bekommt. */
   you: { userId: number; seat: number | null; isCreator: boolean };
@@ -383,7 +383,7 @@ export type ErrorCode =
   | 'AMOUNT_TOO_SMALL'
   | 'AMOUNT_TOO_LARGE'
   | 'RATE_LIMITED'
-  /** Aktion nur für Admins (WP-033). */
+  /** Aktion nur für Admins. */
   | 'FORBIDDEN'
   | 'INTERNAL';
 
@@ -392,7 +392,7 @@ export interface WelcomeMessage {
   protocolVersion: number;
   user: PublicUser;
   /**
-   * Admin-Flag der Session (WP-033): schaltet im Client das Aufdecken verdeckter Karten frei. Fehlt = `false`
+   * Admin-Flag der Session: schaltet im Client das Aufdecken verdeckter Karten frei. Fehlt = `false`
    * (additiv, ältere Server). Der Server prüft das Recht bei jeder Anfrage selbst.
    */
   isAdmin?: boolean;
@@ -405,7 +405,7 @@ export interface ErrorMessage {
   requestId: string | null;
   tableId: number | null;
 }
-/** Antwort auf `ping` (WP-012). */
+/** Antwort auf `ping`. */
 export interface PongMessage {
   type: 'pong';
   requestId: string | null;
@@ -446,9 +446,9 @@ export interface RoundFinishedMessage {
 }
 
 /**
- * Der Tisch existiert nicht mehr (WP-015): `abandoned` = verwaiste Runde, 10 Minuten lang kein Spieler
+ * Der Tisch existiert nicht mehr: `abandoned` = verwaiste Runde, 10 Minuten lang kein Spieler
  * verbunden → Runde ohne Punkte abgebrochen (D-022); `admin` = ein Admin hat den Tisch geschlossen, eine laufende
- * Runde wurde ohne Punkte abgebrochen (WP-028). Geht an alle, die den Tisch noch beobachten; danach
+ * Runde wurde ohne Punkte abgebrochen. Geht an alle, die den Tisch noch beobachten; danach
  * liefert `table.join` für diesen Tisch `TABLE_NOT_FOUND`.
  */
 export interface TableClosedMessage {
@@ -458,7 +458,7 @@ export interface TableClosedMessage {
 }
 
 /**
- * Emoji-Reaktion eines Spielers (WP-032) an alle Beobachter des Tisches (auch den Absender). Flüchtig: wird
+ * Emoji-Reaktion eines Spielers an alle Beobachter des Tisches (auch den Absender). Flüchtig: wird
  * nicht gespeichert und nach einem Reconnect nicht wiederholt.
  */
 export interface TableReactionMessage {
@@ -470,7 +470,7 @@ export interface TableReactionMessage {
 }
 
 /**
- * Antwort auf `admin.revealCards` (WP-033, D-027): die verdeckten Karten eines Mitspielers der laufenden Hand. Geht
+ * Antwort auf `admin.revealCards` (D-027): die verdeckten Karten eines Mitspielers der laufenden Hand. Geht
  * **nur** an die anfragende Verbindung des Admins, nie an andere und nie in `table.state`. Gilt nur für diese Hand
  * (`handNumber`); der Client vergisst die Karten, sobald die Hand endet.
  */

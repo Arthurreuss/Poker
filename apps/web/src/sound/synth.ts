@@ -1,4 +1,4 @@
-// Tisch-Sounds (WP-031), zur Laufzeit per Web Audio API erzeugt: keine Audiodateien, keine fremden Assets,
+// Tisch-Sounds, zur Laufzeit per Web Audio API erzeugt: keine Audiodateien, keine fremden Assets,
 // keine Lizenzfragen (siehe apps/web/ASSETS.md). Jede Funktion plant einen kurzen Klang ab Zeitpunkt `t`
 // auf `out` (Master-Gain mit der Lautstärke aus den Einstellungen).
 

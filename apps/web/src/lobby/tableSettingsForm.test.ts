@@ -61,7 +61,7 @@ describe('Formular „Tisch erstellen“: Defaults und Ergebnis', () => {
     expect(result.settings.blindStructure.levels[0]).toEqual({ smallBlind: 40, bigBlind: 80 });
   });
 
-  it('steigend nach Händen (WP-036): alle N Hände statt Minuten', () => {
+  it('steigend nach Händen (D-033): alle N Hände statt Minuten', () => {
     const result = validateCreateTableForm(
       base({ blindLevel: '1', levelBy: 'hands', levelHands: '8', levelMinutes: '' }),
     );

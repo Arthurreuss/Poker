@@ -1,4 +1,4 @@
-// Testhilfe (WP-018): steuerbarer WebSocket-Ersatz für `GameConnection`.
+// Testhilfe: steuerbarer WebSocket-Ersatz für `GameConnection`.
 import type { ClientMessage, ServerMessage } from '@poker/engine/protocol';
 import { GameConnection, type BrowserEvents, type SocketLike } from '../connection';
 

@@ -1,4 +1,4 @@
-/* Admin deckt verdeckte Karten auf (WP-033, D-027) – nur im Client eines Admins sichtbar. Eigene Datei, damit
+/* Admin deckt verdeckte Karten auf (D-027) – nur im Client eines Admins sichtbar. Eigene Datei, damit
    Änderungen an table.css (Karten, Plätze) unabhängig bleiben. Die Drehung läuft nur mit Animationen (.pg-anim). */
 .pt-seat-cards--revealable {
   /* Button-Grundstil entfernen; Position und Lage kommen von .pt-seat-cards. */

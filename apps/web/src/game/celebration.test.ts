@@ -1,4 +1,4 @@
-// Feier nach der Hand (WP-040): Schriftzug, Karten, Konfetti-Wechsel und Münz-Stufen aus echten Server-Sichten.
+// Feier nach der Hand: Schriftzug, Karten, Konfetti-Wechsel und Münz-Stufen aus echten Server-Sichten.
 import { HAND_CATEGORY_NAMES } from '@poker/engine';
 import { describe, expect, it } from 'vitest';
 import { CONFETTI_COUNT, coinTier, handCelebration, handTitle } from './celebration';

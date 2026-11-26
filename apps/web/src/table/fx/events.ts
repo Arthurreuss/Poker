@@ -1,5 +1,5 @@
 /**
- * Tisch-Ereignisse aus zwei aufeinanderfolgenden Ansichten (WP-031): Grundlage für Animationen
+ * Tisch-Ereignisse aus zwei aufeinanderfolgenden Ansichten: Grundlage für Animationen
  * (`TableFx`) und Sounds (`useTableSounds`). Rein und unit-getestet; der Server bleibt die Wahrheit –
  * Ereignisse sind nur Darstellung und werden aus dem Unterschied zweier `TableView`s abgeleitet.
  */

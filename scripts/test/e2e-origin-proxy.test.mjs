@@ -1,4 +1,4 @@
-// Origin-Proxy für den E2E-Test gegen prod (WP-020): reicht HTTP und WebSocket-Upgrade durch und ersetzt nur
+// Origin-Proxy für den E2E-Test gegen prod: reicht HTTP und WebSocket-Upgrade durch und ersetzt nur
 // die Origin. Gegen einen lokalen Stub-Server, der wie der Game-Server fremde Origins mit 403 ablehnt.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

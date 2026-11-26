@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-// Admin dreht verdeckte Karten um (WP-033, D-027): Komponenten-Test der Tischansicht mit `reveal`-Prop.
+// Admin dreht verdeckte Karten um (D-027): Komponenten-Test der Tischansicht mit `reveal`-Prop.
 import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';

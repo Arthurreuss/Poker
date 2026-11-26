@@ -1,4 +1,4 @@
-// WebSocket-Endpunkt `/ws` (WP-011): Upgrade mit Origin-Prüfung und Session-Cookie, danach JSON-Nachrichten
+// WebSocket-Endpunkt `/ws`: Upgrade mit Origin-Prüfung und Session-Cookie, danach JSON-Nachrichten
 // nach `@poker/engine/protocol`, verarbeitet vom `GameServer`. Regeln aus D-014: Origin-Prüfung gegen
 // PUBLIC_ORIGIN, Heartbeat alle 30 s. Ablauf: ARCHITECTURE.md, „Game-Server: Protokoll und Tische“.
 import type { IncomingMessage } from 'node:http';
@@ -35,20 +35,20 @@ function toText(data: RawData): string {
   return data.toString('utf8');
 }
 
-/** Schließcode, wenn der Account gelöscht wurde (WP-022): Policy Violation; ein Reconnect scheitert mit 401. */
+/** Schließcode, wenn der Account gelöscht wurde: Policy Violation; ein Reconnect scheitert mit 401. */
 export const CLOSE_ACCOUNT_DELETED = 1008;
 /**
- * Schließcode, wenn ein Admin die Sessions beendet oder das Passwort zurückgesetzt hat (WP-028): ebenfalls Policy
+ * Schließcode, wenn ein Admin die Sessions beendet oder das Passwort zurückgesetzt hat: ebenfalls Policy
  * Violation – der Client verbindet neu, scheitert mit 401 und führt zur Anmeldung.
  */
 export const CLOSE_SESSIONS_REVOKED = 1008;
-/** Konto gesperrt (WP-028), Code aus dem Protokoll (4002). */
+/** Konto gesperrt, Code aus dem Protokoll (4002). */
 export { CLOSE_ACCOUNT_BANNED } from '@poker/engine/protocol';
 
 export interface WebSocketControl {
   /** Schließt alle offenen Verbindungen eines Users (z. B. nach dem Löschen des Kontos oder einer Sperre). */
   closeUserConnections(userId: number, code: number, reason: string): void;
-  /** User-IDs mit mindestens einer offenen WebSocket-Verbindung („online“, Admin-Übersicht WP-029). */
+  /** User-IDs mit mindestens einer offenen WebSocket-Verbindung („online“, Admin-Übersicht). */
   onlineUserIds(): Set<number>;
 }
 

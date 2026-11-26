@@ -1,4 +1,4 @@
-// React-Anbindung des Spielablaufs (WP-018): Store pro Tisch und tickende Uhr für den Timer-Ring.
+// React-Anbindung des Spielablaufs: Store pro Tisch und tickende Uhr für den Timer-Ring.
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { GameConnection } from './connection';
 import { TableGameStore, type TableGameSnapshot } from './tableGame';

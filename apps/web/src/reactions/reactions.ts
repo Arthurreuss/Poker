@@ -1,4 +1,4 @@
-// Emoji-Reaktionen am Tisch (WP-032): Zeichen und Beschriftung je Reaktions-ID aus dem Protokoll.
+// Emoji-Reaktionen am Tisch: Zeichen und Beschriftung je Reaktions-ID aus dem Protokoll.
 // Die Emojis kommen aus der Systemschrift des Geräts (keine eigenen Grafiken).
 import { REACTION_IDS, type ReactionId } from '@poker/engine/protocol';
 

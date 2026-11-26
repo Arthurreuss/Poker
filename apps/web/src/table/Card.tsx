@@ -10,12 +10,12 @@ export interface CardProps {
   readonly size: CardSize;
   readonly fourColor?: boolean;
   readonly className?: string;
-  /** Gewinnerhand (WP-031): `win` hebt hervor, `dim` tritt zurück. */
+  /** Gewinnerhand: `win` hebt hervor, `dim` tritt zurück. */
   readonly highlight?: 'win' | 'dim' | undefined;
 }
 
 /**
- * Hervorhebung einer offenen Karte nach dem Showdown (WP-031): Teil der Gewinnerhand → `win`, sonst `dim`;
+ * Hervorhebung einer offenen Karte nach dem Showdown: Teil der Gewinnerhand → `win`, sonst `dim`;
  * ohne Gewinnerhand bzw. bei verdeckten Karten keine.
  */
 export function winHighlight(

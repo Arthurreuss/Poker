@@ -1,4 +1,4 @@
-// Erweiterungspunkte des Spielablaufs (WP-011) – WP-013 speichert hierüber Hände und Ergebnisse.
+// Erweiterungspunkte des Spielablaufs – die Hand-Historie (`history/`) speichert hierüber Hände und Ergebnisse.
 // Hooks bekommen den vollständigen, ungefilterten Serverzustand (inkl. aller Hole Cards und Deck, D-003:
 // niemals an Clients weitergeben). Sie laufen pro Tisch strikt nacheinander in Ereignisreihenfolge, werden
 // aber vom Spielablauf nicht abgewartet; Fehler werden geloggt und stören den Tisch nicht.

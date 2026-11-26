@@ -74,7 +74,7 @@ describe('Performance', () => {
       `Handbewertung: evaluateHand ${microsPerHand.toFixed(2)} µs, handValue ${microsPerValue.toFixed(2)} µs pro 7-Karten-Hand`,
     );
     expect(checksum).toBe(0);
-    // Ziel laut WP-005: < 50 µs. Die Schwelle ist das Ziel selbst; typische Werte liegen weit darunter.
+    // Ziel der Handbewertung: < 50 µs. Die Schwelle ist das Ziel selbst; typische Werte liegen weit darunter.
     expect(microsPerHand).toBeLessThan(50);
   });
 });

@@ -1,4 +1,4 @@
-// Integrationstests der Dashboard-Lese-Endpunkte (WP-029) gegen die Test-DB (nur mit TEST_DATABASE_URL):
+// Integrationstests der Dashboard-Lese-Endpunkte gegen die Test-DB (nur mit TEST_DATABASE_URL):
 // Übersicht (Tische, Spieler online, Runden heute/Woche, Feedback, Health) und Tischliste. Zugriff (401/403) prüft
 // der Guard-Test in admin.db.test.ts für alle /api/admin/*-Routen.
 import type { AddressInfo } from 'node:net';

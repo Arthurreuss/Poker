@@ -1,6 +1,6 @@
 # Assets der Tischansicht
 
-Alle Grafiken der Tischansicht sind **selbst gezeichnet** (Ausnahme: Animationen der Feiern, siehe unten) (WP-016) als React-SVG-Komponenten direkt im Code – keine fremden Dateien, keine Schriftarten, keine Originalassets anderer Anbieter (D-008). Lizenz: wie das Projekt.
+Alle Grafiken der Tischansicht sind **selbst gezeichnet** (Ausnahme: Animationen der Feiern, siehe unten) als React-SVG-Komponenten direkt im Code – keine fremden Dateien, keine Schriftarten, keine Originalassets anderer Anbieter (D-008). Lizenz: wie das Projekt.
 
 | Asset                              | Datei                                  | Beschreibung                                                                                                                                             |
 | ---------------------------------- | -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -10,12 +10,12 @@ Alle Grafiken der Tischansicht sind **selbst gezeichnet** (Ausnahme: Animationen
 | Chip                               | `assets/icons.tsx` (`ChipSvg`)         | Scheibe mit sechs Randmarken und Innenring                                                                                                               |
 | Dealer-Button, SB/BB-Marker        | `assets/icons.tsx` (`MarkerDiscSvg`)   | Scheibe mit „D“ bzw. „SB“/„BB“                                                                                                                           |
 | Symbol „Verbindung getrennt“       | `assets/icons.tsx` (`DisconnectedSvg`) | unterbrochener Stecker                                                                                                                                   |
-| Menü-Symbol (Tisch-Menü, WP-017)   | `assets/icons.tsx` (`MenuSvg`)         | drei abgerundete Balken                                                                                                                                  |
-| Symbol Hand-Übersicht (WP-038) | `hands/HandRankings.tsx` (`HandsSvg`) | zwei aufgefächerte Karten, vorne mit Karo |
+| Menü-Symbol (Tisch-Menü)           | `assets/icons.tsx` (`MenuSvg`)         | drei abgerundete Balken                                                                                                                                  |
+| Symbol Hand-Übersicht | `hands/HandRankings.tsx` (`HandsSvg`) | zwei aufgefächerte Karten, vorne mit Karo |
 
 Text auf Karten und Markern nutzt die System-Schrift (`--font-sans`).
 
-## Animationen der Feiern (WP-040, D-034)
+## Animationen der Feiern (D-034)
 
 Lottie-Animationen von [LottieFiles](https://lottiefiles.com) unter der **Lottie Simple License** (kostenlos, auch kommerziell, ohne Namensnennungspflicht; [Lizenz](https://lottiefiles.com/page/license)). Ausgesucht von Arthur über `docs/animationen-vorschau.html`. Bearbeitung beim Übernehmen: aus `.lottie` entpackt, Zahlen auf 2–3 Nachkommastellen gerundet, Metadaten entfernt; bei `muenzen-stapel` die eingebettete Hintergrund-Bilddatei entfernt. Keine Expressions.
 

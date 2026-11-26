@@ -1,4 +1,4 @@
-// Admin deckt Karten auf (WP-033, D-027) bzw. zieht neue eigene Karten (WP-035, D-032) gegen die Test-DB (nur mit TEST_DATABASE_URL, sonst übersprungen): echte
+// Admin deckt Karten auf (D-027) bzw. zieht neue eigene Karten (D-032) gegen die Test-DB (nur mit TEST_DATABASE_URL, sonst übersprungen): echte
 // Sessions, Admin-Flag aus der DB, Eintrag `table.reveal_cards` im Admin-Protokoll, Rechteentzug greift sofort.
 import type { AddressInfo } from 'node:net';
 import type { FastifyInstance, LightMyRequestResponse } from 'fastify';

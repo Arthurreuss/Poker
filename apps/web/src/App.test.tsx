@@ -49,7 +49,7 @@ describe('Geschützte Routen', () => {
     await heading('Lobby');
   });
 
-  it('/table/:id verbindet sich mit dem Tisch (WP-018)', async () => {
+  it('/table/:id verbindet sich mit dem Tisch', async () => {
     mockApi({ 'GET /api/me': json(200, { user: PLAYER }) });
     const urls: string[] = [];
     vi.stubGlobal(
@@ -240,7 +240,7 @@ describe('App-Shell', () => {
     expect(window.localStorage.getItem('poker.orientation')).toBe('landscape');
   });
 
-  it('Einstellungen schalten die Animationen am Tisch ab (WP-018)', async () => {
+  it('Einstellungen schalten die Animationen am Tisch ab', async () => {
     mockApi({ 'GET /api/me': json(200, { user: PLAYER }) });
     renderApp('/settings');
     await heading('Einstellungen');

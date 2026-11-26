@@ -53,7 +53,7 @@ echo "→ Deploy $NEW_MAIN auf $POKER_PROD_HOST (Nomad-Job deploy-poker)"
 bash scripts/fleet-deploy.sh deploy "$NEW_MAIN" ||
   fail "Deploy fehlgeschlagen (Log oben, Nomad-UI: Job deploy-poker). main ($NEW_MAIN) ist gepusht; prod prüfen: npm run prod:status – zurück: npm run prod:rollback -- $PREV_MAIN"
 
-# 5. Smoke-Test und E2E gegen das neue prod (WP-020); bei Fehler Abbruch mit Rollback-Hinweis.
+# 5. Smoke-Test und E2E gegen das neue prod; bei Fehler Abbruch mit Rollback-Hinweis.
 bash scripts/release-verify.sh "$PREV_MAIN" "$NEW_MAIN"
 
 echo "✓ Release fertig. Arbeitsordner weiter auf dev, prod läuft auf $POKER_PROD_HOST ($NEW_MAIN)."

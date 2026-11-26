@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Sofortiges Backup der prod-DB (WP-021). Aufruf: npm run prod:backup
+# Sofortiges Backup der prod-DB. Aufruf: npm run prod:backup
 # Nutzt denselben Ablauf wie das tägliche Backup im Dienst "backup" (inkl. Rotation daily/weekly/monthly).
 # Ergebnis: $BACKUP_DIR/last/<db>-<JJJJMMTT-HHMMSS>.sql.gz und – mit SECRETS_BACKUP_PASSPHRASE – die verschlüsselte
 # Kopie von .env.prod in $BACKUP_DIR/secrets/ (Hook, D-037). Doku: docs/OPERATIONS.md, Abschnitt "Backup".

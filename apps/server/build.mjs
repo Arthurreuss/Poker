@@ -1,4 +1,4 @@
-// Prod-Build des Servers (WP-003): ESM-Bundles dist/server.mjs und dist/cli/*.mjs (Admin-Skripte, WP-010/024).
+// Prod-Build des Servers: ESM-Bundles dist/server.mjs und dist/cli/*.mjs (Admin-Skripte).
 // Workspace-Pakete (@poker/*, exportieren TypeScript-Quellen) werden eingebettet,
 // npm-Abhängigkeiten bleiben extern und kommen per `npm ci --omit=dev` ins Runtime-Image.
 // Keine Source-Maps, nicht minifiziert (lesbare Stacktraces).

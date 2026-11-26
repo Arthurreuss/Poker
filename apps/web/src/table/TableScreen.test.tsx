@@ -15,7 +15,7 @@ function mock(id: string): TableView {
   return m.view;
 }
 
-/** Stellvertreter für Zustand im Tisch (z. B. Raise-Betrag der Aktionsleiste, WP-018). */
+/** Stellvertreter für Zustand im Tisch (z. B. Raise-Betrag der Aktionsleiste). */
 function Counter() {
   const [n, setN] = useState(0);
   return (

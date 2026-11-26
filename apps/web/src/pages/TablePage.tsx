@@ -5,7 +5,7 @@ import { useTableGame } from '../game/hooks';
 import styles from './Page.module.css';
 import { PlaceholderPage } from './PlaceholderPage';
 
-/** `/table/:id` – Spieltisch mit Verbindung zum Game-Server (WP-018). */
+/** `/table/:id` – Spieltisch mit Verbindung zum Game-Server. */
 export function TablePage() {
   const { id = '' } = useParams();
   const tableId = /^\d+$/.test(id) ? Number(id) : null;

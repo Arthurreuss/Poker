@@ -1,5 +1,5 @@
-// Retry für Schreibvorgänge der Historie (WP-013). Speicherfehler halten das Spiel nie an: Schreibvorgänge
-// laufen in der Hook-Warteschlange des Tisches (WP-011), ein Retry verzögert nur die folgenden Schreibvorgänge
+// Retry für Schreibvorgänge der Historie. Speicherfehler halten das Spiel nie an: Schreibvorgänge
+// laufen in der Hook-Warteschlange des Tisches, ein Retry verzögert nur die folgenden Schreibvorgänge
 // dieses Tisches. Nach dem letzten Versuch wird der Fehler geworfen (und vom Tisch geloggt).
 import type { TableRepository } from '../game/repository';
 import type { Logger } from '../game/table';
@@ -53,9 +53,9 @@ export async function withRetry<T>(
 }
 
 /**
- * Repository mit Retry für das Rundenergebnis (`finishRound`) und den Abbruch verwaister Runden (`abortRound`,
- * WP-015) – beides idempotente UPDATEs. `startRound` bleibt ohne
- * Retry: schlägt es fehl, bekommt der Ersteller sofort einen Fehler und der Tisch bleibt offen (WP-011).
+ * Repository mit Retry für das Rundenergebnis (`finishRound`) und den Abbruch verwaister Runden (`abortRound`)
+ * – beides idempotente UPDATEs. `startRound` bleibt ohne
+ * Retry: schlägt es fehl, bekommt der Ersteller sofort einen Fehler und der Tisch bleibt offen.
  */
 export function withFinishRoundRetry(repository: TableRepository, options: RetryOptions): TableRepository {
   return {

@@ -1,4 +1,4 @@
-// Avatar eines Accounts (WP-032): feste Auswahl aus `AVATAR_IDS` (@poker/engine/protocol), gespeichert in
+// Avatar eines Accounts: feste Auswahl aus `AVATAR_IDS` (@poker/engine/protocol), gespeichert in
 // `users.avatar` (Migration 0008). Beschreibung: docs/ARCHITECTURE.md, „Auth“ → „Avatar“.
 import { isAvatarId, type AvatarId } from '@poker/engine/protocol';
 import type { Queryable } from '../db';

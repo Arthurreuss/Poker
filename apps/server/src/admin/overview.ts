@@ -1,7 +1,7 @@
-// Lese-Endpunkte fürs Admin-Dashboard (WP-029): Übersicht (Tische, Spieler online, Runden, offenes Feedback,
+// Lese-Endpunkte fürs Admin-Dashboard: Übersicht (Tische, Spieler online, Runden, offenes Feedback,
 // Server-Health) und die Tische im Speicher. Nur lesend – nichts davon kommt ins Admin-Protokoll (D-029).
 // Das letzte Backup fehlt bewusst: der Server sieht den Backup-Ordner nicht (ARCHITECTURE.md,
-// „Admin-Dashboard (WP-029)“).
+// „Admin-Dashboard“).
 import type { Database, Queryable } from '../db';
 import type { GameServer } from '../game/game-server';
 import type { Table } from '../game/table';
@@ -54,7 +54,7 @@ export interface AdminTablePlayer {
   seat: number;
   id: number;
   username: string;
-  /** Beobachtet den Tisch gerade (Verbindungsstatus wie am Tisch, WP-012). */
+  /** Beobachtet den Tisch gerade (Verbindungsstatus wie am Tisch). */
   connected: boolean;
 }
 

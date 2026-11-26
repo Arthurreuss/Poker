@@ -1,4 +1,4 @@
-// Admin-CLI: setzt ein neues Passwort für einen User und beendet alle seine Sessions (D-011, WP-010).
+// Admin-CLI: setzt ein neues Passwort für einen User und beendet alle seine Sessions (D-011).
 // Aufruf und Beispiele: README, Abschnitt „Admin“.
 //   npm run admin:reset-password -w @poker/server -- <benutzername>
 // Ohne Eingabe auf stdin wird ein zufälliges Passwort erzeugt und einmalig ausgegeben;

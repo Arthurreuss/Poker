@@ -1,5 +1,5 @@
 /**
- * Hand-Übersicht am Tisch (WP-038): Knopf unter dem Reaktions-Knopf oben rechts, öffnet einen
+ * Hand-Übersicht am Tisch: Knopf unter dem Reaktions-Knopf oben rechts, öffnet einen
  * modalen Dialog mit allen Pokerhänden in Rangfolge (Inhalt: `rankings.ts`). Der Dialog wird per
  * Portal in `document.body` gerendert, damit er den ganzen Bildschirm nutzt und nicht in der
  * Tischfläche (Container-Query) eingesperrt ist. Schließt per Knopf, Tipp auf den Hintergrund und

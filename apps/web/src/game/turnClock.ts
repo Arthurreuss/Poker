@@ -1,5 +1,5 @@
-// Zug-Timer und Zeitbank im Client (WP-018, D-013): Timer laufen nur auf dem Server, der Client zeigt die
-// Restzeit an. Grundlage: `TableView.turnClock` + `serverNowMs` (WP-012, ARCHITECTURE.md „Timer und
+// Zug-Timer und Zeitbank im Client (D-013): Timer laufen nur auf dem Server, der Client zeigt die
+// Restzeit an. Grundlage: `TableView.turnClock` + `serverNowMs` (ARCHITECTURE.md „Timer und
 // Verbindungsmodell“). Zeitpunkte werden beim Empfang auf die lokale Uhr umgerechnet
 // (Versatz = serverNowMs − lokale Zeit beim Empfang), damit Uhrabweichungen keine Rolle spielen.
 import type { TableView as ServerTableView } from '@poker/engine/protocol';
@@ -37,7 +37,7 @@ export interface TurnClockDisplay {
   readonly fraction: number;
   /** Restliche Zeitbank in ganzen Sekunden, solange sie läuft; sonst `undefined`. */
   readonly timeBankSeconds: number | undefined;
-  /** Restsekunden (aufgerundet) der laufenden Phase – normale Zugzeit bzw. Zeitbank (WP-037). */
+  /** Restsekunden (aufgerundet) der laufenden Phase – normale Zugzeit bzw. Zeitbank. */
   readonly seconds: number;
 }
 

@@ -39,7 +39,7 @@ function Amount({ value }: { value: number }) {
 }
 
 /**
- * Aktionsleiste (WP-018): Fold, Check/Call, Bet/Raise (mit Einsatzwahl) – nur, was `legalActions`
+ * Aktionsleiste: Fold, Check/Call, Bet/Raise (mit Einsatzwahl) – nur, was `legalActions`
  * erlaubt. Ist man nicht am Zug, zeigt sie Vorab-Aktionen. Passt in den `actionBar`-Bereich beider
  * Layouts: eine Zeile großer Knöpfe; die Einsatzwahl öffnet sich darüber.
  */

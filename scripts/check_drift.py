@@ -47,10 +47,19 @@ class Begriff:
 
 
 AKTUELL = ("README.md", "CLAUDE.md", ".agents/*.md", ".agents/rules/*.md")
+# Doku und Code ohne die Bestände: docs/DECISIONS.md (D-001–D-039, fleet#153) und die Migrationen
+# (Prüfsumme, angewandte Dateien ändern sich nicht).
+DOKU_UND_CODE = (
+    "docs/ARCHITECTURE.md", "docs/OPERATIONS.md", "docs/PRODUCT.md", "docs/adr/*", "docs/*.html",
+    "apps/web/*", "apps/server/src/*", "apps/server/*.mjs", "packages/*", "scripts/*", "docker/*",
+    ".env*", "compose.*.yml", "eslint.config.js", "vitest.config.ts",
+)
 # Beispiel: Begriff(r"Staging-Server", "seit ADR 0007 kein Staging mehr", AKTUELL),
 ABGELOEST: tuple[Begriff, ...] = (
     Begriff(r"\bWP-\d{3}\b|work-packages|PROGRESS\.md|WORKFLOW\.md|docs:sync",
             "seit ADR 0001 Tickets statt Arbeitspaketen", AKTUELL),
+    Begriff(r"\bWP-\d{3}\b", "Arbeitspakete abgebaut (fleet#153): Herkunft weglassen, Offenes als Issue (#7–#17)",
+            DOKU_UND_CODE),
 )
 
 

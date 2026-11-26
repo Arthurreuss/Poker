@@ -1,4 +1,4 @@
-// WP-018: komplette Runde mit drei echten Browsern gegen den laufenden Game-Server.
+// Komplette Runde mit drei echten Browsern gegen den laufenden Game-Server.
 // Drei registrierte Test-User (`wp018_…`), Tisch über `/dev/new-table`, alle setzen sich, der Ersteller
 // startet, zwei Hände bis zum Showdown, dann All-in bis zum Rundenende-Dialog bei allen; danach „Nochmal“.
 import { expect, test, type Page } from '@playwright/test';

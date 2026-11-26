@@ -1,4 +1,4 @@
-// Komponenten-Tests für das Feedback-Formular, den Dialog und den Einstieg in der App-Shell (WP-024).
+// Komponenten-Tests für das Feedback-Formular, den Dialog und den Einstieg in der App-Shell.
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
@@ -94,7 +94,7 @@ describe('FeedbackForm', () => {
   });
 });
 
-/** So bindet z. B. das Tisch-Menü (WP-018) das Formular ein. */
+/** So bindet z. B. das Tisch-Menü das Formular ein. */
 function TableMenuExample() {
   const feedback = useFeedbackDialog({ tableId: 7, page: '/table/abc' });
   return (

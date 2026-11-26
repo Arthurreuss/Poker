@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Lokaler Origin-Proxy für den E2E-Test gegen prod (WP-020, D-028). Ohne Abhängigkeiten.
+// Lokaler Origin-Proxy für den E2E-Test gegen prod (D-028). Ohne Abhängigkeiten.
 // Der Game-Server nimmt WebSockets nur mit einer Origin aus PUBLIC_ORIGIN an (D-014) – ein Browser auf
 // http://localhost:4320 schickt aber `Origin: http://localhost:4320`. Der Proxy reicht alles unverändert an das
 // Ziel durch (HTTP und WebSocket-Upgrade als rohe TCP-Verbindung) und ersetzt nur einen vorhandenen

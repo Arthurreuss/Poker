@@ -1,6 +1,6 @@
-// Admin-API (WP-028, D-029): Spieler sperren/entsperren, Sessions beenden, Passwort zurücksetzen, Tisch schließen,
-// Admin-Protokoll lesen; Übersicht und Tischliste fürs Dashboard (WP-029, admin/overview.ts). Zugriff prüft der allgemeine Guard (admin/guard.ts) für alle `/api/admin/*`-Routen;
-// jede Aktion steht im Admin-Protokoll (admin/audit.ts). Formate: docs/ARCHITECTURE.md, „Admin (WP-028)“.
+// Admin-API (D-029): Spieler sperren/entsperren, Sessions beenden, Passwort zurücksetzen, Tisch schließen,
+// Admin-Protokoll lesen; Übersicht und Tischliste fürs Dashboard (admin/overview.ts). Zugriff prüft der allgemeine Guard (admin/guard.ts) für alle `/api/admin/*`-Routen;
+// jede Aktion steht im Admin-Protokoll (admin/audit.ts). Formate: docs/ARCHITECTURE.md, „Admin“.
 import type { FastifyError, FastifyPluginAsync, FastifyReply } from 'fastify';
 import { generatePassword } from '../auth/admin';
 import { hashPassword } from '../auth/password';
@@ -26,7 +26,7 @@ export interface AdminPluginOptions {
   game: GameServer;
   /** Offene WebSocket-Verbindungen eines Users schließen (`registerWebSocket(...).closeUserConnections`). */
   closeUserConnections: (userId: number, code: number, reason: string) => void;
-  /** User mit offener WebSocket-Verbindung (`registerWebSocket(...).onlineUserIds`), für die Übersicht (WP-029). */
+  /** User mit offener WebSocket-Verbindung (`registerWebSocket(...).onlineUserIds`), für die Übersicht. */
   onlineUserIds: () => ReadonlySet<number>;
 }
 
@@ -71,7 +71,7 @@ export const adminRoutes: FastifyPluginAsync<AdminPluginOptions> = (
   }
 
   // ---------------------------------------------------------------------------
-  // Übersicht (WP-029, nur lesend)
+  // Übersicht (nur lesend)
   // ---------------------------------------------------------------------------
 
   app.get('/api/admin/overview', async (request) => {

@@ -1,4 +1,4 @@
-// Admin deckt verdeckte Karten auf (WP-033, D-027) – Zustand im Client, rein und ohne React. Der Server schickt
+// Admin deckt verdeckte Karten auf (D-027) – Zustand im Client, rein und ohne React. Der Server schickt
 // fremde Karten nur auf Anfrage (`admin.revealCards` → `admin.cards`) und nur an die Admin-Verbindung. Hier wird nur
 // gemerkt, welche Plätze gerade umgedreht sind; Zurückdrehen und erneutes Umdrehen derselben Hand brauchen keine
 // neue Anfrage (Cache). Endet die Hand, vergisst der Client alle Karten.

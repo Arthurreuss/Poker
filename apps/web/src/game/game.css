@@ -1,5 +1,5 @@
 /*
- * Spielseite (WP-018): Verbindungshinweis, Panels im Aktionsbereich, Fehlermeldung, Rundenende-Dialog
+ * Spielseite: Verbindungshinweis, Panels im Aktionsbereich, Fehlermeldung, Rundenende-Dialog
  * und dezente Animationen. Farben nur über Design-Tokens.
  */
 .gp-page {
@@ -171,7 +171,7 @@
   font-size: 0.8125rem;
 }
 
-/* Menü-Einträge (Tisch-Menü aus WP-017) */
+/* Menü-Einträge (Tisch-Menü) */
 .gp-menu-heading {
   margin: 0;
   font-weight: 600;
@@ -259,7 +259,7 @@
 }
 
 /* ---------- Dezente Animationen (abschaltbar, D-008-Anmutung) ---------- */
-/* Karten, Chips und Pots animiert `TableFx` (WP-031, Web Animations API); hier nur das Einblenden der Panels. */
+/* Karten, Chips und Pots animiert `TableFx` (Web Animations API); hier nur das Einblenden der Panels. */
 @keyframes pg-fade-in {
   from {
     opacity: 0;

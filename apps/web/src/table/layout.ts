@@ -1,5 +1,5 @@
 /**
- * Reine Layout-Funktionen der Tischansicht (Hochformat WP-016, Querformat WP-017): welche
+ * Reine Layout-Funktionen der Tischansicht (Hoch- und Querformat): welche
  * Sitznummer an welcher Position um den ovalen Tisch erscheint und welches Layout gilt.
  * Keine DOM-Abhängigkeit – direkt testbar.
  */
@@ -70,8 +70,8 @@ export const SLOTS_BY_COUNT: Readonly<Record<number, readonly SlotId[]>> = {
 };
 
 /**
- * Positionen im Querformat (WP-017): breiter, flacher Tisch. Die rechte untere Ecke gehört der
- * Aktionsleiste (WP-018), deshalb sitzt `BR` höher als `BL`. Seitliche Sitze: L2/R2 oben,
+ * Positionen im Querformat: breiter, flacher Tisch. Die rechte untere Ecke gehört der
+ * Aktionsleiste, deshalb sitzt `BR` höher als `BL`. Seitliche Sitze: L2/R2 oben,
  * L1/R1 auf halber Höhe. Der eigene Einsatz steht links neben den eigenen Karten.
  * Werte sind per Screenshot-Test (e2e-visual) abgestimmt.
  */

@@ -1,4 +1,4 @@
-// Einstellungen → „Konto löschen“ (WP-022, DSGVO). Bestätigung per Passwort; danach ist man abgemeldet.
+// Einstellungen → „Konto löschen“ (DSGVO). Bestätigung per Passwort; danach ist man abgemeldet.
 // Was serverseitig passiert: docs/ARCHITECTURE.md, „Auth“ → „Konto löschen“.
 import { useState, type SubmitEvent } from 'react';
 import { Link } from 'react-router';

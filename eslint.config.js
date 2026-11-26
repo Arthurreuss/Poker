@@ -30,7 +30,7 @@ export default tseslint.config(
     files: ['apps/web/src/**/*.{ts,tsx}'],
     languageOptions: { globals: globals.browser },
   },
-  // --- Engine-Reinheit (WP-008): keine I/O, keine Uhr, kein unkontrollierter Zufall ---
+  // --- Engine-Reinheit: keine I/O, keine Uhr, kein unkontrollierter Zufall ---
   // Ausnahme: crypto-rng.ts (einziger Node-Import, Produktions-Zufall). Tests dürfen Node nutzen.
   {
     files: ['packages/engine/src/**/*.ts'],

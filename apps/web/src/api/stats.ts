@@ -1,4 +1,4 @@
-// Rangliste, Statistiken und Hand-Historie (WP-019). Formate: docs/ARCHITECTURE.md, Abschnitt „Statistiken“.
+// Rangliste, Statistiken und Hand-Historie. Formate: docs/ARCHITECTURE.md, Abschnitt „Statistiken“.
 import type { Card } from '@poker/engine';
 import type { AvatarId } from '@poker/engine/protocol';
 import { apiRequest } from './client';
@@ -8,7 +8,7 @@ export interface LeaderboardEntry {
   rank: number;
   userId: number;
   name: string;
-  /** Gewählter Avatar (WP-032); `null` = keiner. */
+  /** Gewählter Avatar; `null` = keiner. */
   avatar: AvatarId | null;
   points: number;
   rounds: number;

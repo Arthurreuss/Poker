@@ -1,4 +1,4 @@
-/** Sitz-Hilfen, gemeinsam genutzt von Setzrunden (WP-006) und Showdown (WP-007). */
+/** Sitz-Hilfen, gemeinsam genutzt von Setzrunden und Showdown. */
 
 /** Spieler im Uhrzeigersinn, beginnend mit dem ersten Sitz links von `seat` (`seat` selbst zuletzt). */
 export function clockwiseFrom<T extends { seat: number }>(sortedBySeat: readonly T[], seat: number): T[] {

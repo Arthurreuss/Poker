@@ -1,4 +1,4 @@
-// WP-015 ohne Netzwerk (ManualClock): „Nochmal“ nach Rundenende (D-020), verwaiste Runden (D-022),
+// Lebenszyklus der Tische ohne Netzwerk (ManualClock): „Nochmal“ nach Rundenende (D-020), verwaiste Runden (D-022),
 // Aufräumen von Tischen ohne Beobachter und Rückkehr per tableId nach Beitritt über den Einladungscode.
 import { describe, expect, it } from 'vitest';
 import { createSeededRng } from '@poker/engine';
@@ -325,7 +325,7 @@ describe('Verwaiste Runden (D-022)', () => {
   });
 });
 
-describe('Offene Tische und Einladungscode (WP-015)', () => {
+describe('Offene Tische und Einladungscode', () => {
   it('Verbindungsabbruch des Erstellers schließt den offenen Tisch nicht sofort (Lobby → Tischseite)', async () => {
     const s = setup();
     const a = await s.connect(1);

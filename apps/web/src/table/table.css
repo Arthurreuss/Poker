@@ -1,6 +1,6 @@
 /*
- * Tischansicht Hochformat (WP-016) und Querformat (WP-017). Farben/Abstände nur über die
- * Design-Tokens aus ARCHITECTURE.md („Design-Tokens (Web)“, definiert in styles/tokens.css, WP-014).
+ * Tischansicht Hochformat und Querformat. Farben/Abstände nur über die
+ * Design-Tokens aus ARCHITECTURE.md („Design-Tokens (Web)“, definiert in styles/tokens.css).
  * Die Fallbacks greifen nur, solange tokens.css nicht geladen ist. Alle Größen sind Vielfache der
  * Grundeinheit --u (Hochformat 1cqw, Querformat aus der Höhe), Positionen sind Prozentwerte der
  * Tischfläche (layout.ts).
@@ -36,7 +36,7 @@
   box-sizing: border-box;
   width: 100%;
   height: 100%;
-  /* Vollbild-App (viewport-fit=cover): Abstand zu Statusleiste, Notch und Home-Balken (WP-034). */
+  /* Vollbild-App (viewport-fit=cover): Abstand zu Statusleiste, Notch und Home-Balken. */
   padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
   display: flex;
   justify-content: center;
@@ -49,7 +49,7 @@
 .pt-root {
   /*
    * Hochformat: Breite durch die Höhe begrenzt, damit der Tisch auch auf breiten Fenstern hoch bleibt.
-   * Etwas schmaler als der Bildschirm, damit die seitlichen Sitze nicht am Rand kleben (WP-034).
+   * Etwas schmaler als der Bildschirm, damit die seitlichen Sitze nicht am Rand kleben.
    */
   container-type: size;
   position: relative;
@@ -385,7 +385,7 @@
   color: var(--pt-text-muted);
 }
 
-/* Timer-Ring, Sekunden und Zeitbank: seat-hints.css (WP-037) */
+/* Timer-Ring, Sekunden und Zeitbank: seat-hints.css */
 
 /* Hole Cards über der Plakette */
 .pt-seat-cards {
@@ -480,13 +480,13 @@
   stroke-opacity: 1;
 }
 
-/* ---------- Platz für die Aktionsleiste (WP-018) ---------- */
+/* ---------- Platz für die Aktionsleiste ---------- */
 .pt-action-slot {
   position: relative;
   min-height: 0;
 }
 
-/* ---------- Tisch-Menü (WP-017) ---------- */
+/* ---------- Tisch-Menü ---------- */
 .pt-menu-slot {
   /* liegt über der Kopfzeile in der Ecke oben links, nimmt keinen Platz im Raster */
   position: absolute;
@@ -559,7 +559,7 @@
   accent-color: var(--pt-accent);
 }
 
-/* ---------- Querformat (WP-017) ---------- */
+/* ---------- Querformat ---------- */
 /*
  * Gleicher Elementbaum wie im Hochformat, nur andere Maße: Grundeinheit aus der Höhe (der Tisch ist
  * breit und flach), die Aktionsleiste liegt als Fläche unten rechts über der Tischecke statt als
