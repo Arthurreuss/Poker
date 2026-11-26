@@ -822,6 +822,7 @@ scripts/
   restore.sh            prod:restore
   status.sh             prod:status
   test-restore.sh       Restore-Test (isolierte prod-Kopie)
+  restore_test.sh       Rücksicherungs-Test der echten Sicherung (Job ruecksicherung-poker des Verbunds)
   smoke-prod.mjs        Smoke-Test prod (Health + WebSocket)
   release.sh            Release dev → main, danach Neustart auf dem prod-Host
   test/                 Tests für die Skripte
