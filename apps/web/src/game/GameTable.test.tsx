@@ -38,7 +38,7 @@ function Page({
   create: () => ReturnType<typeof fakeConnection>['connection'];
   onLeave: () => void;
 }) {
-  const [snapshot, store] = useTableGame(42, create);
+  const [snapshot, store] = useTableGame(42, create());
   return <GameTable snapshot={snapshot} store={store} onLeave={onLeave} />;
 }
 

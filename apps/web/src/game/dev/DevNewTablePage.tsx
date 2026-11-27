@@ -1,39 +1,36 @@
 // Nur im Dev-Build (`/dev/new-table`): Tisch direkt per WebSocket anlegen, ohne den Weg über die Lobby
 // – für manuelle Tests und den Playwright-Test mit mehreren Browsern.
 // Der Ersteller sitzt danach auf Platz 1 (Sitz 0).
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import { useNavigate } from 'react-router';
 import type { ServerMessage } from '@poker/engine/protocol';
-import { GameConnection, type ConnectionStatus } from '../connection';
+import { useConnection } from '../ConnectionProvider';
 
 export function DevNewTablePage() {
   const navigate = useNavigate();
-  const [connection] = useState(() => new GameConnection());
-  const [status, setStatus] = useState<ConnectionStatus>(connection.status);
+  const connection = useConnection();
+  // Als externer Zustand gelesen: Die Verbindung kann schon offen sein, bevor die Seite ihre Meldungen abonniert.
+  const subscribe = useCallback((onChange: () => void) => connection.onStatus(onChange), [connection]);
+  const status = useSyncExternalStore(subscribe, () => connection.status);
   const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState('Testtisch');
   const [stack, setStack] = useState('1500');
   const [turn, setTurn] = useState('20');
 
   useEffect(() => {
-    const offStatus = connection.onStatus(setStatus);
+    let created: number | null = null;
     const offMessage = connection.onMessage((m: ServerMessage) => {
-      // Gleich Platz nehmen: ein offener Tisch ohne Spieler und ohne Zuschauer wird vom Server
-      // aufgeräumt – beim Seitenwechsel ist diese Verbindung kurz weg. Weiter erst, wenn man sitzt.
+      // Gleich Platz nehmen und erst dann weiter: so landet man am Tisch auf dem eigenen Sitz.
       if (m.type === 'table.created' && m.requestId === 'dev-create') {
+        created = m.tableId;
         connection.send({ type: 'table.sit', tableId: m.tableId, seat: 0 });
       }
-      if (m.type === 'table.state' && m.table.you.seat !== null) {
+      if (m.type === 'table.state' && m.table.id === created && m.table.you.seat !== null) {
         void navigate(`/table/${String(m.table.id)}`);
       }
       if (m.type === 'error') setError(m.message);
     });
-    connection.start();
-    return () => {
-      offStatus();
-      offMessage();
-      connection.stop();
-    };
+    return offMessage;
   }, [connection, navigate]);
 
   return (

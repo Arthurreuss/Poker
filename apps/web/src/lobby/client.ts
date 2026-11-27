@@ -1,17 +1,9 @@
-// Kleiner WebSocket-Client für Lobby und Einladungsseite. Bewusst eigenständig und ohne React,
-// damit er später mit dem Spiel-Client (`src/game/`) zusammengeführt werden kann (#8).
-// Verbindungsregeln (D-014, D-022): ARCHITECTURE.md, „Timer und Verbindungsmodell“ → „Was der Client tun muss“.
-import {
-  CLOSE_REPLACED,
-  CLOSE_UNSUPPORTED_VERSION,
-  PROTOCOL_VERSION,
-  type ClientMessage,
-  type ErrorCode,
-  type LobbyTable,
-  type ServerMessage,
-  type TableSettingsInput,
-} from '@poker/engine/protocol';
-import { wsUrl } from '../api/ws';
+// Lobby und Einladungsseite über die gemeinsame Verbindung der App (`GameConnection`, ADR 0002): Lobby-Liste
+// abonnieren, Tisch anlegen, per Einladungscode beitreten. Wiederverbinden, Heartbeat und die Regeln für
+// 4000/4001 liegen in der Verbindung. Verbindungsregeln (D-014, D-022): ARCHITECTURE.md, „Timer und
+// Verbindungsmodell“ → „Was der Client tun muss“.
+import type { ClientMessage, ErrorCode, LobbyTable, ServerMessage, TableSettingsInput } from '@poker/engine/protocol';
+import type { ConnectionStatus, GameConnection } from '../game/connection';
 
 /**
  * - `connecting`: Verbindung wird (wieder) aufgebaut
@@ -27,24 +19,7 @@ export interface LobbyState {
   tables: readonly LobbyTable[];
 }
 
-/** Was der Client von einem WebSocket braucht (Browser-`WebSocket` oder Test-Double). */
-export interface SocketLike {
-  send(data: string): void;
-  close(code?: number, reason?: string): void;
-  onopen: ((event: unknown) => void) | null;
-  onmessage: ((event: { data: unknown }) => void) | null;
-  onclose: ((event: { code: number }) => void) | null;
-  onerror: ((event: unknown) => void) | null;
-}
-
-export type SocketFactory = (url: string) => SocketLike;
-
-export const browserSocketFactory: SocketFactory = (url) => new WebSocket(url) as unknown as SocketLike;
-
 export interface LobbyClientOptions {
-  socketFactory?: SocketFactory;
-  /** Standard: `wsUrl('/ws')`. */
-  url?: string;
   /** Lobby-Liste abonnieren (Lobby-Seite) oder nicht (Einladungsseite). Standard: true. */
   subscribe?: boolean;
 }
@@ -60,10 +35,6 @@ export class LobbyRequestError extends Error {
   }
 }
 
-const PING_INTERVAL_MS = 20_000;
-const PONG_TIMEOUT_MS = 10_000;
-const MAX_BACKOFF_MS = 10_000;
-
 interface Pending {
   resolve(message: ServerMessage): void;
   reject(error: LobbyRequestError): void;
@@ -71,23 +42,36 @@ interface Pending {
   matches(message: ServerMessage): boolean;
 }
 
+export function lobbyStatus(status: ConnectionStatus): LobbyStatus {
+  switch (status.kind) {
+    case 'open':
+      return 'online';
+    case 'replaced':
+      return 'replaced';
+    case 'failed':
+      return status.reason === 'version' ? 'outdated' : 'connecting';
+    default:
+      return 'connecting';
+  }
+}
+
 export class LobbyClient {
-  private state: LobbyState = { status: 'connecting', tables: [] };
+  private state: LobbyState;
   private readonly listeners = new Set<() => void>();
-  private socket: SocketLike | null = null;
-  private running = false;
-  private attempt = 0;
-  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
-  private pingTimer: ReturnType<typeof setInterval> | null = null;
-  private pongTimer: ReturnType<typeof setTimeout> | null = null;
+  private off: (() => void)[] = [];
+  private subscribed = false;
   private nextRequestId = 1;
   private readonly pending = new Map<string, Pending>();
-  private readonly socketFactory: SocketFactory;
+  /** Selbst angelegte Tische: der Server beobachtet sie für uns, freigegeben wird mit `stop`. */
+  private readonly created = new Set<number>();
   private readonly subscribeLobby: boolean;
 
-  constructor(private readonly options: LobbyClientOptions = {}) {
-    this.socketFactory = options.socketFactory ?? browserSocketFactory;
+  constructor(
+    private readonly connection: GameConnection,
+    options: LobbyClientOptions = {},
+  ) {
     this.subscribeLobby = options.subscribe ?? true;
+    this.state = { status: lobbyStatus(connection.status), tables: [] };
   }
 
   // --- Zustand für React (`useSyncExternalStore`) ---------------------------
@@ -103,37 +87,35 @@ export class LobbyClient {
 
   // --- Lebenszyklus ----------------------------------------------------------
 
-  /** Verbindet (mehrfacher Aufruf harmlos; nach `stop()` wieder möglich). */
+  /** Hängt sich an die Verbindung (mehrfacher Aufruf harmlos; nach `stop()` wieder möglich). */
   start(): void {
-    if (this.running) return;
-    this.running = true;
-    this.attempt = 0;
-    window.addEventListener('online', this.retryNow);
-    document.addEventListener('visibilitychange', this.retryNow);
-    this.open();
+    if (this.off.length > 0) return;
+    this.off = [
+      this.connection.onStatus((status) => {
+        this.onStatus(status);
+      }),
+      this.connection.onMessage((message) => {
+        this.onMessage(message);
+      }),
+    ];
+    this.connection.start();
+    this.onStatus(this.connection.status);
   }
 
-  /** Trennt dauerhaft; offene Anfragen schlagen fehl. */
+  /** Löst sich von der Verbindung (sie bleibt offen); offene Anfragen schlagen fehl. */
   stop(): void {
-    if (!this.running) return;
-    this.running = false;
-    window.removeEventListener('online', this.retryNow);
-    document.removeEventListener('visibilitychange', this.retryNow);
-    this.clearTimers();
-    const socket = this.socket;
-    this.socket = null;
-    if (socket !== null) {
-      this.detach(socket);
-      socket.close(1000, 'lobby closed');
-    }
+    for (const off of this.off) off();
+    this.off = [];
+    if (this.subscribed) this.connection.send({ type: 'lobby.unsubscribe' });
+    this.subscribed = false;
+    for (const tableId of this.created) this.connection.unwatchTable(tableId);
+    this.created.clear();
     this.failPending();
   }
 
   /** Bewusst neu verbinden, z. B. nach 4001 („Hier weiterspielen“). */
   reconnect(): void {
-    this.stop();
-    this.setState({ status: 'connecting' });
-    this.start();
+    this.connection.reconnectNow();
   }
 
   // --- Anfragen --------------------------------------------------------------
@@ -142,6 +124,10 @@ export class LobbyClient {
   async createTable(settings: TableSettingsInput): Promise<{ tableId: number; inviteCode: string }> {
     const message = await this.request({ type: 'table.create', settings }, () => false, 'table.created');
     if (message.type !== 'table.created') throw new LobbyRequestError('INTERNAL', 'Unerwartete Antwort');
+    if (!this.created.has(message.tableId) && this.off.length > 0) {
+      this.created.add(message.tableId);
+      this.connection.watchTable(message.tableId);
+    }
     return { tableId: message.tableId, inviteCode: message.inviteCode };
   }
 
@@ -160,63 +146,37 @@ export class LobbyClient {
     matches: (m: ServerMessage) => boolean,
     replyType?: 'table.created',
   ): Promise<ServerMessage> {
-    const socket = this.socket;
-    if (socket === null || this.state.status !== 'online') {
-      return Promise.reject(new LobbyRequestError('DISCONNECTED', 'Keine Verbindung zum Server – bitte kurz warten'));
-    }
     const requestId = `l${String(this.nextRequestId++)}`;
     return new Promise((resolve, reject) => {
+      if (this.state.status !== 'online' || !this.connection.send({ ...message, requestId })) {
+        reject(new LobbyRequestError('DISCONNECTED', 'Keine Verbindung zum Server – bitte kurz warten'));
+        return;
+      }
       this.pending.set(requestId, {
         resolve,
         reject,
         matches: (m) => (replyType !== undefined && m.type === replyType && m.requestId === requestId) || matches(m),
       });
-      socket.send(JSON.stringify({ ...message, requestId }));
     });
   }
 
   // --- Verbindung ------------------------------------------------------------
 
-  private open(): void {
-    this.setState({ status: 'connecting' });
-    let socket: SocketLike;
-    try {
-      socket = this.socketFactory(this.options.url ?? wsUrl('/ws'));
-    } catch {
-      this.scheduleReconnect();
-      return;
+  private onStatus(status: ConnectionStatus): void {
+    if (status.kind === 'open') {
+      if (this.subscribeLobby && !this.subscribed) {
+        this.subscribed = this.connection.send({ type: 'lobby.subscribe' });
+      }
+    } else {
+      // Nach einem Abbruch kennt der Server das Abo nicht mehr; offene Anfragen bekommen keine Antwort.
+      this.subscribed = false;
+      this.failPending();
     }
-    this.socket = socket;
-    socket.onopen = () => {
-      this.send({ type: 'hello', protocolVersion: PROTOCOL_VERSION });
-    };
-    socket.onmessage = (event) => {
-      if (typeof event.data === 'string') this.onMessage(event.data);
-    };
-    socket.onerror = () => undefined; // Danach kommt immer `close`.
-    socket.onclose = (event) => {
-      this.onClose(socket, event.code);
-    };
+    this.setState({ status: lobbyStatus(status) });
   }
 
-  private onMessage(text: string): void {
-    let message: ServerMessage;
-    try {
-      message = JSON.parse(text) as ServerMessage;
-    } catch {
-      return;
-    }
-    // Jede Nachricht zeigt: Verbindung lebt.
-    if (this.pongTimer !== null) clearTimeout(this.pongTimer);
-    this.pongTimer = null;
-
+  private onMessage(message: ServerMessage): void {
     switch (message.type) {
-      case 'welcome':
-        this.attempt = 0;
-        if (this.subscribeLobby) this.send({ type: 'lobby.subscribe' });
-        this.setState({ status: 'online' });
-        this.startPing();
-        return;
       case 'lobby.snapshot':
         this.setState({ tables: [...message.tables].sort((a, b) => a.id - b.id) });
         return;
@@ -244,84 +204,6 @@ export class LobbyClient {
           }
         }
     }
-  }
-
-  private onClose(socket: SocketLike, code: number): void {
-    if (socket !== this.socket) return;
-    this.detach(socket);
-    this.socket = null;
-    this.clearTimers();
-    this.failPending();
-    if (!this.running) return;
-    if (code === CLOSE_REPLACED || code === CLOSE_UNSUPPORTED_VERSION) {
-      this.running = false;
-      window.removeEventListener('online', this.retryNow);
-      document.removeEventListener('visibilitychange', this.retryNow);
-      this.setState({ status: code === CLOSE_REPLACED ? 'replaced' : 'outdated' });
-      return;
-    }
-    this.scheduleReconnect();
-  }
-
-  private scheduleReconnect(): void {
-    this.setState({ status: 'connecting' });
-    if (this.reconnectTimer !== null) return;
-    // Exponentiell 0,5 s … 10 s mit Zufallsanteil.
-    const base = Math.min(MAX_BACKOFF_MS, 500 * 2 ** this.attempt);
-    this.attempt += 1;
-    const delay = base / 2 + Math.random() * (base / 2);
-    this.reconnectTimer = setTimeout(() => {
-      this.reconnectTimer = null;
-      if (this.running && this.socket === null) this.open();
-    }, delay);
-  }
-
-  /** Bei `online` oder sichtbarem Tab sofort neu versuchen, statt den Backoff abzuwarten. */
-  private readonly retryNow = (): void => {
-    if (!this.running || this.socket !== null || document.visibilityState === 'hidden') return;
-    if (this.reconnectTimer !== null) clearTimeout(this.reconnectTimer);
-    this.reconnectTimer = null;
-    this.open();
-  };
-
-  private startPing(): void {
-    if (this.pingTimer !== null) clearInterval(this.pingTimer);
-    this.pingTimer = setInterval(() => {
-      this.send({ type: 'ping' });
-      if (this.pongTimer !== null) return;
-      this.pongTimer = setTimeout(() => {
-        // Keine Antwort: Verbindung als tot behandeln, neu verbinden.
-        const socket = this.socket;
-        if (socket !== null) {
-          socket.close(4002, 'pong timeout');
-          this.onClose(socket, 1006);
-        }
-      }, PONG_TIMEOUT_MS);
-    }, PING_INTERVAL_MS);
-  }
-
-  private send(message: ClientMessage): void {
-    try {
-      this.socket?.send(JSON.stringify(message));
-    } catch {
-      // Verbindung bricht gerade ab – `close` folgt.
-    }
-  }
-
-  private detach(socket: SocketLike): void {
-    socket.onopen = null;
-    socket.onmessage = null;
-    socket.onclose = null;
-    socket.onerror = null;
-  }
-
-  private clearTimers(): void {
-    if (this.reconnectTimer !== null) clearTimeout(this.reconnectTimer);
-    if (this.pingTimer !== null) clearInterval(this.pingTimer);
-    if (this.pongTimer !== null) clearTimeout(this.pongTimer);
-    this.reconnectTimer = null;
-    this.pingTimer = null;
-    this.pongTimer = null;
   }
 
   private failPending(): void {

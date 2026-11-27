@@ -1,13 +1,12 @@
 // Rangliste, Statistiken und Hand-Historie gegen Postgres. Hände stammen aus Zufallsrunden der Engine und
-// werden über den Store der Hand-Historie gespeichert. Nur mit TEST_DATABASE_URL: `npm run test:db -w @poker/server`.
+// werden über den Store der Hand-Historie gespeichert. Stufe `db`.
 import type { FastifyInstance } from 'fastify';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../app';
 import type { AuthConfig } from '../auth/config';
 import { SESSION_COOKIE, createSession } from '../auth/session';
 import { createPgDatabase } from '../db';
-import { runMigrations } from '../db/migrate';
-import { createTestSchema, testDatabaseUrl, type TestSchema } from '../db/test-db';
+import { createTestDatabase, type TestDatabase } from '../db/test-db';
 import { toHandRecord } from '../history/records';
 import { createPgHandHistoryStore, loadRoundHands } from '../history/store';
 import { loadLeaderboard, loadPlayerHands } from './queries';
@@ -25,13 +24,12 @@ const AUTH: AuthConfig = {
   rateLimit: null,
 };
 
-describe.skipIf(testDatabaseUrl === undefined)('Statistiken mit Postgres', () => {
-  let s: TestSchema;
+describe('Statistiken mit Postgres', () => {
+  let s: TestDatabase;
   let app: FastifyInstance | undefined;
 
   beforeAll(async () => {
-    s = await createTestSchema(testDatabaseUrl ?? '');
-    await runMigrations(s.config);
+    s = await createTestDatabase('stats');
   });
 
   afterAll(async () => {

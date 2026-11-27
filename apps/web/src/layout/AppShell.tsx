@@ -1,9 +1,10 @@
 // Rahmen für alle eingeloggten Seiten außer dem Tisch: Kopfzeile mit App-Name, Menü, Feedback-Slot;
-// Fußzeile mit Spielgeld-Hinweis und Rechtstexten.
+// darunter der Hinweis „Du bist dran“; Fußzeile mit Spielgeld-Hinweis und Rechtstexten.
 import { useState } from 'react';
 import { Link, NavLink, Outlet } from 'react-router';
 import { useAuth } from '../auth/AuthContext';
 import { FeedbackSlot } from '../feedback/FeedbackSlot';
+import { TurnBanner } from '../game/TurnBanner';
 import { appTitle } from '../health';
 import { LegalFooter } from '../legal/LegalFooter';
 import { cx } from '../styles/cx';
@@ -73,6 +74,7 @@ export function AppShell() {
           </button>
         </nav>
       </header>
+      <TurnBanner />
       <main className={styles.main}>
         <Outlet />
       </main>

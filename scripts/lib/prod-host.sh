@@ -6,13 +6,13 @@
 #   POKER_PROD_COLIMA      Colima-Profil der Prod-VM auf dem Host (Standard: spiele); Docker über
 #                          DOCKER_HOST=unix://$HOME/.colima/<profil>/docker.sock, wie im Deploy-Job
 #   POKER_PROD_SSH         SSH-Befehl, für Tests ersetzbar  (Standard: ssh)
-#   POKER_PROD_REPO_URL    Quelle für prod:setup; Standard über den Host-Alias github-poker (Deploy-Key in ~/.ssh/config des Nutzers)
+#   POKER_PROD_REPO_URL    Quelle für prod:setup (Standard: https, das Repo ist öffentlich; fleet holt über die GitHub-App)
 
 POKER_PROD_HOST="${POKER_PROD_HOST:-fleet@mac-2}"
 POKER_PROD_REMOTE_DIR="${POKER_PROD_REMOTE_DIR:-poker}"
 POKER_PROD_COLIMA="${POKER_PROD_COLIMA:-spiele}"
 POKER_PROD_SSH="${POKER_PROD_SSH:-ssh}"
-POKER_PROD_REPO_URL="${POKER_PROD_REPO_URL:-git@github-poker:Arthurreuss/Poker.git}"
+POKER_PROD_REPO_URL="${POKER_PROD_REPO_URL:-https://github.com/Arthurreuss/Poker.git}"
 
 # Umgebung jeder SSH-Sitzung auf dem Host. Docker-CLI und git kommen von Homebrew (/opt/homebrew/bin), das nicht
 # im PATH einer SSH-Sitzung ohne Login-Shell liegt; /usr/local/bin bleibt harmlos im PATH (Intel-Homebrew, alte

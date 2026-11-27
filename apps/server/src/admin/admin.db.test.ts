@@ -1,4 +1,4 @@
-// Integrationstests der Admin-Rolle (D-029) gegen die Test-DB (nur mit TEST_DATABASE_URL, sonst übersprungen):
+// Integrationstests der Admin-Rolle (D-029) gegen die Test-DB (Stufe `db`):
 // Guard für alle /api/admin/*-Routen, Sperre (Sessions, WebSocket, Login), Sessions beenden, Passwort-Reset,
 // Tisch schließen, Admin-Protokoll inkl. Anonymisierung bei Konto-Löschung und Löschfrist.
 import type { AddressInfo } from 'node:net';
@@ -12,8 +12,7 @@ import { resetPassword, setAdmin } from '../auth/admin';
 import type { AuthConfig } from '../auth/config';
 import { SESSION_COOKIE } from '../auth/session';
 import { createPgDatabase } from '../db';
-import { runMigrations } from '../db/migrate';
-import { createTestSchema, testDatabaseUrl, type TestSchema } from '../db/test-db';
+import { createTestDatabase, type TestDatabase } from '../db/test-db';
 import type { AdminAuditLogRow } from '../db/types';
 import { TestClient, attachBot } from '../game/ws-test-client';
 import { CLOSE_ACCOUNT_BANNED, CLOSE_SESSIONS_REVOKED } from '../ws';
@@ -40,14 +39,13 @@ const isMethod = (m: string): m is Method => ['GET', 'POST', 'PUT', 'PATCH', 'DE
 type TableCreated = Extract<ServerMessage, { type: 'table.created' }>;
 type TableClosed = Extract<ServerMessage, { type: 'table.closed' }>;
 
-describe.skipIf(testDatabaseUrl === undefined)('Admin-Rolle (Test-DB)', () => {
-  let s: TestSchema;
+describe('Admin-Rolle (Test-DB)', () => {
+  let s: TestDatabase;
   let app: FastifyInstance | undefined;
   let clients: TestClient[] = [];
 
   beforeAll(async () => {
-    s = await createTestSchema(testDatabaseUrl ?? '');
-    await runMigrations(s.config);
+    s = await createTestDatabase('admin');
   });
 
   afterAll(async () => {

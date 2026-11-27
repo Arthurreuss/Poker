@@ -1,14 +1,12 @@
-// React-Anbindung des Lobby-Clients: eine Verbindung pro Seite, beim Verlassen getrennt.
-import { createContext, useContext, useEffect, useState, useSyncExternalStore } from 'react';
-import { browserSocketFactory, LobbyClient, type LobbyState, type SocketFactory } from './client';
-
-/** Tests ersetzen hierüber den WebSocket (`<LobbySocketContext value={fake}>`). */
-export const LobbySocketContext = createContext<SocketFactory>(browserSocketFactory);
+// React-Anbindung des Lobby-Clients: hängt sich für die Dauer der Seite an die Verbindung der App.
+import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useConnection } from '../game/ConnectionProvider';
+import { LobbyClient, type LobbyState } from './client';
 
 export function useLobby(options: { subscribe?: boolean } = {}): { client: LobbyClient; state: LobbyState } {
-  const socketFactory = useContext(LobbySocketContext);
+  const connection = useConnection();
   const subscribe = options.subscribe ?? true;
-  const [client] = useState(() => new LobbyClient({ socketFactory, subscribe }));
+  const [client] = useState(() => new LobbyClient(connection, { subscribe }));
   useEffect(() => {
     client.start();
     return () => {

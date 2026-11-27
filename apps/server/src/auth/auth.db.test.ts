@@ -1,11 +1,10 @@
-// Integrationstests der Auth-Endpunkte gegen die Test-DB (nur mit TEST_DATABASE_URL, sonst übersprungen).
+// Integrationstests der Auth-Endpunkte gegen die Test-DB (Stufe `db`).
 import { Writable } from 'node:stream';
 import type { FastifyInstance, LightMyRequestResponse } from 'fastify';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../app';
 import { createPgDatabase } from '../db';
-import { runMigrations } from '../db/migrate';
-import { createTestSchema, testDatabaseUrl, type TestSchema } from '../db/test-db';
+import { createTestDatabase, type TestDatabase } from '../db/test-db';
 import type { SessionRow, UserRow } from '../db/types';
 import { resetPassword, setAdmin } from './admin';
 import type { AuthConfig } from './config';
@@ -20,13 +19,12 @@ const DEV: AuthConfig = {
 const PROD: AuthConfig = { ...DEV, secureCookies: true, trustCfConnectingIp: true };
 const PASSWORD = 'richtig-geheim';
 
-describe.skipIf(testDatabaseUrl === undefined)('Auth-Endpunkte (Test-DB)', () => {
-  let s: TestSchema;
+describe('Auth-Endpunkte (Test-DB)', () => {
+  let s: TestDatabase;
   let app: FastifyInstance | undefined;
 
   beforeAll(async () => {
-    s = await createTestSchema(testDatabaseUrl ?? '');
-    await runMigrations(s.config);
+    s = await createTestDatabase('auth');
   });
 
   afterAll(async () => {
@@ -99,7 +97,10 @@ describe.skipIf(testDatabaseUrl === undefined)('Auth-Endpunkte (Test-DB)', () =>
       expect(sessions).toHaveLength(1);
       expect(sessions[0]?.token_hash.equals(hashSessionToken(token))).toBe(true);
       expect(sessions[0]?.token_hash.toString('base64url')).not.toBe(token);
-      const ttl = (sessions[0]?.expires_at.getTime() ?? 0) - Date.now();
+      // Gegen die Uhr der Datenbank (expires_at = now() + TTL): Die des Test-Postgres läuft in einer VM und kann
+      // der des Tests um Millisekunden voraus sein.
+      const { rows: clock } = await s.pool.query<{ now: Date }>('SELECT now()');
+      const ttl = (sessions[0]?.expires_at.getTime() ?? 0) - (clock[0]?.now.getTime() ?? 0);
       expect(ttl).toBeGreaterThan(29 * 86_400_000);
       expect(ttl).toBeLessThanOrEqual(30 * 86_400_000);
     });

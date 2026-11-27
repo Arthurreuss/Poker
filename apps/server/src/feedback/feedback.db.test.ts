@@ -1,4 +1,4 @@
-// Integrationstests der Feedback-API gegen die Test-DB (nur mit TEST_DATABASE_URL, sonst übersprungen).
+// Integrationstests der Feedback-API gegen die Test-DB (Stufe `db`).
 import type { FastifyInstance } from 'fastify';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../app';
@@ -6,8 +6,7 @@ import type { AuthConfig } from '../auth/config';
 import { setAdmin } from '../auth/admin';
 import { SESSION_COOKIE } from '../auth/session';
 import { createPgDatabase } from '../db';
-import { runMigrations } from '../db/migrate';
-import { createTestSchema, testDatabaseUrl, type TestSchema } from '../db/test-db';
+import { createTestDatabase, type TestDatabase } from '../db/test-db';
 import type { FeedbackRow } from '../db/types';
 import type { FeedbackConfig } from './config';
 import { formatFeedbackList } from './cli';
@@ -32,13 +31,12 @@ const VALID = {
   orientation: 'portrait',
 };
 
-describe.skipIf(testDatabaseUrl === undefined)('Feedback-API (Test-DB)', () => {
-  let s: TestSchema;
+describe('Feedback-API (Test-DB)', () => {
+  let s: TestDatabase;
   let app: FastifyInstance | undefined;
 
   beforeAll(async () => {
-    s = await createTestSchema(testDatabaseUrl ?? '');
-    await runMigrations(s.config);
+    s = await createTestDatabase('feedback');
   });
 
   afterAll(async () => {

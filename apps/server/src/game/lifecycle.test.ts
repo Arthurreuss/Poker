@@ -342,6 +342,24 @@ describe('Offene Tische und Einladungscode', () => {
     expect(s.repository.tables.get(id)?.status).toBe('closed');
   });
 
+  it('table.unwatch wirkt wie ein Abbruch für den Tisch: sitzen bleiben, Aufräumen erst nach der Frist', async () => {
+    const s = setup();
+    const a = await s.connect(1);
+    await s.send(a, { type: 'table.create', settings: QUICK });
+    const id = s.last(a).id;
+    await s.send(a, { type: 'table.sit', tableId: id, seat: 0 });
+    await s.send(a, { type: 'table.unwatch', tableId: id });
+    expect(s.game.getTable(id)?.seatOf(1)).toBe(0);
+    expect(s.game.getTable(id)?.watcherCount).toBe(0);
+    const errorsBefore = a.inbox.filter((m) => m.type === 'error').length;
+    await s.send(a, { type: 'table.unwatch', tableId: id });
+    expect(a.inbox.filter((m) => m.type === 'error')).toHaveLength(errorsBefore);
+    s.clock.advance(DEFAULT_IDLE_TABLE_TIMEOUT_MS - 1);
+    expect(s.game.getTable(id)).toBeDefined();
+    s.clock.advance(1);
+    expect(s.game.getTable(id)).toBeUndefined();
+  });
+
   it('wer per Code beigetreten ist, darf den privaten Tisch danach auch per tableId betreten', async () => {
     const s = setup();
     const a = await s.connect(1);

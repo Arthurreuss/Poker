@@ -114,6 +114,15 @@ export interface TableLeaveMessage extends ClientBase {
   type: 'table.leave';
   tableId: number;
 }
+/**
+ * Tisch nicht mehr beobachten, ohne ihn zu verlassen: wirkt wie ein Verbindungsabbruch für diesen Tisch
+ * (kein Aufstehen, Leerlauf-Frist statt sofortigem Aufräumen). Die App sendet es beim Verlassen der
+ * Tischseite über die gemeinsame Verbindung; beobachtet der Client den Tisch nicht, passiert nichts.
+ */
+export interface TableUnwatchMessage extends ClientBase {
+  type: 'table.unwatch';
+  tableId: number;
+}
 export interface TableSitMessage extends ClientBase {
   type: 'table.sit';
   tableId: number;
@@ -187,6 +196,7 @@ export type ClientMessage =
   | TableCreateMessage
   | TableJoinMessage
   | TableLeaveMessage
+  | TableUnwatchMessage
   | TableSitMessage
   | TableStandMessage
   | TableStartMessage

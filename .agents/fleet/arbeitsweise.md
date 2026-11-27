@@ -9,14 +9,16 @@ beschreiben `.claude/skills/` und `.claude/agents/`. Eigenes des Projekts (Prüf
 Besonderheiten) steht in `.agents/rules/`.
 
 ## Ablauf eines Baus
-Ein Bau-Agent baut genau ein Ticket. Sein Auftrag nennt nur Ticket, Branch und gesperrte Pfade;
-alles andere steht hier.
+Ein Bau-Agent baut genau ein Ticket. Sein Auftrag nennt nur Ticket, Branch, gesperrte Pfade und,
+wenn ein paralleler Bau ebenfalls eine Datenbank-Migration bringt, „Einreihen nach #<nr>“; alles
+andere steht hier.
 1. **Eigener Worktree:** Worktree und Branch vom Ziel-Branch auf `origin`; im Hauptcheckout wird
    nicht gearbeitet.
 2. **Gezielt lesen:** das Ticket mit seinen Kommentaren, `.agents/project.md`, die Regeln in
    `.agents/rules/`. ADRs nur über den Index `docs/DECISIONS.md` und eine Suche nach Stichworten,
    dann die passenden; nie alle.
-3. **Umsetzen** nur mit den Editier-Werkzeugen, eingeordnet in die Architektur des Projekts.
+3. **Umsetzen,** eingeordnet in die Architektur des Projekts; Hilfsskripte (auch zum Ersetzen)
+   liegen im Arbeitsordner der Sitzung oder unter `/tmp`, nie im Worktree.
    Entscheiden nach grundsaetze.md „Wer entscheidet was“. Änderungen außerhalb des Repos (Board,
    Labels, Dienste, Daten) geschehen erst nach dem Merge, als eigenes Ticket; müssen sie vorher
    wirken, nur umkehrbar und mit Rückweg im Ticket vermerkt.
@@ -41,23 +43,36 @@ alles andere steht hier.
    Reste (Logs, Caches, Container) weg. Ein Lauf entfernt nur, was er selbst angelegt hat; Reste
    legt er im Worktree, im Arbeitsordner der Sitzung oder unter `/tmp` an (Probe-Checkouts auf
    anderen Rechnern immer unter `/tmp`), nur dort löscht er. Was anderswo liegt, nennt der Bericht.
+   Der Arbeitsordner ist mit anderen Agenten geteilt: Eigene Logs und Reste tragen die
+   Ticketnummer im Namen (`pruefung-<nr>.log`) und werden einzeln mit festem Pfad gelöscht, ohne
+   `*`; einen Worktree räumt `git worktree remove` ab.
 9. **Abschlussbericht,** höchstens 15 Zeilen: eingereihter Branch, eigene Entscheidungen, gelaufene
    Prüfungen mit Ergebnis (die echte Zahl des letzten vollen Laufs), was offen bleibt (als
    Ticket), und eine Zeile „Reibung:“ (was hat aufgehalten, welche Regel fehlte oder war unklar;
    sonst „keine“).
 
+**fleet-Checkout** (`<fleet>`: `FLEET_DIR`, sonst der Pfad zum Einreihen in
+`.agents/rules/workflow.md`): Nachgezogen wird er nur vom
+Orchestrierer bei jedem Start und Weckruf; sonst fasst ihn niemand an. Bricht
+`fleet.py projekt abgleichen` mit „alter Stand“ ab, gleicht ein Bau-Agent aus einem eigenen
+fleet-Worktree ab (`git -C <fleet> fetch`, dann `git -C <fleet> worktree add --detach
+<fleet>/tmp/<name> origin/main`, danach `git worktree remove`). Ändert ein Ticket fleet selbst,
+gilt fleets `CLAUDE.md` „Ablauf“: eigener Worktree, Push nach `main`.
+
 ## Commits
 - Nachricht: `typ(bereich): Beschreibung (ADR XXXX)` mit `feat`, `fix`, `chore`, `docs`,
   `refactor`, `test`; der ADR-Verweis nur, wenn der Bau eine ADR bringt. Sprache wie im Projekt.
 - Der Commit trägt `Closes #<nr>`: Ein Ticket ist erledigt, sobald sein Bau-Teil gemergt ist.
-  Reste (Handarbeit, Entscheidungen, Folge-Bau) werden vor dem Einreihen eigene Tickets.
+  Reste (Handarbeit, Entscheidungen, Folge-Bau) werden vor dem Einreihen eigene Tickets, auch
+  eine „bekannte Grenze“, die in der ADR steht.
   `Refs #<nr>` nur, wenn Bau-Arbeit dieses Tickets selbst noch fehlt; welche, steht im Bericht.
 - Nie Geheimnisse, große Binärdateien oder Erzeugtes.
 
 ## Verbote
 - Was die Befehlssperre blockiert (`.claude/hooks/befehlssperre.toml`, eigene Regeln in
   `fleet.toml` `[agenten]`). Es gibt keinen Schalter zum Umgehen; Nötiges führt der Mensch aus.
-- Patch- oder Ersetzungsskripte über Dateien des Repos, auch inline.
+- Hilfsskripte, Sicherungen und Patch-Reste im Repo (`tmp_*.py`, `fix_*.py`, `*.bak`, `*.orig`,
+  Skripte in der Wurzel ohne Eintrag): `scripts/check_wegwerf.py` in der Stufe `static` meldet sie.
 - Prüfungen herabsetzen, Tests überspringen oder löschen, eine Ausnahme selbst eintragen. Wer eine
   braucht, meldet sie im Ticket.
 - Hintergrundprozesse als fertig melden, bevor sie enden; blockierende Endlos-Befehle.

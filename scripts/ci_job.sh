@@ -12,15 +12,11 @@
 # Das Ende der Einrichtung meldet die Zeile `⏱  einrichtung: N s` (fleet zeigt sie je Paket).
 # Ergebnisdateien kommen nach `$NOMAD_ALLOC_DIR/data/` (der Aufrufer holt sie danach).
 #
-# Stufen: `static` (Wächter) ist ab dem ersten Branch eingerichtet. Ohne Argument laufen alle
-# eingerichteten; eine Stufe, die das Projekt noch nicht eingerichtet hat, endet mit Exit 2 und
-# Hinweis. Eine neue Stufe kommt nach `STUFEN` mit einer Funktion `<stufe>_stufe`, in `DAUER` von
-# scripts/pruefung.py und, soll der Zug sie prüfen, in fleet.toml [zug] (Abschnitt Stufen in
-# .agents/rules/testing.md).
-# Optional `scripts/ci_job.sh live`: Live-Tests gegen die echten Modelle, JUnit nach
-# `$FLEET_LIVE_JUNIT` (Jobs `live-poker`, fleet-Repo docs/pruefungen.md „Live-Tests“).
-#
-# poker: Stellen mit `<...>` anpassen.
+# Stufen (Inhalt: .agents/rules/testing.md „Stufen“): `static` (Wächter), `test` (`npm run check`),
+# `db` (Server-Tests gegen den Test-Postgres) und `e2e` (Playwright). Ohne Argument laufen alle
+# eingerichteten; eine Stufe, die das Projekt nicht eingerichtet hat, endet mit Exit 2 und Hinweis.
+# Eine neue Stufe kommt nach `STUFEN` mit einer Funktion `<stufe>_stufe`, in `DAUER` von
+# scripts/pruefung.py und, soll der Zug sie prüfen, in fleet.toml [zug].
 set -uo pipefail
 cd "$(dirname "$0")/.." || exit 75
 exec </dev/null
@@ -83,7 +79,7 @@ for arg in "$@"; do
         *) stages+=("$arg") ;;
     esac
 done
-STUFEN=(static)
+STUFEN=(static test db e2e)
 [ "${#stages[@]}" -gt 0 ] || stages=("${STUFEN[@]}")
 for stage in "${stages[@]}"; do
     case " ${STUFEN[*]} " in
@@ -98,19 +94,42 @@ trap 'exit 129' HUP
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
-# Einrichtung: installieren, was fehlt (uv sync, npm ci nur bei geändertem Lockfile).
-# poker: anpassen, bei Fehlschlag `exit 75`.
-# uv sync --frozen -q || { say "uv sync gescheitert"; exit 75; }
+# Einrichtung: installieren, was die Stufen brauchen (Node aus .nvmrc, npm ci nur bei geändertem
+# Lockfile, Chromium für Playwright); bei Fehlschlag `exit 75`.
+braucht_node=0 braucht_browser=0
+for stage in "${stages[@]}"; do
+    case "$stage" in
+        test | db) braucht_node=1 ;;
+        e2e) braucht_node=1; braucht_browser=1 ;;
+    esac
+done
 # Die Wächter brauchen Python ab 3.11 (tomllib), sonst Python 3.12 über uv.
 py=(python3)
 if ! python3 -c 'import tomllib' >/dev/null 2>&1; then
     command -v uv >/dev/null 2>&1 || { say "python3 ab 3.11 oder uv fehlt"; exit 75; }
     py=(uv run -q --python 3.12 --no-project python)
 fi
+if [ "$braucht_node" = 1 ]; then
+    if command -v fnm >/dev/null 2>&1; then
+        eval "$(fnm env --shell bash)"
+        fnm use --install-if-missing "$(cat .nvmrc)" >/dev/null || { say "Node $(cat .nvmrc) nicht einrichtbar"; exit 75; }
+    fi
+    command -v npm >/dev/null 2>&1 || { say "npm fehlt"; exit 75; }
+    lock_hash=$( (cat package-lock.json; node -v) | shasum -a 256 | cut -d' ' -f1)
+    stempel=node_modules/.ci-job-lock
+    if [ "$(cat "$stempel" 2>/dev/null)" != "$lock_hash" ]; then
+        say "npm ci (package-lock.json oder Node geändert, oder erster Lauf)"
+        npm ci --no-audit --no-fund || { say "npm ci gescheitert"; exit 75; }
+        echo "$lock_hash" >"$stempel"
+    fi
+fi
+if [ "$braucht_browser" = 1 ]; then
+    (cd apps/web && npx playwright install chromium >/dev/null) || { say "Playwright-Chromium nicht einrichtbar"; exit 75; }
+fi
 
-# Test-Postgres des Verbunds: ist FLEET_TEST_POSTGRES_URL gesetzt, nutzt die Testsuite ihn
-# (Vorlage-Datenbanken `poker_tpl_<hash>`, Läufe `poker_lauf_<alloc8>_…`), sonst startet
-# sie einen eigenen. Das Skript reicht die Variablen unverändert durch.
+# Test-Postgres des Verbunds: `db` und `e2e` nutzen FLEET_TEST_POSTGRES_URL (Vorlage-Datenbanken
+# `poker_tpl_<hash>`, Läufe `poker_lauf_<alloc8>_…`, apps/server/src/db/test-db.ts); ohne sie sind
+# die Tests mit Datenbank rot, einen eigenen Postgres startet die Suite nie.
 [ -z "${NOMAD_ALLOC_DIR:-}" ] || mkdir -p "$NOMAD_ALLOC_DIR/data"
 
 # Marke für die Messung (fleet-Repo docs/pruefungen.md „Buchung je Paket“): direkt bevor die
@@ -135,16 +154,49 @@ vorarbeit() {
 
 say "Lauf $RUN_ID auf $(hostname -s), Stufen: ${stages[*]}"
 echo "⏱  einrichtung: $((SECONDS - setup_start)) s"
-# Je Stufe eine Funktion `<stufe>_stufe`, rot bei Exit ungleich 0. Ergebnisdateien (Coverage,
-# Testzeiten) nach "$NOMAD_ALLOC_DIR/data/". Beispiel für Tests mit Workern, ihre Zahl nur aus
-# `FLEET_EINHEITEN` (Einheiten des Pakets nach Buchung), nie aus den Kernen:
-#   test_stufe() { einheiten_starten; uv run pytest -n "${FLEET_EINHEITEN:-1}"; }
+# Je Stufe eine Funktion `<stufe>_stufe`, rot bei Exit ungleich 0 (Inhalt: .agents/rules/testing.md
+# „Stufen“). Ergebnisdateien nach "$NOMAD_ALLOC_DIR/data/". Worker nur aus `FLEET_EINHEITEN`
+# (Einheiten des Pakets nach Buchung; vitest.config.ts, apps/server/vitest.db.config.ts), nie aus den Kernen.
 static_stufe() {
     local rot=0
     "${py[@]}" scripts/check_struktur.py || rot=1
     "${py[@]}" scripts/check_drift.py || rot=1
     "${py[@]}" scripts/adr.py || rot=1
     "${py[@]}" scripts/check_gespiegelt.py || rot=1
+    "${py[@]}" scripts/check_wegwerf.py || rot=1
+    return "$rot"
+}
+test_stufe() {
+    einheiten_starten
+    npm run --silent check
+}
+db_stufe() {
+    einheiten_starten
+    npm run --silent test:db -w @poker/server
+}
+freier_port() {
+    "${py[@]}" -c 'import socket; s = socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])'
+}
+e2e_db=""   # Testdatenbank der Stufe e2e; der Lauf löscht sie am Ende, auch nach Abbruch
+e2e_db_loeschen() {
+    [ -n "$e2e_db" ] || return 0
+    npm run --silent test-db -w @poker/server -- loeschen "$e2e_db" || say "e2e: Testdatenbank $e2e_db nicht gelöscht"
+    e2e_db=""
+}
+trap 'e2e_db_loeschen; docker_cleanup' EXIT
+e2e_stufe() {
+    # Screenshot-Tests (eigener Vite-Server, Baselines `*-darwin.png`) und Spieltests gegen einen
+    # Dev-Stack im Paket: Playwright startet Game-Server und Vite dieses Checkouts auf freien Ports
+    # gegen eine Kopie der Vorlage (apps/web/e2e-game/playwright.config.ts).
+    local rot=0 zeile url
+    zeile=$(npm run --silent test-db -w @poker/server -- anlegen e2e) || return 1
+    read -r e2e_db url <<<"$zeile"
+    einheiten_starten
+    (cd apps/web && PW_PORT=$(freier_port) npx playwright test -c e2e-visual/playwright.config.ts \
+        --workers "${FLEET_EINHEITEN:-1}") || rot=1
+    (cd apps/web && PW_PORT=$(freier_port) GAME_E2E_API="http://127.0.0.1:$(freier_port)" \
+        GAME_E2E_DATABASE_URL="$url" npx playwright test -c e2e-game/playwright.config.ts) || rot=1
+    e2e_db_loeschen
     return "$rot"
 }
 ergebnis=0

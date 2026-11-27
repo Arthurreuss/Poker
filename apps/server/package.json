@@ -19,7 +19,8 @@
     "start": "node dist/server.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:db": "TEST_DATABASE_URL=${TEST_DATABASE_URL:-postgres://poker:poker@localhost:4312/poker_test} vitest run",
+    "test:db": "vitest run --config vitest.db.config.ts",
+    "test-db": "tsx src/cli/test-db.ts",
     "admin:reset-password": "tsx src/cli/reset-password.ts",
     "admin:make-admin": "tsx src/cli/make-admin.ts",
     "admin:feedback": "tsx src/cli/feedback.ts"

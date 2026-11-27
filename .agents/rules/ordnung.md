@@ -28,6 +28,16 @@ Projekt sie umsetzt.
   Branch geändert hat, außer in String-Literalen. Bringt ein Branch mehrere neue ADRs, nennen
   Verweise außerhalb der ADR selbst den Pfad (`docs/adr/XXXX-slug.md`); ein bloßes `ADR XXXX` ist
   dann mehrdeutig und der Branch kommt zurück.
+- Wo der Haken nicht ersetzt, steht kein Platzhalter, auch nicht im Pfad `docs/adr/XXXX-…`: in
+  String-Literalen jeder Sprache, in Testdateien außer Python (Ordner `test/`, `tests/`, `e2e/`,
+  `fixtures/`, `__tests__/`, Dateien `test_*`, `*.test.*`, `*.spec.*`), in Code außerhalb ganzer
+  Kommentarzeilen (`#`, `//`, `/*`, `*` am Zeilenanfang) und in Dateien, die weder Fließtext
+  (`.md`, `.txt`, `.toml`, `.yaml`, `.ini`, `.cfg`, `.env*`) noch Code mit Kommentarzeilen sind
+  (etwa `.html`, `.json`). Dort schickt der Zug den Branch mit der Fundstelle zurück. Stattdessen
+  steht ein Verweis ohne Nummer (auf das Ticket oder den Inhalt); die Nummer kommt, wo nötig, nach
+  dem Merge mit einem eigenen Ticket. In Python ersetzt der Haken in Kommentaren und Docstrings,
+  auch in Tests; in Fließtext nicht in Code-Blöcken, Code-Spans und unter Testordnern, dort bleibt
+  der Platzhalter still stehen.
 - Abgelöste ADRs werden nicht umgeschrieben: Ihre Zeile `Status:` bekommt „ersetzt durch NNNN“
   bzw. „teilw. ersetzt durch NNNN“, die neue ADR nennt die alte („ersetzt 0003“).
 - Status mit festem Anfang: `aktiv` (kommt mit dem Code, also der Normalfall), `vorgeschlagen`
@@ -44,4 +54,6 @@ Projekt sie umsetzt.
 ## Geheimnisse
 - Nie im Repo: Passwörter, Tokens, Schlüssel, private URLs mit Zugang. Vorlage für Namen:
   `.env.example`; die echte `.env` ist ignoriert.
-- Auf den Servern liegen Geheimnisse unter `~fleet/.fleet/secrets/` (Modus 600).
+- Auf den Servern liegen die Geheimnisse des Projekts nur im Prod-Checkout, ignoriert: Werte in
+  `.env.prod`, Dateien unter `.secrets/` (Modus 600; docs/OPERATIONS.md). `~fleet/.fleet/secrets/`
+  gehört dem Verbund (fleet-Repo docs/maschinen.md „Geheimnisse“).

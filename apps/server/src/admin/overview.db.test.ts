@@ -1,4 +1,4 @@
-// Integrationstests der Dashboard-Lese-Endpunkte gegen die Test-DB (nur mit TEST_DATABASE_URL):
+// Integrationstests der Dashboard-Lese-Endpunkte gegen die Test-DB (Stufe `db`):
 // Übersicht (Tische, Spieler online, Runden heute/Woche, Feedback, Health) und Tischliste. Zugriff (401/403) prüft
 // der Guard-Test in admin.db.test.ts für alle /api/admin/*-Routen.
 import type { AddressInfo } from 'node:net';
@@ -10,8 +10,7 @@ import { buildApp } from '../app';
 import type { AuthConfig } from '../auth/config';
 import { SESSION_COOKIE } from '../auth/session';
 import { createPgDatabase } from '../db';
-import { runMigrations } from '../db/migrate';
-import { createTestSchema, testDatabaseUrl, type TestSchema } from '../db/test-db';
+import { createTestDatabase, type TestDatabase } from '../db/test-db';
 import { TestClient } from '../game/ws-test-client';
 import { countRounds, loadOverview, type AdminOverview, type AdminTable } from './overview';
 
@@ -31,14 +30,13 @@ interface Account {
 
 type TableCreated = Extract<ServerMessage, { type: 'table.created' }>;
 
-describe.skipIf(testDatabaseUrl === undefined)('Admin-Dashboard (Test-DB)', () => {
-  let s: TestSchema;
+describe('Admin-Dashboard (Test-DB)', () => {
+  let s: TestDatabase;
   let app: FastifyInstance | undefined;
   let clients: TestClient[] = [];
 
   beforeAll(async () => {
-    s = await createTestSchema(testDatabaseUrl ?? '');
-    await runMigrations(s.config);
+    s = await createTestDatabase('overview');
   });
 
   afterAll(async () => {
@@ -173,6 +171,11 @@ describe.skipIf(testDatabaseUrl === undefined)('Admin-Dashboard (Test-DB)', () =
        VALUES ($1, 'bug', 'a', 'new', NULL), ($1, 'idea', 'b', 'new', NULL), ($1, 'other', 'c', 'done', now())`,
       [bob.id],
     );
+    // started_at kommt von der Uhr der Datenbank; die des Test-Postgres läuft in einer VM und kann der App um
+    // Millisekunden voraus sein. Die Übersicht zählt nur Runden bis zur Uhr der App, also bis dahin warten.
+    const { rows: started } = await s.pool.query<{ t: Date }>('SELECT max(started_at) AS t FROM rounds');
+    const ahead = (started[0]?.t.getTime() ?? 0) - Date.now();
+    if (ahead >= 0) await new Promise((resolve) => setTimeout(resolve, ahead + 1));
 
     const res = await get(a, '/api/admin/overview', root);
     expect(res.statusCode).toBe(200);

@@ -1,4 +1,4 @@
-// Admin deckt Karten auf (D-027) bzw. zieht neue eigene Karten (D-032) gegen die Test-DB (nur mit TEST_DATABASE_URL, sonst übersprungen): echte
+// Admin deckt Karten auf (D-027) bzw. zieht neue eigene Karten (D-032) gegen die Test-DB (Stufe `db`): echte
 // Sessions, Admin-Flag aus der DB, Eintrag `table.reveal_cards` im Admin-Protokoll, Rechteentzug greift sofort.
 import type { AddressInfo } from 'node:net';
 import type { FastifyInstance, LightMyRequestResponse } from 'fastify';
@@ -9,8 +9,7 @@ import { buildApp } from '../app';
 import type { AuthConfig } from '../auth/config';
 import { SESSION_COOKIE } from '../auth/session';
 import { createPgDatabase } from '../db';
-import { runMigrations } from '../db/migrate';
-import { createTestSchema, testDatabaseUrl, type TestSchema } from '../db/test-db';
+import { createTestDatabase, type TestDatabase } from '../db/test-db';
 import { TestClient } from '../game/ws-test-client';
 import type { AuditEntry } from './audit';
 import { replayHandRecord } from '../history/replay';
@@ -33,14 +32,13 @@ interface Account {
 
 type AdminCards = Extract<ServerMessage, { type: 'admin.cards' }>;
 
-describe.skipIf(testDatabaseUrl === undefined)('Admin: Karten aufdecken (Test-DB)', () => {
-  let s: TestSchema;
+describe('Admin: Karten aufdecken (Test-DB)', () => {
+  let s: TestDatabase;
   let app: FastifyInstance | undefined;
   let clients: TestClient[] = [];
 
   beforeAll(async () => {
-    s = await createTestSchema(testDatabaseUrl ?? '');
-    await runMigrations(s.config);
+    s = await createTestDatabase('reveal');
   });
 
   afterAll(async () => {

@@ -203,7 +203,7 @@ Tickets mit „WP-NNN“ im Titel.
 - **Konsequenzen:** Umsetzung in WP-022: Request-Logs mit IP schreiben server und nginx in Dateien, die der Dienst `logrotate` täglich rotiert und nach 12 Tagen löscht; Container-Logs enthalten keine IPs und rotieren nach Größe. Ein Server-Job löscht Feedback nach den Fristen, ein zweiter das Admin-Protokoll (WP-028). Der Backup-Ordner wird nicht in Time Machine oder eine Cloud gesichert (sonst gälten längere Fristen).
 
 ## D-026: Spiel-UI-Details (Abnahme WP-018)
-- **Status:** akzeptiert
+- **Status:** teilw. ersetzt durch ADR 0002 (eine Verbindung für die ganze App)
 - **Kontext:** Offene Fragen aus WP-018.
 - **Entscheidung:**
   - „Platz nehmen“, „Aufstehen“ und „Runde starten“ liegen vor dem Start in der Aktionsleiste.
@@ -332,7 +332,7 @@ Tickets mit „WP-NNN“ im Titel.
   - prod läuft auf dem Mac Studio (`areuss-studio.local`) unter dem versteckten Dienst-Nutzer `fleet` ohne Anmeldung; FileVault ist an, Dienste laufen als LaunchDaemons. Der Admin `arthurreuss` dient nur für `sudo`.
   - Docker Desktop ist entfernt. Docker läuft über Colima als LaunchDaemon `com.wingmen.colima` (Nutzer `fleet`), das Docker-CLI kommt von Homebrew (`/opt/homebrew/bin`). Container mit `restart: unless-stopped` starten beim Hochfahren mit Colima wieder, ohne Anmeldung.
   - Der Checkout von `main` liegt unter `~fleet/poker`, geklont per SSH mit einem schreibgeschützten Deploy-Key (Host-Alias `github-poker` in `~fleet/.ssh/config`); `.env.prod` dort mit Rechten 600. Der Checkout ändert sich weiter nur per `git merge --ff-only origin/main`.
-  - `POKER_PROD_HOST` hat den Standard `fleet@areuss-studio.local` (`scripts/lib/prod-host.sh`); `POKER_PROD_REPO_URL` den Standard `git@github-poker:Arthurreuss/Poker.git`. Alles andere aus D-036 (MacBook nur Entwicklung, Befehle per SSH, Portweiterleitung, `release`) bleibt.
+  - `POKER_PROD_HOST` hat den Standard `fleet@areuss-studio.local` (`scripts/lib/prod-host.sh`); `POKER_PROD_REPO_URL` den Standard über den Host-Alias `github-poker` (seit #24 `https://github.com/Arthurreuss/Poker.git`, Deploy-Key und Alias entfallen). Alles andere aus D-036 (MacBook nur Entwicklung, Befehle per SSH, Portweiterleitung, `release`) bleibt.
   - Backups bleiben in `/Users/Shared/fleet/backups/poker` (D-037), jetzt im Besitz von `fleet`.
   - Der Dienst-Nutzer hieß am 28.10.2026 zunächst `wingmen` und heißt seitdem `fleet` (unter ihm laufen alle Projekte des Servers, nicht nur Wingmen).
   - Die LaunchAgent-Vorlage für `caffeinate` (`ops/launchd`) entfällt: Es gibt keine Benutzersitzung mehr, der Ruhezustand ist systemweit aus.
@@ -353,3 +353,4 @@ Tickets mit „WP-NNN“ im Titel.
 | Nr. | Titel | Status | Bereich |
 |---|---|---|---|
 | 0001 | Arbeitsweise und Anbindung an fleet | aktiv | Arbeitsweise |
+| 0002 | Eine WebSocket-Verbindung für die ganze App | aktiv | Frontend |

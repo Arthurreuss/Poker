@@ -1,4 +1,4 @@
-// Avatar gegen die Test-DB (nur mit TEST_DATABASE_URL): speichern über PUT /api/me/avatar, Anzeige in
+// Avatar gegen die Test-DB (Stufe `db`): speichern über PUT /api/me/avatar, Anzeige in
 // /api/me, Login, Rangliste, Profil und am Tisch (echter WebSocket), Zurücksetzen beim Löschen des Kontos.
 import type { AddressInfo } from 'node:net';
 import type { FastifyInstance, LightMyRequestResponse } from 'fastify';
@@ -9,8 +9,7 @@ import { buildApp } from '../app';
 import type { AuthConfig } from '../auth/config';
 import { SESSION_COOKIE } from '../auth/session';
 import { createPgDatabase } from '../db';
-import { runMigrations } from '../db/migrate';
-import { createTestSchema, testDatabaseUrl, type TestSchema } from '../db/test-db';
+import { createTestDatabase, type TestDatabase } from '../db/test-db';
 import { TestClient } from '../game/ws-test-client';
 import { toAvatarId, validateAvatarInput } from './avatar';
 
@@ -39,14 +38,13 @@ describe('Avatar-Eingabe (ohne DB)', () => {
   });
 });
 
-describe.skipIf(testDatabaseUrl === undefined)('Avatar (Test-DB)', () => {
-  let s: TestSchema;
+describe('Avatar (Test-DB)', () => {
+  let s: TestDatabase;
   let app: FastifyInstance | undefined;
   let clients: TestClient[] = [];
 
   beforeAll(async () => {
-    s = await createTestSchema(testDatabaseUrl ?? '');
-    await runMigrations(s.config);
+    s = await createTestDatabase('avatar');
   });
 
   afterAll(async () => {

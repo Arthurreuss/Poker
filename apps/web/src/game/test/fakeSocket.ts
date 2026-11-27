@@ -1,5 +1,5 @@
-// Testhilfe: steuerbarer WebSocket-Ersatz für `GameConnection`.
-import type { ClientMessage, ServerMessage } from '@poker/engine/protocol';
+// Testhilfe: steuerbarer WebSocket-Ersatz für `GameConnection` (Tisch, Lobby, Zug-Hinweis). Der Test spielt den Server.
+import type { ClientMessage, PublicUser, ServerMessage } from '@poker/engine/protocol';
 import { GameConnection, type BrowserEvents, type SocketLike } from '../connection';
 
 export class FakeSocket implements SocketLike {
@@ -30,8 +30,19 @@ export class FakeSocket implements SocketLike {
     this.readyState = 3;
     this.onclose?.(new CloseEvent('close', { code }));
   }
+  /** Öffnen und `welcome` schicken. */
+  welcome(user: PublicUser = { id: 1, username: 'anna' }) {
+    this.open();
+    this.receive({ type: 'welcome', protocolVersion: 1, user });
+  }
   types() {
     return this.sent.map((m) => m.type);
+  }
+  /** Zuletzt gesendete Nachricht dieses Typs. */
+  last<T extends ClientMessage['type']>(type: T): Extract<ClientMessage, { type: T }> {
+    const found = [...this.sent].reverse().find((m) => m.type === type);
+    if (found === undefined) throw new Error(`keine Nachricht ${type}`);
+    return found as Extract<ClientMessage, { type: T }>;
   }
 }
 

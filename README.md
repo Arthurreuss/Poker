@@ -25,11 +25,8 @@ npm run dev:down       # stoppen (DB-Volume poker-dev-db bleibt)
 - Health: http://localhost:4310/api/health (über den Vite-Proxy) bzw. http://localhost:4311/api/health
 - Postgres: `localhost:4312`, Benutzer/Passwort/DB `poker` (nur dev)
 
-DB-Integrationstests (Schema, Migrationen, Auth) gegen die Test-DB `poker_test`: `npm run test:db -w @poker/server`.
-Der Health-Integrationstest läuft nur mit gesetzter `DATABASE_URL` (sonst übersprungen):
-```sh
-DATABASE_URL=postgres://poker:poker@localhost:4312/poker npm test
-```
+Tests mit Datenbank (`*.db.test.ts`) und Playwright laufen als Stufen `db` und `e2e` über die
+Warteschlange des Verbunds: `python3 scripts/pruefung.py db e2e` ([.agents/rules/testing.md](.agents/rules/testing.md)).
 Nach Änderungen an Abhängigkeiten `npm run dev:up` erneut ausführen (baut das Image neu).
 
 ## Prod (mac-2, Prod-VM `prod-spiele`)

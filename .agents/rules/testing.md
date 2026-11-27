@@ -23,9 +23,22 @@ die Warteschlange `python3 scripts/pruefung.py <stufe…>`.
   `scripts/check_drift.py` (ADR-Status und abgelöste Begriffe in der Doku, Regel „Doku aktuell
   halten“ in `ordnung.md`), `scripts/adr.py` (Namen und Kopf der ADRs, Index gleich dem
   erzeugten, „ADRs“ in `ordnung.md`), `scripts/check_gespiegelt.py` (rot, wenn eine gespiegelte Datei von
-  Hand geändert ist) und `scripts/check_struktur.py` (Ordner und Schichten nach
+  Hand geändert ist), `scripts/check_wegwerf.py` (rot bei Wegwerf-Dateien wie `tmp_*`, `*.bak` oder
+  Skripten in der Wurzel außer `*.config.*`, gespiegelt) und `scripts/check_struktur.py` (Ordner und Schichten nach
   `scripts/struktur.toml`). Der Commit-Hook prüft sie bei jedem Commit.
-- **Weitere Stufen** (`test`, `e2e`, `smoke` …) richtet das Ticket ein, das sie braucht, an drei
+- **`test`:** `npm run check` (Doku-Check, Format, Typecheck, Lint, Skript-, Unit- und
+  Komponententests ohne Datenbank); Vitest-Worker nach `FLEET_EINHEITEN`.
+- **`db`:** `npm run test:db -w @poker/server`, alle `*.db.test.ts` des Servers
+  (`apps/server/vitest.db.config.ts`) gegen den Test-Postgres („Testdatenbanken und App“), Worker
+  nach `FLEET_EINHEITEN`. Ein neuer Test mit Datenbank heißt `*.db.test.ts`; `npm run check`
+  schließt diese Dateien aus.
+- **`e2e`:** Playwright mit Chromium (`browser=True`): die Screenshot-Tests
+  (`apps/web/e2e-visual`, Baselines `__screenshots__/*-darwin.png`, Worker nach `FLEET_EINHEITEN`)
+  und die Spieltests (`apps/web/e2e-game`) gegen einen Dev-Stack im Paket: Playwright startet
+  Game-Server (dev, ohne Rate-Limit) und Vite dieses Stands auf freien Ports gegen eine Kopie der
+  Vorlage (`GAME_E2E_DATABASE_URL`).
+- Alle vier Stufen prüft der Zug bei jedem Lauf (`fleet.toml` [zug]).
+- **Weitere Stufen** (`smoke` …) richtet das Ticket ein, das sie braucht, an drei
   Stellen: in `scripts/ci_job.sh` (`STUFEN` und eine Funktion `<stufe>_stufe`), in `DAUER` von
   `scripts/pruefung.py` und in `fleet.toml` [zug], damit der Zug sie prüft; dazu die Prüfung vor
   dem Einreihen in `workflow.md` und die Stufe mit ihrem Inhalt in dieser Liste. Eine Stufe, die
@@ -67,21 +80,21 @@ jedem Worktree des Clones. Rot hält den Commit auf; nie mit `--no-verify` umgeh
 - **Frontend:** Komponententests der Kernansichten (Vitest), Geometrie- und Screenshot-Tests
   (`npm run test:visual -w @poker/web`), Spieltest mit Browsern (`npm run test:game -w @poker/web`).
 - Ein Fehler wird erst mit einem roten Test nachgestellt, dann behoben.
-- **Stand:** Im Zug läuft nur `static`; `npm run check` (Unit-, Komponenten- und Skript-Tests ohne
-  Datenbank) läuft lokal im Commit-Hook. Datenbank-Tests (`npm run test:db -w @poker/server`) und
-  die Playwright-Tests brauchen heute einen laufenden Dev-Stack; ihre Stufen über die Warteschlange
-  (mit den Regeln unten) kommen mit eigenem Ticket. Bis dahin laufen sie nicht durch Agenten.
+- **Wo sie laufen:** `npm run check` lokal im Commit-Hook und als Stufe `test`; Datenbank- und
+  Playwright-Tests nur als Stufen `db` und `e2e` über die Warteschlange („Stufen“).
 
 ## Testdatenbanken und App
 Warum das im Projekt liegt: fleet-Repo docs/pruefungen.md „Test-VM und Vorlage-Datenbanken“ und
 „Regeln für Tests“.
-- **Postgres:** Ist `FLEET_TEST_POSTGRES_URL` gesetzt, nutzt die Testsuite diesen Server; fehlt sie
-  oder antwortet er nicht, startet sie einen eigenen (testcontainers), so bleibt Prüfen ohne den
-  Verbund möglich.
-- **Tests mit Datenbank laufen über die Warteschlange** (`python3 scripts/pruefung.py <stufe…>`),
+- **Postgres:** Die Testsuite nutzt nur den Test-Postgres des Verbunds aus
+  `FLEET_TEST_POSTGRES_URL` (`apps/server/src/db/test-db.ts`). Fehlt sie oder antwortet er nicht,
+  ist jeder Test mit Datenbank rot mit Hinweis auf die Warteschlange, nie übersprungen; einen
+  eigenen Postgres (testcontainers) startet sie nie (fleet#131).
+- **Tests mit Datenbank laufen über die Warteschlange** (`python3 scripts/pruefung.py db`, `e2e`),
   auch gezielte während des Baus. Auf der Bau-Maschine gibt es dafür kein Docker; Agenten starten
   dort keinen eigenen Postgres und richten keinen ein. Lokal läuft nur, was keine Datenbank
-  braucht.
+  braucht. Ist die Warteschlange nicht nutzbar (Exit 75), gibt es für `db` und `e2e` keinen
+  lokalen Ersatz: Das steht am Ticket, eingereiht wird erst nach Grün über die Warteschlange.
 - **Jede Testdatenbank ist eine Kopie einer Vorlage** `poker_tpl_<hash>` (Hash über die
   Migrationen und alles, was das Schema bestimmt), gebaut unter einer Advisory-Sperre; sie
   überlebt Läufe. Kein Test fährt Migrationen von null, außer Migrationstests, die Zwischenstände

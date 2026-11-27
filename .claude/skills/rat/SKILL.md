@@ -47,8 +47,9 @@ Optionen und was schon feststeht.
    Rats, der Einwand. Der Planer legt sie dem Auftraggeber vor; das Anlass-Ticket baut am Rest
    weiter. Die Antwort wird wie eine Entscheidung festgehalten (Schritt 7).
 7. **Festhalten** als Kommentar am Rats-Ticket (Form unten). Er ist zugleich der Text der ADR. Was
-   daraus zu bauen ist, samt Kriterium „ADR nach Rat #<nr>, Status `vorgeschlagen`“ (Form in
-   `docs/DECISIONS.md`), kommt ins Anlass-Ticket, solange es offen ist, sonst in ein neues Ticket;
+   daraus zu bauen ist, samt Kriterium „ADR nach Rat #<nr>, Status `aktiv`“ (kommt mit dem Bau;
+   `vorgeschlagen, Bau #<nr>` nur, wenn der Bau ein eigenes Ticket ist; Form in
+   `docs/DECISIONS.md`, Regel in `.agents/rules/ordnung.md`), kommt ins Anlass-Ticket, solange es offen ist, sonst in ein neues Ticket;
    die ADR schreibt der Bau-Agent mit diesem Bau. Ändert die Entscheidung ein Muster, kommen nach
    `weichenstellung.md` Abbau-Liste und Umbau-Tickets zugleich dazu. Dann schließt der Vorsitz
    das Rats-Ticket und weckt den Orchestrierer mit der Nummer des Bau-Tickets.
